@@ -1,0 +1,49 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-paw"></i> Rapport par Type</h1>
+        <p class="lead">Répartition des animaux par type</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <a href="/reports" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour aux Rapports</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Type</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-right">En Soin</th>
+                        <th class="text-right">Relâché</th>
+                        <th class="text-right">Décédé</th>
+                        <th>Distribution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%= for (r) in results { %>
+                        <tr>
+                            <td><strong><%= r.AnimalType %></strong></td>
+                            <td class="text-right"><span class="badge badge-dark"><%= r.Count %></span></td>
+                            <td class="text-right"><span class="badge badge-success"><%= r.InCare %></span></td>
+                            <td class="text-right"><span class="badge badge-primary"><%= r.Released %></span></td>
+                            <td class="text-right"><span class="badge badge-danger"><%= r.Died %></span></td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: <%= r.InCare * 100 / r.Count %>%"></div>
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: <%= r.Released * 100 / r.Count %>%"></div>
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: <%= r.Died * 100 / r.Count %>%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

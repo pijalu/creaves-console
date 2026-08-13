@@ -1,0 +1,14 @@
+create_table("import_runs") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("started_at", "timestamp", {})
+	t.Column("completed_at", "timestamp", {null: true})
+	t.Column("source_count", "integer", {default: 0})
+	t.Column("events_imported", "integer", {default: 0})
+	t.Column("events_processed", "integer", {default: 0})
+	t.Column("status", "string", {default: "running"})
+	t.Column("error_message", "text", {null: true})
+	t.Timestamps()
+}
+
+add_index("import_runs", ["status"], {})
+add_index("import_runs", ["started_at"], {})

@@ -1,0 +1,172 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-chart-bar"></i> Rapports</h1>
+        <p class="lead">Vue d'ensemble et analyses des données consolidées</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["total_animals"] %></div>
+                <div>Total Animaux</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-map-marker-alt"></i> Par Lieu de Découverte</h5>
+            </div>
+            <div class="card-body">
+                <p>Analyse des animaux par ville et code postal de découverte.</p>
+                <a href="/reports/by_location?group_by=city" class="btn btn-primary btn-block">
+                    Par Ville
+                </a>
+                <a href="/reports/by_location?group_by=postal_code" class="btn btn-outline-primary btn-block mt-2">
+                    Par Code Postal
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-paw"></i> Par Type</h5>
+            </div>
+            <div class="card-body">
+                <p>Répartition des animaux par type (rapaces, oiseaux, mammifères, etc.).</p>
+                <a href="/reports/by_type" class="btn btn-success btn-block">
+                    Voir le Rapport
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-dove"></i> Par Espèce</h5>
+            </div>
+            <div class="card-body">
+                <p>Analyse détaillée par espèce avec statistiques par année.</p>
+                <a href="/reports/by_species" class="btn btn-info btn-block">
+                    Voir le Rapport
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Par Statut</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Statut</th>
+                            <th class="text-right">Nombre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (sc) in stats["by_status"] { %>
+                            <tr>
+                                <td>
+                                    <span class="badge badge-<%= if (sc.Status == "in_care") { %>success<% } else if (sc.Status == "released") { %>primary<% } else if (sc.Status == "died") { %>danger<% } else { %>secondary<% } %>">
+                                        <%= sc.Status %>
+                                    </span>
+                                </td>
+                                <td class="text-right"><%= sc.Count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Par Année</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Année</th>
+                            <th class="text-right">Nombre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (yc) in stats["by_year"] { %>
+                            <tr>
+                                <td><%= yc.Year %></td>
+                                <td class="text-right"><%= yc.Count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Top 20 Espèces</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Espèce</th>
+                            <th class="text-right">Nombre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (sp) in stats["top_species"] { %>
+                            <tr>
+                                <td><%= sp.Species %></td>
+                                <td class="text-right"><%= sp.Count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Top 20 Villes</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Ville</th>
+                            <th class="text-right">Nombre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (ct) in stats["top_cities"] { %>
+                            <tr>
+                                <td><%= ct.City %></td>
+                                <td class="text-right"><%= ct.Count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

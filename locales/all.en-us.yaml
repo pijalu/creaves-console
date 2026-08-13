@@ -1,0 +1,10 @@
+- id: welcome_greeting
+  translation: "Welcome to the Consolidation System"
+- id: users.unauthorized
+  translation: "You must be logged in to access this page"
+- id: user.created.success
+  translation: "User created successfully"
+- id: user.updated.success
+  translation: "User updated successfully"
+- id: user.destroyed.success
+  translation: "User deleted successfully"

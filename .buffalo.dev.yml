@@ -1,0 +1,25 @@
+app_root: .
+binary_name: creaves-console-build
+build_delay: 200ns
+build_flags: []
+build_path: tmp
+build_target_path: ./cmd/app
+command_env:
+  - PORT=3001
+command_flags: []
+enable_colors: true
+ignored_folders:
+- vendor
+- log
+- logs
+- assets
+- public
+- grifts
+- tmp
+- bin
+- node_modules
+- .sass-cache
+included_extensions:
+- .go
+- .env
+log_name: creaves-console

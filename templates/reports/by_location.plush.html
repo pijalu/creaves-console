@@ -1,0 +1,45 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-map-marker-alt"></i> Rapport par Lieu de Découverte</h1>
+        <p class="lead">Animaux groupés par <%= if (groupBy == "postal_code") { %>code postal<% } else { %>ville<% } %></p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <a href="/reports/by_location?group_by=city" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Par Ville</a>
+        <a href="/reports/by_location?group_by=postal_code" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Par Code Postal</a>
+        <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Retour</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th><%= if (groupBy == "postal_code") { %>Code Postal<% } else { %>Ville<% } %></th>
+                        <%= if (groupBy == "postal_code") { %><th>Ville</th><% } %>
+                        <th class="text-right">Total</th>
+                        <th class="text-right">En Soin</th>
+                        <th class="text-right">Relâché</th>
+                        <th class="text-right">Décédé</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%= for (r) in results { %>
+                        <tr>
+                            <td><%= r.Location %></td>
+                            <%= if (groupBy == "postal_code") { %><td><%= r.City %></td><% } %>
+                            <td class="text-right"><strong><%= r.Count %></strong></td>
+                            <td class="text-right"><span class="badge badge-success"><%= r.InCare %></span></td>
+                            <td class="text-right"><span class="badge badge-primary"><%= r.Released %></span></td>
+                            <td class="text-right"><span class="badge badge-danger"><%= r.Died %></span></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

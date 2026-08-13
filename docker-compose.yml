@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  consolidation-db:
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: consolidation
+      MYSQL_USER: consolidation
+      MYSQL_PASSWORD: consolidation
+    volumes:
+      - consolidation_db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - consolidation-network
+
+  consolidation-web:
+    build: .
+    environment:
+      GO_ENV: production
+      DATABASE_URL: mysql://consolidation:consolidation@consolidation-db:3306/consolidation
+    ports:
+      - "3001:3000"
+    depends_on:
+      - consolidation-db
+    networks:
+      - consolidation-network
+    command: ["./consolidation"]
+
+  consolidation-cron:
+    build: .
+    environment:
+      GO_ENV: production
+      DATABASE_URL: mysql://consolidation:consolidation@consolidation-db:3306/consolidation
+    depends_on:
+      - consolidation-db
+    networks:
+      - consolidation-network
+    # Run import every 5 minutes
+    command: >
+      sh -c "
+        while true; do
+          echo '[$(date)] Starting scheduled import...'
+          ./consolidation-cli import
+          echo '[$(date)] Import completed. Sleeping for 5 minutes...'
+          sleep 300
+        done
+      "
+
+volumes:
+  consolidation_db_data:
+
+networks:
+  consolidation-network:
+    driver: bridge

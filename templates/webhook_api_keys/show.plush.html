@@ -1,0 +1,66 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Webhook API Key</h1>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><%= webhookAPIKey.Name %></h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td><code><%= webhookAPIKey.ID %></code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Key Prefix:</strong></td>
+                        <td><code><%= webhookAPIKey.KeyPrefix %>...</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Instance ID:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.InstanceID) { %>
+                                <%= webhookAPIKey.InstanceID %>
+                            <% } else { %>
+                                <em>Any instance</em>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.Active) { %>
+                                <span class="badge badge-success">Active</span>
+                            <% } else { %>
+                                <span class="badge badge-secondary">Inactive</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last Used:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.LastUsedAt) { %>
+                                <%= webhookAPIKey.LastUsedAt.Format("2006-01-02 15:04:05") %>
+                            <% } else { %>
+                                <em>Never</em>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Created:</strong></td>
+                        <td><%= webhookAPIKey.CreatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Updated:</strong></td>
+                        <td><%= webhookAPIKey.UpdatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card-footer">
+                <a href="/webhook_api_keys" class="btn btn-secondary">Back</a>
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>/edit" class="btn btn-warning">Edit</a>
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" data-method="DELETE" data-confirm="Are you sure?" class="btn btn-danger">Delete</a>
+            </div>
+        </div>
+    </div>
+</div>

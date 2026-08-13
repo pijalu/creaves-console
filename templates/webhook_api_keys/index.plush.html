@@ -1,0 +1,69 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Webhook API Keys</h1>
+        <p class="lead">Manage API keys for Creaves instance webhooks</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">API Keys</h5>
+                <a href="/webhook_api_keys/new" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create Key
+                </a>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Prefix</th>
+                            <th>Instance ID</th>
+                            <th>Active</th>
+                            <th>Last Used</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (key) in webhookAPIKeys { %>
+                            <tr>
+                                <td><%= key.Name %></td>
+                                <td><code><%= key.KeyPrefix %>...</code></td>
+                                <td><%= if (key.InstanceID) { %><%= key.InstanceID %><% } else { %><em>Any</em><% } %></td>
+                                <td>
+                                    <%= if (key.Active) { %>
+                                        <span class="badge badge-success">Active</span>
+                                    <% } else { %>
+                                        <span class="badge badge-secondary">Inactive</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <%= if (key.LastUsedAt) { %>
+                                        <%= key.LastUsedAt.Format("2006-01-02 15:04") %>
+                                    <% } else { %>
+                                        <em>Never</em>
+                                    <% } %>
+                                </td>
+                                <td><%= key.CreatedAt.Format("2006-01-02") %></td>
+                                <td>
+                                    <a href="/webhook_api_keys/<%= key.ID %>" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="/webhook_api_keys/<%= key.ID %>/edit" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="/webhook_api_keys/<%= key.ID %>" data-method="DELETE" data-confirm="Are you sure?" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,19 @@
+development:
+  dialect: "mysql"
+  database: "consolidation"
+  host: "localhost"
+  port: "3306"
+  user: "creaves"
+  password: "creaves"
+
+test:
+  dialect: "sqlite"
+  database: "consolidation_test.sqlite"
+
+production:
+  dialect: "mysql"
+  database: {{envOr "DB_NAME" "consolidation"}}
+  host: {{envOr "DB_HOST" "localhost"}}
+  port: {{envOr "DB_PORT" "3307"}}
+  user: {{envOr "DB_USER" "consolidation"}}
+  password: {{envOr "DB_PASSWORD" "consolidation"}}

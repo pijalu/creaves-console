@@ -1,0 +1,15 @@
+create_table("source_instances") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("name", "string", {})
+	t.Column("instance_id", "string", {})
+	t.Column("db_host", "string", {})
+	t.Column("db_port", "integer", {default: 3306})
+	t.Column("db_name", "string", {})
+	t.Column("db_user", "string", {})
+	t.Column("db_password", "string", {})
+	t.Column("active", "bool", {default: true})
+	t.Column("last_import", "timestamp", {null: true})
+	t.Timestamps()
+}
+
+add_index("source_instances", ["instance_id"], {unique: true})
