@@ -1,7 +1,11 @@
+//go:build sqlite
+// +build sqlite
+
 package actions
 
 import (
 	"creaves-console/models"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -59,7 +63,8 @@ func createTables() {
 			source_db TEXT NOT NULL DEFAULT '',
 			imported_at TIMESTAMP NOT NULL,
 			processed_at TIMESTAMP,
-			created_at TIMESTAMP NOT NULL
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)
 	`).Exec()
 
@@ -469,4 +474,236 @@ func TestConsolidationRunner_GetRunHistory(t *testing.T) {
 	history, err := runner.GetRunHistory(3)
 	require.NoError(t, err)
 	assert.Equal(t, 3, len(history))
+}
+
+// ---------------------------------------------------------------------------
+// EventProcessor: ProcessAllEvents (rebuild) and ProcessEventsBatch
+// ---------------------------------------------------------------------------
+
+func TestEventProcessor_ProcessAllEvents(t *testing.T) {
+	tx := setupTest(t)
+
+	// Seed a processed event + its consolidated animal.
+	ev := &models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "inst-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalDiscovered,
+		Payload:    []byte(`{"animal":{"species":"Fox"},"initial_status":"in_care"}`),
+		CreatedAt:  time.Now(),
+	}
+	require.NoError(t, tx.Create(ev))
+	processor := NewEventProcessor(tx)
+	_, err := processor.ProcessUnprocessedEvents()
+	require.NoError(t, err)
+
+	// ProcessAllEvents resets consolidated_animals and reprocesses everything.
+	count, err := processor.ProcessAllEvents()
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "all events should be reprocessed")
+
+	// Consolidated animal rebuilt.
+	var animal models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", "inst-1", 1).First(&animal))
+	assert.Equal(t, "in_care", animal.CurrentStatus)
+}
+
+func TestEventProcessor_ProcessEventsBatch(t *testing.T) {
+	tx := setupTest(t)
+
+	// Seed 3 unprocessed events.
+	for i := 0; i < 3; i++ {
+		require.NoError(t, tx.Create(&models.EventStream{
+			ID:         uuid.Must(uuid.NewV4()),
+			InstanceID: "inst-1",
+			AnimalID:   i + 1,
+			EventType:  models.EventTypeAnimalDiscovered,
+			Payload:    []byte(`{"initial_status":"in_care"}`),
+			CreatedAt:  time.Now(),
+		}))
+	}
+
+	processor := NewEventProcessor(tx)
+
+	// Process a batch of 2.
+	count, done, err := processor.ProcessEventsBatch(2)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+	assert.False(t, done, "should not be done — 1 event remains")
+
+	// Process the remainder.
+	count, done, err = processor.ProcessEventsBatch(10)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.True(t, done, "should be done now")
+
+	// Empty batch after all processed.
+	count, done, err = processor.ProcessEventsBatch(10)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
+	assert.True(t, done)
+}
+
+// ---------------------------------------------------------------------------
+// ConsolidationRunner: Run error path, RunDryRun, GetLastRun
+// ---------------------------------------------------------------------------
+
+func TestConsolidationRunner_RunDryRun(t *testing.T) {
+	tx := setupTest(t)
+	runner := NewConsolidationRunner(tx)
+	result, err := runner.RunDryRun()
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "not yet implemented")
+}
+
+func TestConsolidationRunner_GetLastRun(t *testing.T) {
+	tx := setupTest(t)
+
+	// No runs → error (no rows).
+	runner := NewConsolidationRunner(tx)
+	_, err := runner.GetLastRun()
+	assert.Error(t, err)
+
+	// Seed two runs at different times.
+	first := &models.ImportRun{ID: uuid.Must(uuid.NewV4()), Status: "completed", StartedAt: time.Now().Add(-2 * time.Hour)}
+	require.NoError(t, tx.Create(first))
+	second := &models.ImportRun{ID: uuid.Must(uuid.NewV4()), Status: "completed", StartedAt: time.Now()}
+	require.NoError(t, tx.Create(second))
+
+	last, err := runner.GetLastRun()
+	require.NoError(t, err)
+	assert.Equal(t, second.ID, last.ID, "should return the most recent run")
+}
+
+func TestConsolidationRunner_RunProcessesEvents(t *testing.T) {
+	tx := setupTest(t)
+
+	require.NoError(t, tx.Create(&models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "inst-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalDiscovered,
+		Payload:    []byte(`{"animal":{"species":"Fox"},"initial_status":"in_care"}`),
+		CreatedAt:  time.Now(),
+	}))
+
+	runner := NewConsolidationRunner(tx)
+	result, err := runner.Run()
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 1, result.EventsProcessed)
+	assert.Empty(t, result.Errors)
+
+	// Import run record reflects completion.
+	var run models.ImportRun
+	require.NoError(t, tx.Find(&run, result.ImportRunID))
+	assert.Equal(t, "completed", run.Status)
+}
+
+// TestEventProcessor_ClosedDBErrorPaths covers the error-return branches of the
+// processor by giving it a closed DB connection. Every query will then fail,
+// exercising the defensive error paths without affecting the shared testDB.
+func TestEventProcessor_ClosedDBErrorPaths(t *testing.T) {
+	// An in-memory SQLite DB with NO tables: every query fails with
+	// "no such table", exercising the defensive error returns without a
+	// panic (a fully closed connection panics inside pop's SQLite dialect).
+	bad, err := pop.NewConnection(&pop.ConnectionDetails{Dialect: "sqlite", Database: ":memory:"})
+	require.NoError(t, err)
+	require.NoError(t, bad.Open())
+	defer bad.Close()
+	// Deliberately do NOT create any tables.
+
+	proc := NewEventProcessor(bad)
+
+	// ProcessUnprocessedEvents → query error.
+	_, err = proc.ProcessUnprocessedEvents()
+	assert.Error(t, err)
+
+	// ProcessAllEvents → raw query error on DELETE.
+	_, err = proc.ProcessAllEvents()
+	assert.Error(t, err)
+
+	// ProcessEventsBatch → query error.
+	_, _, err = proc.ProcessEventsBatch(10)
+	assert.Error(t, err)
+
+	// processEvent via findOrCreateConsolidatedAnimal → query error.
+	err = proc.processEvent(&models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "inst-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalDiscovered,
+		Payload:    []byte(`{"initial_status":"in_care"}`),
+	})
+	assert.Error(t, err)
+
+	// GetConsolidatedStats → query error.
+	_, err = proc.GetConsolidatedStats()
+	assert.Error(t, err)
+}
+
+// TestEventProcessor_ProcessEventInvalidPayload covers the ApplyEvent error
+// branch: an event with malformed JSON payload causes processEvent to return
+// an error (and is skipped by ProcessUnprocessedEvents).
+func TestEventProcessor_ProcessEventInvalidPayload(t *testing.T) {
+	tx := setupTest(t)
+
+	// An event whose payload is not valid JSON.
+	require.NoError(t, tx.Create(&models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "inst-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalDiscovered,
+		Payload:    json.RawMessage(`{not valid json`),
+		CreatedAt:  time.Now(),
+	}))
+
+	proc := NewEventProcessor(tx)
+
+	// Direct call → error.
+	err := proc.processEvent(&models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "inst-1",
+		AnimalID:   2,
+		EventType:  models.EventTypeAnimalDiscovered,
+		Payload:    json.RawMessage(`{not valid json`),
+		CreatedAt:  time.Now(),
+	})
+	assert.Error(t, err)
+
+	// Via ProcessUnprocessedEvents → returns count 0 + error.
+	count, err := proc.ProcessUnprocessedEvents()
+	assert.Error(t, err)
+	assert.Equal(t, 0, count)
+}
+
+// TestConsolidationRunner_RunCreateFails covers the error path where the import
+// run record cannot be created (no tables on the connection).
+func TestConsolidationRunner_RunCreateFails(t *testing.T) {
+	bad, err := pop.NewConnection(&pop.ConnectionDetails{Dialect: "sqlite", Database: ":memory:"})
+	require.NoError(t, err)
+	require.NoError(t, bad.Open())
+	defer bad.Close()
+
+	runner := NewConsolidationRunner(bad)
+	result, err := runner.Run()
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+// TestConsolidationRunner_GetLastRunAndHistoryErrors covers the error paths of
+// the history queries on a table-less DB.
+func TestConsolidationRunner_GetLastRunAndHistoryErrors(t *testing.T) {
+	bad, err := pop.NewConnection(&pop.ConnectionDetails{Dialect: "sqlite", Database: ":memory:"})
+	require.NoError(t, err)
+	require.NoError(t, bad.Open())
+	defer bad.Close()
+
+	runner := NewConsolidationRunner(bad)
+	_, err = runner.GetLastRun()
+	assert.Error(t, err)
+
+	_, err = runner.GetRunHistory(3)
+	assert.Error(t, err)
 }

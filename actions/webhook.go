@@ -85,6 +85,7 @@ func WebhookEventsHandler(c buffalo.Context) error {
 	// Process events
 	processor := NewEventProcessor(tx)
 	processedCount := 0
+	processedIDs := []string{}
 	eventErrors := []string{}
 
 	for _, webhookEvent := range payload.Events {
@@ -108,8 +109,23 @@ func WebhookEventsHandler(c buffalo.Context) error {
 			continue
 		}
 		if exists {
+			// The event was already received. If it was not processed yet
+			// (e.g. a previous delivery created the row but processing
+			// failed), process it now so a redelivery is self-healing.
+			existing := &models.EventStream{}
+			if err := tx.Find(existing, eventID); err != nil {
+				eventErrors = append(eventErrors, fmt.Sprintf("failed to load existing event %s: %v", webhookEvent.ID, err))
+				continue
+			}
+			if existing.ProcessedAt == nil {
+				if err := processor.processEvent(existing); err != nil {
+					eventErrors = append(eventErrors, fmt.Sprintf("failed to process existing event %s: %v", webhookEvent.ID, err))
+					continue
+				}
+			}
+			processedIDs = append(processedIDs, webhookEvent.ID)
 			processedCount++
-			continue // Already processed, count as success
+			continue
 		}
 
 		// Create event
@@ -135,12 +151,14 @@ func WebhookEventsHandler(c buffalo.Context) error {
 			continue
 		}
 
+		processedIDs = append(processedIDs, webhookEvent.ID)
 		processedCount++
 	}
 
 	response := map[string]interface{}{
-		"processed": processedCount,
-		"total":     len(payload.Events),
+		"processed":     processedCount,
+		"total":         len(payload.Events),
+		"processed_ids": processedIDs,
 	}
 
 	if len(eventErrors) > 0 {
