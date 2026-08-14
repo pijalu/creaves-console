@@ -1,0 +1,21 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Edit User</h1>
+        <p class="text-muted">Update the authority account details.</p>
+
+        <%= form_for(user, {action: "/users/<%= user.ID %>", method: "PUT"}) { %>
+            <%= f.InputTag("Login", {label: "Login"}) %>
+            <%= f.InputTag("Name", {label: "Name"}) %>
+            <%= f.InputTag("Email", {label: "Email", type: "email"}) %>
+            <%= f.InputTag("Password", {label: "Password (leave blank to keep)", type: "password"}) %>
+            <%= f.InputTag("PasswordConfirmation", {label: "Password confirmation", type: "password"}) %>
+            <%= f.CheckboxTag("Admin", {label: "Admin"}) %>
+            <%= f.CheckboxTag("Active", {label: "Active"}) %>
+
+            <div class="form-group">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <a href="/users/<%= user.ID %>" class="btn btn-secondary">Cancel</a>
+            </div>
+        <% } %>
+    </div>
+</div>

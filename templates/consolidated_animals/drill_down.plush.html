@@ -1,6 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1>Animal Details</h1>
+        <h1>Animal Drill-Down</h1>
+        <p class="text-muted">Detailed view with event history for the consolidated animal record.</p>
     </div>
 </div>
 
@@ -35,6 +36,14 @@
                     <tr>
                         <td><strong>Age:</strong></td>
                         <td><%= if (animal.AnimalAge.Valid) { animal.AnimalAge.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Zone/Cage:</strong></td>
+                        <td><%= animal.Zone %> / <%= animal.Cage %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ring:</strong></td>
+                        <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>
@@ -83,6 +92,14 @@
                         <td><strong>Remarks:</strong></td>
                         <td><%= if (animal.IntakeRemarks.Valid) { animal.IntakeRemarks.String } else { "-" } %></td>
                     </tr>
+                    <tr>
+                        <td><strong>Outtake Date:</strong></td>
+                        <td><%= if (animal.OuttakeDate.Valid) { animal.OuttakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Outtake Location:</strong></td>
+                        <td><%= if (animal.OuttakeLocation.Valid) { animal.OuttakeLocation.String } else { "-" } %></td>
+                    </tr>
                 </table>
             </div>
         </div>
@@ -125,6 +142,9 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
+        <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Animal Details
+        </a>
         <a href="/consolidated_animals" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Back to List
         </a>

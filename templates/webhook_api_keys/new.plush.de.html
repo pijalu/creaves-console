@@ -1,0 +1,24 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Webhook-API-Schlüssel erstellen</h1>
+        <p class="text-muted">Einen neuen API-Schlüssel für eine Creaves-Instanz zur Authentifizierung von Webhook-Anfragen generieren.</p>
+
+        <div class="alert alert-info">
+            <strong>Nächste Schritte nach der Erstellung:</strong>
+            <ol class="mb-0">
+                <li>Kopieren Sie den auf dem nächsten Bildschirm angezeigten Schlüssel (er wird <strong>nur einmal</strong> angezeigt).</li>
+                <li>Gehen Sie in der Quell-<em>Creaves</em>-Instanz zu <strong>Konfiguration → Webhook-Konfiguration</strong>, aktivieren Sie den Webhook, fügen Sie diesen Schlüssel ein und setzen Sie die Webhook-URL auf <code>/webhook/events</code> in dieser Konsole.</li>
+            </ol>
+        </div>
+
+        <%= form_for(webhookAPIKey, {action: "/webhook_api_keys", method: "POST"}) { %>
+            <%= f.InputTag("Name", {label: "Schlüsselname", placeholder: "z. B. Zentrum Brüssel"}) %>
+            <%= f.InputTag("InstanceID", {label: "Instanz-ID (optional)", placeholder: "z. B. center-brussels"}) %>
+            
+            <div class="form-group">
+                <button class="btn btn-primary" type="submit">API-Schlüssel generieren</button>
+                <a href="/webhook_api_keys" class="btn btn-secondary">Abbrechen</a>
+            </div>
+        <% } %>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Gebruiker bewerken</h1>
+        <p class="text-muted">Details van het autoriteitsaccount bijwerken.</p>
+
+        <%= form_for(user, {action: "/users/<%= user.ID %>", method: "PUT"}) { %>
+            <%= f.InputTag("Login", {label: "Login"}) %>
+            <%= f.InputTag("Name", {label: "Naam"}) %>
+            <%= f.InputTag("Email", {label: "E-mail", type: "email"}) %>
+            <%= f.InputTag("Password", {label: "Wachtwoord (leeg laten om te behouden)", type: "password"}) %>
+            <%= f.InputTag("PasswordConfirmation", {label: "Wachtwoord bevestigen", type: "password"}) %>
+            <%= f.CheckboxTag("Admin", {label: "Beheerder"}) %>
+            <%= f.CheckboxTag("Active", {label: "Actief"}) %>
+
+            <div class="form-group">
+                <button class="btn btn-primary" type="submit">Opslaan</button>
+                <a href="/users/<%= user.ID %>" class="btn btn-secondary">Annuleren</a>
+            </div>
+        <% } %>
+    </div>
+</div>

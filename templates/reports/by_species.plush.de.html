@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1><i class="fas fa-dove"></i> Report by Species</h1>
-        <p class="lead">Detailed analysis by species</p>
+        <h1><i class="fas fa-dove"></i> Bericht nach Art</h1>
+        <p class="lead">Detaillierte Analyse nach Art</p>
     </div>
 </div>
 
@@ -9,17 +9,17 @@
     <div class="col-md-12">
         <form method="GET" action="/reports/by_species" class="form-inline">
             <div class="form-group mr-2">
-                <label for="year" class="mr-2">Year:</label>
+                <label for="year" class="mr-2">Jahr:</label>
                 <select name="year" id="year" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Alle</option>
                     <%= for (y) in years { %>
                         <option value="<%= y.Year %>" <%= if (selectedYear == string(y.Year)) { %>selected<% } %><%= y.Year %></option>
                     <% } %>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
-            <a href="/reports/by_species" class="btn btn-secondary ml-2"><i class="fas fa-times"></i> All</a>
-            <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Back</a>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtern</button>
+            <a href="/reports/by_species" class="btn btn-secondary ml-2"><i class="fas fa-times"></i> Alle</a>
+            <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Zurück</a>
         </form>
     </div>
 </div>
@@ -30,12 +30,12 @@
             <table class="table table-striped table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th>Species</th>
-                        <th class="text-right">Total</th>
-                        <th class="text-right">In Care</th>
-                        <th class="text-right">Released</th>
-                        <th class="text-right">Deceased</th>
-                        <th>Release Rate</th>
+                        <th>Art</th>
+                        <th class="text-right">Gesamt</th>
+                        <th class="text-right">In Pflege</th>
+                        <th class="text-right">Freigelassen</th>
+                        <th class="text-right">Verstorben</th>
+                        <th>Freilassungsquote</th>
                     </tr>
                 </thead>
                 <tbody>

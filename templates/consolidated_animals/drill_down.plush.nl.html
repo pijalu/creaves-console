@@ -1,6 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1>Animal Details</h1>
+        <h1>Dier-Drill-Down</h1>
+        <p class="text-muted">Gedetailleerde weergave met gebeurtenisgeschiedenis voor het geconsolideerde dierrecord.</p>
     </div>
 </div>
 
@@ -8,24 +9,24 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Basic Information</h5>
+                <h5>Basisinformatie</h5>
             </div>
             <div class="card-body">
                 <table class="table table-borderless">
                     <tr>
-                        <td><strong>Instance:</strong></td>
+                        <td><strong>Instantie:</strong></td>
                         <td><%= animal.InstanceID %></td>
                     </tr>
                     <tr>
-                        <td><strong>Animal ID:</strong></td>
+                        <td><strong>Dier-ID:</strong></td>
                         <td><%= animal.AnimalID %></td>
                     </tr>
                     <tr>
-                        <td><strong>Year/Number:</strong></td>
+                        <td><strong>Jaar/nummer:</strong></td>
                         <td><%= animal.Year %>/<%= animal.YearNumber %></td>
                     </tr>
                     <tr>
-                        <td><strong>Species:</strong></td>
+                        <td><strong>Soort:</strong></td>
                         <td><%= if (animal.Species.Valid) { animal.Species.String } else { "-" } %></td>
                     </tr>
                     <tr>
@@ -33,8 +34,16 @@
                         <td><%= if (animal.AnimalType.Valid) { animal.AnimalType.String } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Age:</strong></td>
+                        <td><strong>Leeftijd:</strong></td>
                         <td><%= if (animal.AnimalAge.Valid) { animal.AnimalAge.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Zone/Kooi:</strong></td>
+                        <td><%= animal.Zone %> / <%= animal.Cage %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ring:</strong></td>
+                        <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>
@@ -51,37 +60,45 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Discovery &amp; Intake</h5>
+                <h5>Ontdekking &amp; opname</h5>
             </div>
             <div class="card-body">
                 <table class="table table-borderless">
                     <tr>
-                        <td><strong>Discovery Location:</strong></td>
+                        <td><strong>Plaats van ontdekking:</strong></td>
                         <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Discovery Date:</strong></td>
+                        <td><strong>Datum van ontdekking:</strong></td>
                         <td><%= if (animal.DiscoveryDate.Valid) { animal.DiscoveryDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Intake Date:</strong></td>
+                        <td><strong>Datum van binnenkomst:</strong></td>
                         <td><%= if (animal.IntakeDate.Valid) { animal.IntakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>General State:</strong></td>
+                        <td><strong>Algemene toestand:</strong></td>
                         <td><%= if (animal.IntakeGeneral.Valid) { animal.IntakeGeneral.String } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Wounds:</strong></td>
+                        <td><strong>Wonden:</strong></td>
                         <td><%= if (animal.IntakeWounds.Valid) { animal.IntakeWounds.String } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Parasites:</strong></td>
+                        <td><strong>Parasieten:</strong></td>
                         <td><%= if (animal.IntakeParasites.Valid) { animal.IntakeParasites.String } else { "-" } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Remarks:</strong></td>
+                        <td><strong>Opmerkingen:</strong></td>
                         <td><%= if (animal.IntakeRemarks.Valid) { animal.IntakeRemarks.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Datum van uitzetting:</strong></td>
+                        <td><%= if (animal.OuttakeDate.Valid) { animal.OuttakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Plaats van uitzetting:</strong></td>
+                        <td><%= if (animal.OuttakeLocation.Valid) { animal.OuttakeLocation.String } else { "-" } %></td>
                     </tr>
                 </table>
             </div>
@@ -93,15 +110,15 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5>Event History (<%= len(events) %> events)</h5>
+                <h5>Gebeurtenisgeschiedenis (<%= len(events) %> gebeurtenissen)</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Event Type</th>
-                            <th>Source</th>
+                            <th>Datum</th>
+                            <th>Gebeurtenistype</th>
+                            <th>Bron</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,8 +142,11 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
+        <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Terug naar de dierdetails
+        </a>
         <a href="/consolidated_animals" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to List
+            <i class="fas fa-arrow-left"></i> Terug naar de lijst
         </a>
     </div>
 </div>

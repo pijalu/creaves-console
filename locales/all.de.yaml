@@ -1,0 +1,13 @@
+# For more information on using i18n see: https://github.com/nicksnyder/go-i18n
+- id: welcome_greeting
+  translation: "Willkommen im Konsolidierungssystem"
+- id: users.unauthorized
+  translation: "Sie müssen angemeldet sein, um diese Seite zu sehen"
+- id: user.created.success
+  translation: "Benutzer erfolgreich erstellt"
+- id: user.updated.success
+  translation: "Benutzer erfolgreich aktualisiert"
+- id: user.destroyed.success
+  translation: "Benutzer erfolgreich gelöscht"
+- id: "users.language-changed"
+  translation: "Sprache geändert zu {{.Lang}}"

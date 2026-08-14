@@ -1,0 +1,111 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Overzicht</h1>
+        <p class="lead">Geconsolideerd overzicht van dierzorggegevens van alle instanties</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["total_animals"] %></div>
+                <div class="text-muted">Totaal aantal dieren</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["total_events"] %></div>
+                <div class="text-muted">Totaal aantal gebeurtenissen</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["unique_instances"] %></div>
+                <div class="text-muted">Actieve instanties</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["active_webhook_keys"] %></div>
+                <div class="text-muted">Actieve API-sleutels</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Dieren per status</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th class="text-right">Aantal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (status, count) in stats["by_status"] { %>
+                            <tr>
+                                <td>
+                                    <span class="badge badge-<%= if (status == "in_care") { %>success<% } else if (status == "released") { %>primary<% } else if (status == "died") { %>danger<% } else { %>secondary<% } %>">
+                                        <%= status %>
+                                    </span>
+                                </td>
+                                <td class="text-right"><%= count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Dieren per instantie</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Instantie</th>
+                            <th class="text-right">Aantal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (instance, count) in stats["by_instance"] { %>
+                            <tr>
+                                <td><%= instance %></td>
+                                <td class="text-right"><%= count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <a href="/consolidated_animals" class="btn btn-primary">
+            <i class="fas fa-list"></i> Alle dieren bekijken
+        </a>
+        <%= if (current_user.Admin) { %>
+            <a href="/webhook_api_keys" class="btn btn-success">
+                <i class="fas fa-key"></i> API-sleutels beheren
+            </a>
+        <% } %>
+    </div>
+</div>

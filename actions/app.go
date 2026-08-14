@@ -40,6 +40,11 @@ func App() *buffalo.App {
 
 		app.GET("/", DashboardIndex)
 
+		// Language switcher - no session auth required, uses lang cookie
+		language := app.Group("/lang")
+		language.GET("/", SwitchLanguage)
+		language.POST("/", SwitchLanguagePost)
+
 		app.Use(SetCurrentUser)
 		app.Use(Authorize)
 
@@ -59,8 +64,8 @@ func App() *buffalo.App {
 
 		// Consolidated animals
 		app.GET("/consolidated_animals", ConsolidatedAnimalsIndex)
-		app.GET("/consolidated_animals/:consolidated_animal_id", ConsolidatedAnimalShow)
-		app.GET("/consolidated_animals/:consolidated_animal_id/drill_down", ConsolidatedAnimalDrillDown)
+		app.GET("/consolidated_animals/{consolidated_animal_id}", ConsolidatedAnimalShow)
+		app.GET("/consolidated_animals/{consolidated_animal_id}/drill_down", ConsolidatedAnimalDrillDown)
 
 		// Dashboard
 		app.GET("/dashboard", DashboardIndex)

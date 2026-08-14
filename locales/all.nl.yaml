@@ -1,0 +1,13 @@
+# For more information on using i18n see: https://github.com/nicksnyder/go-i18n
+- id: welcome_greeting
+  translation: "Welkom bij het Consolidatiesysteem"
+- id: users.unauthorized
+  translation: "U moet aangemeld zijn om deze pagina te bekijken"
+- id: user.created.success
+  translation: "Gebruiker succesvol aangemaakt"
+- id: user.updated.success
+  translation: "Gebruiker succesvol bijgewerkt"
+- id: user.destroyed.success
+  translation: "Gebruiker succesvol verwijderd"
+- id: "users.language-changed"
+  translation: "Taal gewijzigd naar {{.Lang}}"

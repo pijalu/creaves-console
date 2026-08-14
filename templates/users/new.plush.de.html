@@ -1,0 +1,21 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Benutzer erstellen</h1>
+        <p class="text-muted">Ein neues Behördenkonto für die Konsolidierungs-App erstellen.</p>
+
+        <%= form_for(user, {action: "/users", method: "POST"}) { %>
+            <%= f.InputTag("Login", {label: "Login"}) %>
+            <%= f.InputTag("Name", {label: "Name"}) %>
+            <%= f.InputTag("Email", {label: "E-Mail", type: "email"}) %>
+            <%= f.InputTag("Password", {label: "Passwort", type: "password"}) %>
+            <%= f.InputTag("PasswordConfirmation", {label: "Passwort bestätigen", type: "password"}) %>
+            <%= f.CheckboxTag("Admin", {label: "Admin"}) %>
+            <%= f.CheckboxTag("Active", {label: "Aktiv"}) %>
+
+            <div class="form-group">
+                <button class="btn btn-primary" type="submit">Speichern</button>
+                <a href="/users" class="btn btn-secondary">Abbrechen</a>
+            </div>
+        <% } %>
+    </div>
+</div>

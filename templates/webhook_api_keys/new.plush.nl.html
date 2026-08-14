@@ -1,0 +1,24 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Webhook-API-sleutel aanmaken</h1>
+        <p class="text-muted">Genereer een nieuwe API-sleutel voor een Creaves-instantie om webhook-aanvragen te authenticeren.</p>
+
+        <div class="alert alert-info">
+            <strong>Volgende stappen na aanmaak:</strong>
+            <ol class="mb-0">
+                <li>Kopieer de sleutel die op het volgende scherm wordt getoond (deze wordt <strong>slechts één keer</strong> getoond).</li>
+                <li>Ga in de bron-<em>Creaves</em>-instantie naar <strong>Configuratie → Webhook-configuratie</strong>, schakel de webhook in, plak deze sleutel en stel de webhook-URL in op <code>/webhook/events</code> in deze console.</li>
+            </ol>
+        </div>
+
+        <%= form_for(webhookAPIKey, {action: "/webhook_api_keys", method: "POST"}) { %>
+            <%= f.InputTag("Name", {label: "Sleutelnaam", placeholder: "bijv. Centrum Brussel"}) %>
+            <%= f.InputTag("InstanceID", {label: "Instantie-ID (optioneel)", placeholder: "bijv. center-brussels"}) %>
+            
+            <div class="form-group">
+                <button class="btn btn-primary" type="submit">API-sleutel genereren</button>
+                <a href="/webhook_api_keys" class="btn btn-secondary">Annuleren</a>
+            </div>
+        <% } %>
+    </div>
+</div>

@@ -79,3 +79,20 @@ func TestConsolidationRunner_RunDryRun_NotImplemented(t *testing.T) {
 	assert.Contains(t, err.Error(), "not yet implemented")
 	assert.Contains(t, err.Error(), "dry-run")
 }
+
+func TestNormalizeUILang_BaseIsEnglish(t *testing.T) {
+	// The console's base/canonical UI language is en-US: absent, "en" and
+	// "en-US" cookies all map to the base so langLinks hides the English
+	// entry. German/Dutch cookies pass through unchanged.
+	cases := map[string]string{
+		"":      "en-US",
+		"en":    "en-US",
+		"en-US": "en-US",
+		"de":    "de",
+		"nl":    "nl",
+		"fr":    "fr",
+	}
+	for in, want := range cases {
+		assert.Equal(t, want, normalizeUILang(in), "normalizeUILang(%q)", in)
+	}
+}

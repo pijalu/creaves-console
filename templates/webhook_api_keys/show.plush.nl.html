@@ -1,0 +1,66 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>Webhook-API-sleutel</h1>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><%= webhookAPIKey.Name %></h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td><code><%= webhookAPIKey.ID %></code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sleutelvoorvoegsel:</strong></td>
+                        <td><code><%= webhookAPIKey.KeyPrefix %>...</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Instantie-ID:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.InstanceID) { %>
+                                <%= webhookAPIKey.InstanceID %>
+                            <% } else { %>
+                                <em>Elke instantie</em>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.Active) { %>
+                                <span class="badge badge-success">Actief</span>
+                            <% } else { %>
+                                <span class="badge badge-secondary">Inactief</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Laatst gebruikt:</strong></td>
+                        <td>
+                            <%= if (webhookAPIKey.LastUsedAt) { %>
+                                <%= webhookAPIKey.LastUsedAt.Format("2006-01-02 15:04:05") %>
+                            <% } else { %>
+                                <em>Nooit</em>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Aangemaakt:</strong></td>
+                        <td><%= webhookAPIKey.CreatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bijgewerkt:</strong></td>
+                        <td><%= webhookAPIKey.UpdatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card-footer">
+                <a href="/webhook_api_keys" class="btn btn-secondary">Terug</a>
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>/edit" class="btn btn-warning">Bewerken</a>
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" data-method="DELETE" data-confirm="Weet u het zeker?" class="btn btn-danger">Verwijderen</a>
+            </div>
+        </div>
+    </div>
+</div>

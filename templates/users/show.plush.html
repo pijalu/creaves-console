@@ -1,0 +1,65 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>User</h1>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><%= user.Login %></h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td><code><%= user.ID %></code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Login:</strong></td>
+                        <td><%= user.Login %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Name:</strong></td>
+                        <td><%= user.Name %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email:</strong></td>
+                        <td><%= user.Email %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin:</strong></td>
+                        <td>
+                            <%= if (user.Admin) { %>
+                                <span class="badge badge-success">Yes</span>
+                            <% } else { %>
+                                <span class="badge badge-secondary">No</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <%= if (user.Active) { %>
+                                <span class="badge badge-success">Active</span>
+                            <% } else { %>
+                                <span class="badge badge-secondary">Inactive</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Created:</strong></td>
+                        <td><%= user.CreatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Updated:</strong></td>
+                        <td><%= user.UpdatedAt.Format("2006-01-02 15:04:05") %></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card-footer">
+                <a href="/users/<%= user.ID %>/edit" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <a href="/users" class="btn btn-secondary">Back to Users</a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -12,6 +12,9 @@ import (
 // EventType represents the type of event in the event stream
 type EventType string
 
+// String returns the string representation of the event type
+func (e EventType) String() string { return string(e) }
+
 const (
 	EventTypeAnimalDiscovered    EventType = "animal_discovered"
 	EventTypeAnimalStatusChanged EventType = "animal_status_changed"

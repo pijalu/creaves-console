@@ -1,15 +1,15 @@
 <div class="row">
     <div class="col-md-12">
-        <h1><i class="fas fa-map-marker-alt"></i> Report by Discovery Location</h1>
-        <p class="lead">Animals grouped by <%= if (groupBy == "postal_code") { %>postal code<% } else { %>city<% } %></p>
+        <h1><i class="fas fa-map-marker-alt"></i> Rapport per ontdekkingsplaats</h1>
+        <p class="lead">Dieren gegroepeerd per <%= if (groupBy == "postal_code") { %>postcode<% } else { %>stad<% } %></p>
     </div>
 </div>
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <a href="/reports/by_location?group_by=city" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">By City</a>
-        <a href="/reports/by_location?group_by=postal_code" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">By Postal Code</a>
-        <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Back</a>
+        <a href="/reports/by_location?group_by=city" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Per stad</a>
+        <a href="/reports/by_location?group_by=postal_code" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Per postcode</a>
+        <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Terug</a>
     </div>
 </div>
 
@@ -19,12 +19,12 @@
             <table class="table table-striped table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th><%= if (groupBy == "postal_code") { %>Postal Code<% } else { %>City<% } %></th>
-                        <%= if (groupBy == "postal_code") { %><th>City</th><% } %>
-                        <th class="text-right">Total</th>
-                        <th class="text-right">In Care</th>
-                        <th class="text-right">Released</th>
-                        <th class="text-right">Deceased</th>
+                        <th><%= if (groupBy == "postal_code") { %>Postcode<% } else { %>Stad<% } %></th>
+                        <%= if (groupBy == "postal_code") { %><th>Stad</th><% } %>
+                        <th class="text-right">Totaal</th>
+                        <th class="text-right">In zorg</th>
+                        <th class="text-right">Vrijgelaten</th>
+                        <th class="text-right">Overleden</th>
                     </tr>
                 </thead>
                 <tbody>

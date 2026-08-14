@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1><i class="fas fa-chart-bar"></i> Reports</h1>
-        <p class="lead">Overview and analysis of consolidated data</p>
+        <h1><i class="fas fa-chart-bar"></i> Berichte</h1>
+        <p class="lead">Übersicht und Analysen der konsolidierten Daten</p>
     </div>
 </div>
 
@@ -10,7 +10,7 @@
         <div class="card stat-card bg-primary text-white">
             <div class="card-body">
                 <div class="stat-number"><%= stats["total_animals"] %></div>
-                <div>Total Animals</div>
+                <div>Tiere gesamt</div>
             </div>
         </div>
     </div>
@@ -20,15 +20,15 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-map-marker-alt"></i> By Discovery Location</h5>
+                <h5><i class="fas fa-map-marker-alt"></i> Nach Fundort</h5>
             </div>
             <div class="card-body">
-                <p>Analysis of animals by discovery city and postal code.</p>
+                <p>Analyse der Tiere nach Stadt und Postleitzahl des Fundorts.</p>
                 <a href="/reports/by_location?group_by=city" class="btn btn-primary btn-block">
-                    By City
+                    Nach Stadt
                 </a>
                 <a href="/reports/by_location?group_by=postal_code" class="btn btn-outline-primary btn-block mt-2">
-                    By Postal Code
+                    Nach Postleitzahl
                 </a>
             </div>
         </div>
@@ -36,12 +36,12 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-paw"></i> By Type</h5>
+                <h5><i class="fas fa-paw"></i> Nach Typ</h5>
             </div>
             <div class="card-body">
-                <p>Distribution of animals by type (birds of prey, birds, mammals, etc.).</p>
+                <p>Verteilung der Tiere nach Typ (Greifvögel, Vögel, Säugetiere usw.).</p>
                 <a href="/reports/by_type" class="btn btn-success btn-block">
-                    View Report
+                    Bericht anzeigen
                 </a>
             </div>
         </div>
@@ -49,12 +49,12 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-dove"></i> By Species</h5>
+                <h5><i class="fas fa-dove"></i> Nach Art</h5>
             </div>
             <div class="card-body">
-                <p>Detailed analysis by species with yearly statistics.</p>
+                <p>Detaillierte Analyse nach Art mit Statistiken pro Jahr.</p>
                 <a href="/reports/by_species" class="btn btn-info btn-block">
-                    View Report
+                    Bericht anzeigen
                 </a>
             </div>
         </div>
@@ -65,14 +65,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>By Status</h5>
+                <h5>Nach Status</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
                             <th>Status</th>
-                            <th class="text-right">Count</th>
+                            <th class="text-right">Anzahl</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -94,14 +94,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>By Year</h5>
+                <h5>Nach Jahr</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Year</th>
-                            <th class="text-right">Count</th>
+                            <th>Jahr</th>
+                            <th class="text-right">Anzahl</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -122,14 +122,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Top 20 Species</h5>
+                <h5>Top-20-Arten</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Species</th>
-                            <th class="text-right">Count</th>
+                            <th>Art</th>
+                            <th class="text-right">Anzahl</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -147,14 +147,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Top 20 Cities</h5>
+                <h5>Top-20-Städte</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>City</th>
-                            <th class="text-right">Count</th>
+                            <th>Stadt</th>
+                            <th class="text-right">Anzahl</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -8,3 +8,5 @@
   translation: "User updated successfully"
 - id: user.destroyed.success
   translation: "User deleted successfully"
+- id: "users.language-changed"
+  translation: "Language changed to {{.Lang}}"
