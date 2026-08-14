@@ -184,6 +184,8 @@ call). All other routes use session auth + CSRF.
 
 This is the HTTP contract between Creaves (main) and Creaves Console.
 
+**Canonical values**: payload display values (`species`, `animal_type`, `animal_age`, outtake `type`, etc.) are always the **canonical base-locale (French) reference names** from the producing instance's base table columns, regardless of that instance's UI language. Multilingual reference data (translations table) never appears in payloads. Matching/dedup in the Console can rely on these canonical French names. A future `translations` map in the payload is possible but out of scope.
+
 ### Endpoint
 
 ```
