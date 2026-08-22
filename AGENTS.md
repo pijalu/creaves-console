@@ -109,6 +109,7 @@ buffalo task db:seed
 buffalo task consolidation:process   # Process unprocessed events
 buffalo task consolidation:rebuild   # Rebuild consolidated view from scratch
 buffalo task consolidation:stats     # Show statistics
+CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves migrations
 ```
 
 ---

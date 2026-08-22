@@ -3,6 +3,7 @@ package grifts
 import (
 	"creaves-console/models"
 	"fmt"
+	"os"
 
 	"github.com/gobuffalo/grift/grift"
 	"github.com/gobuffalo/pop/v6"
@@ -15,7 +16,38 @@ var _ = grift.Namespace("db", func() {
 	grift.Add("seed", func(c *grift.Context) error {
 		return createAdminUser(c)
 	})
+	grift.Desc("cleanup", "Deletes all application data (requires CONFIRM=cleanup)")
+	grift.Add("cleanup", func(c *grift.Context) error {
+		return cleanupDatabase()
+	})
 })
+
+func cleanupDatabase() error {
+	if os.Getenv("CONFIRM") != "cleanup" {
+		return fmt.Errorf("refusing to clean database: set CONFIRM=cleanup explicitly")
+	}
+
+	// Keep schema_migration intact so this task removes data without damaging the
+	// migration history. Delete dependent records first for FK-enabled databases.
+	tables := []string{
+		"event_streams",
+		"consolidated_animals",
+		"import_runs",
+		"creaves_instances",
+		"webhook_api_keys",
+		"users",
+	}
+
+	return models.DB.Transaction(func(tx *pop.Connection) error {
+		for _, table := range tables {
+			if err := tx.RawQuery("DELETE FROM " + table).Exec(); err != nil {
+				return fmt.Errorf("failed to clean %s: %w", table, err)
+			}
+		}
+		fmt.Printf("Cleaned application data from %d tables (schema_migration preserved)\n", len(tables))
+		return nil
+	})
+}
 
 func createAdminUser(c *grift.Context) error {
 	return models.DB.Transaction(func(tx *pop.Connection) error {
