@@ -20,6 +20,24 @@ import (
 // TestDB holds the test database connection
 var testDB *pop.Connection
 
+func TestCreavesInstanceRegistryModel(t *testing.T) {
+	now := time.Now().UTC()
+	instance := &models.CreavesInstance{
+		ID: uuid.Must(uuid.NewV4()), InstanceID: "center-north", Name: "North", Description: "Wildlife center",
+		FirstSeenAt: now, LastSeenAt: now,
+	}
+	if _, err := testDB.Eager().ValidateAndCreate(instance); err != nil {
+		t.Fatalf("create instance: %v", err)
+	}
+	var found models.CreavesInstance
+	if err := testDB.Where("instance_id = ?", instance.InstanceID).First(&found); err != nil {
+		t.Fatalf("find instance: %v", err)
+	}
+	if found.Name != "North" || found.InstanceID != instance.InstanceID {
+		t.Fatalf("unexpected instance: %+v", found)
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Setup test database with SQLite (file-based for migration support)
 	var err error
@@ -52,6 +70,21 @@ func TestMain(m *testing.M) {
 }
 
 func createTables() {
+	// Create instance registry table
+	testDB.RawQuery(`
+		CREATE TABLE IF NOT EXISTS creaves_instances (
+			id TEXT PRIMARY KEY,
+			instance_id TEXT NOT NULL UNIQUE,
+			name TEXT,
+			description TEXT,
+			first_seen_at TIMESTAMP NOT NULL,
+			last_seen_at TIMESTAMP NOT NULL,
+			last_event_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Exec()
+
 	// Create event_streams table
 	testDB.RawQuery(`
 		CREATE TABLE IF NOT EXISTS event_streams (
@@ -97,6 +130,9 @@ func createTables() {
 			outtake_date TIMESTAMP,
 			outtake_type TEXT,
 			outtake_location TEXT,
+			translations TEXT,
+			state_hash TEXT,
+			last_state_at TIMESTAMP,
 			last_event_at TIMESTAMP NOT NULL,
 			event_count INTEGER DEFAULT 0,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -158,7 +194,7 @@ func createTables() {
 
 func setupTest(t *testing.T) *pop.Connection {
 	// Clean tables before each test
-	tables := []string{"event_streams", "consolidated_animals", "webhook_api_keys", "import_runs"}
+	tables := []string{"event_streams", "consolidated_animals", "webhook_api_keys", "import_runs", "creaves_instances"}
 	for _, table := range tables {
 		err := testDB.RawQuery("DELETE FROM " + table).Exec()
 		require.NoError(t, err)
@@ -206,6 +242,40 @@ func TestEventProcessor_ProcessUnprocessedEvents(t *testing.T) {
 	assert.Equal(t, "released", consolidated.CurrentStatus)
 	assert.Equal(t, 2, consolidated.EventCount)
 	assert.Equal(t, "Fox", consolidated.Species.String)
+}
+
+func TestEventProcessor_AnimalStateSameHashIsIdempotent(t *testing.T) {
+	tx := setupTest(t)
+
+	first := &models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "test-instance-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalState,
+		Payload:    []byte(`{"animal":{"species":"Fox","cage":"A1"},"current_status":"in_care","state_hash":"same-state"}`),
+		CreatedAt:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	second := &models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "test-instance-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalState,
+		Payload:    []byte(`{"animal":{"species":"Badger","cage":"B2"},"current_status":"died","state_hash":"same-state"}`),
+		CreatedAt:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+	require.NoError(t, tx.Create(first))
+	require.NoError(t, tx.Create(second))
+
+	count, err := NewEventProcessor(tx).ProcessUnprocessedEvents()
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+	var animal models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", "test-instance-1", 1).First(&animal))
+	assert.Equal(t, "Fox", animal.Species.String)
+	assert.Equal(t, "A1", animal.Cage.String)
+	assert.Equal(t, "in_care", animal.CurrentStatus)
+	assert.Equal(t, 0, animal.EventCount)
 }
 
 func TestEventProcessor_IdempotentProcessing(t *testing.T) {

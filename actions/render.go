@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"creaves-console/models"
 	"creaves-console/public"
 	"creaves-console/templates"
 	"fmt"
@@ -21,6 +22,7 @@ var uiLanguages = []struct {
 	label string
 }{
 	{"en-US", "English"},
+	{"fr", "Français"},
 	{"de", "Deutsch"},
 	{"nl", "Nederlands"},
 }
@@ -70,6 +72,42 @@ func normalizeUILang(lang string) string {
 	}
 }
 
+// currentUILang returns request-selected language, defaulting to canonical English.
+func currentUILang(help plush.HelperContext) string {
+	if req, ok := help.Value("request").(*http.Request); ok {
+		if cookie, err := req.Cookie("lang"); err == nil && cookie.Value != "" {
+			return normalizeUILang(cookie.Value)
+		}
+	}
+	return "en-US"
+}
+
+func localizedLabel(value string, labels map[string]string, help plush.HelperContext) (string, error) {
+	if label, ok := labels[value]; ok && label != "" {
+		return label, nil
+	}
+	return value, nil
+}
+
+func localizedField(value interface{}, field string, help plush.HelperContext) (string, error) {
+	lang := currentUILang(help)
+	switch labels := value.(type) {
+	case map[string]string:
+		return labels[field], nil
+	}
+	switch animal := value.(type) {
+	case models.ConsolidatedAnimal:
+		return animal.LocalizedField(lang, field), nil
+	case *models.ConsolidatedAnimal:
+		if animal == nil {
+			return "", nil
+		}
+		return animal.LocalizedField(lang, field), nil
+	default:
+		return fmt.Sprintf("%v", value), nil
+	}
+}
+
 var r *render.Engine
 
 func init() {
@@ -84,7 +122,9 @@ func init() {
 				}
 				return "✗"
 			},
-			"langLinks": langLinks,
+			"langLinks":        langLinks,
+			"tfield_localized": localizedField,
+			"tlabel_localized": localizedLabel,
 		},
 	})
 }

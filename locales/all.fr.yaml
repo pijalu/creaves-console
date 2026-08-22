@@ -1,0 +1,13 @@
+# French is the canonical reference language for Creaves Console.
+- id: welcome_greeting
+  translation: "Bienvenue dans le système de consolidation"
+- id: users.unauthorized
+  translation: "Vous devez être connecté pour accéder à cette page"
+- id: user.created.success
+  translation: "Utilisateur créé avec succès"
+- id: user.updated.success
+  translation: "Utilisateur mis à jour avec succès"
+- id: user.destroyed.success
+  translation: "Utilisateur supprimé avec succès"
+- id: "users.language-changed"
+  translation: "Langue changée en {{.Lang}}"

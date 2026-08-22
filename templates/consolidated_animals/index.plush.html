@@ -15,7 +15,6 @@
                     <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>By instance</option>
                 </select>
             </div>
-            <%= if (viewMode == "instance") { %>
             <div class="form-group mr-2">
                 <label for="instance_id" class="mr-2">Instance:</label>
                 <select name="instance_id" id="instance_id" class="form-control">
@@ -25,7 +24,6 @@
                     <% } %>
                 </select>
             </div>
-            <% } %>
             <div class="form-group mr-2">
                 <label for="year" class="mr-2">Year:</label>
                 <select name="year" id="year" class="form-control">
@@ -108,7 +106,7 @@
                         <tr>
                             <td><%= animal.Year %></td>
                             <td><%= animal.YearNumber %></td>
-                            <td><%= if (animal.Species.Valid) { animal.Species.String } else { "-" } %></td>
+                            <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
                             <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
                             <td>
                                 <%= if (animal.IntakeDate.Valid) { %>
@@ -127,7 +125,7 @@
                             <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
                             <td><%= if (animal.DiscoveryPostalCode.Valid) { animal.DiscoveryPostalCode.String } else { "-" } %></td>
                             <td><%= if (animal.DiscoveryCity.Valid) { animal.DiscoveryCity.String } else { "-" } %></td>
-                            <td><%= if (animal.EntryCause.Valid) { animal.EntryCause.String } else { "-" } %></td>
+                            <td><%= if (animal.EntryCause.Valid) { tfield_localized(animal, "entry_cause") } else { "-" } %></td>
                             <td>
                                 <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
                                     <%= animal.CurrentStatus %>

@@ -27,11 +27,11 @@
                     </tr>
                     <tr>
                         <td><strong>Species:</strong></td>
-                        <td><%= if (animal.Species.Valid) { animal.Species.String } else { "-" } %></td>
+                        <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
                     </tr>
                     <tr>
                         <td><strong>Type:</strong></td>
-                        <td><%= if (animal.AnimalType.Valid) { animal.AnimalType.String } else { "-" } %></td>
+                        <td><%= if (animal.AnimalType.Valid) { tfield_localized(animal, "animal_type") } else { "-" } %></td>
                     </tr>
                     <tr>
                         <td><strong>Age:</strong></td>

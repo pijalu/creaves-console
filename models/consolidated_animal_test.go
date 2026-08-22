@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/gobuffalo/nulls"
 	"time"
 )
 
@@ -217,9 +219,9 @@ func TestConsolidatedAnimalApplyEvent(t *testing.T) {
 	}
 	created := time.Date(2024, 2, 2, 12, 0, 0, 0, time.UTC)
 	event := EventStream{
-		EventType:  EventTypeAnimalDiscovered,
-		Payload:    raw,
-		CreatedAt:  created,
+		EventType: EventTypeAnimalDiscovered,
+		Payload:   raw,
+		CreatedAt: created,
 	}
 
 	c := newConsolidatedAnimal()
@@ -238,5 +240,60 @@ func TestConsolidatedAnimalApplyEvent(t *testing.T) {
 	}
 	if c.EventCount != 1 {
 		t.Errorf("expected EventCount 1, got %d", c.EventCount)
+	}
+}
+
+func TestApplyEvent_AnimalStateReplacesFields(t *testing.T) {
+	c := newConsolidatedAnimal()
+	c.Cage = nulls.String{String: "A12", Valid: true}
+	c.Zone = nulls.String{String: "Quarantine", Valid: true}
+	payload := EventPayload{Animal: AnimalPayload{Species: "Hérisson", Zone: "Zone 2"}, CurrentStatus: "in_care"}
+	raw, _ := json.Marshal(payload)
+	if err := c.ApplyEvent(EventStream{EventType: EventTypeAnimalState, Payload: raw, CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if c.Cage.Valid {
+		t.Error("state replacement must clear absent cage")
+	}
+	if !c.Zone.Valid || c.Zone.String != "Zone 2" {
+		t.Errorf("zone not replaced: %+v", c.Zone)
+	}
+	if c.EventCount != 0 {
+		t.Errorf("state event changed event count: %d", c.EventCount)
+	}
+}
+
+func TestApplyEvent_AnimalStateStoresTranslationsAndHash(t *testing.T) {
+	c := newConsolidatedAnimal()
+	payload := EventPayload{Translations: map[string]map[string]string{"en-US": {"species": "Hedgehog"}}, StateHash: "abc123"}
+	raw, _ := json.Marshal(payload)
+	when := time.Date(2024, 4, 5, 6, 7, 8, 0, time.UTC)
+	if err := c.ApplyEvent(EventStream{EventType: EventTypeAnimalState, Payload: raw, CreatedAt: when}); err != nil {
+		t.Fatal(err)
+	}
+	if !c.Translations.Valid || c.Translations.String == "" {
+		t.Error("translations not stored")
+	}
+	if !c.StateHash.Valid || c.StateHash.String != "abc123" {
+		t.Errorf("state hash not stored: %+v", c.StateHash)
+	}
+	if !c.LastStateAt.Valid || !c.LastStateAt.Time.Equal(when) {
+		t.Errorf("last state time not stored: %+v", c.LastStateAt)
+	}
+	if c.EventCount != 0 {
+		t.Errorf("state event changed event count: %d", c.EventCount)
+	}
+}
+
+func TestConsolidatedAnimalLocalizedField(t *testing.T) {
+	c := ConsolidatedAnimal{Species: nulls.NewString("Hérisson"), Translations: nulls.NewString(`{"en-US":{"species":"Hedgehog"},"de":{"species":"Igel"}}`)}
+	if got := c.LocalizedField("en-US", "species"); got != "Hedgehog" {
+		t.Fatalf("en-US = %q", got)
+	}
+	if got := c.LocalizedField("de", "species"); got != "Igel" {
+		t.Fatalf("de = %q", got)
+	}
+	if got := c.LocalizedField("nl", "species"); got != "Hérisson" {
+		t.Fatalf("fallback = %q", got)
 	}
 }

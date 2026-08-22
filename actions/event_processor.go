@@ -85,8 +85,17 @@ func (ep *EventProcessor) processEvent(event *models.EventStream) error {
 		return err
 	}
 
-	if err := consolidated.ApplyEvent(*event); err != nil {
+	payload, err := event.GetPayload()
+	if err != nil {
 		return err
+	}
+	// Content-addressed state events are no-ops when the latest snapshot already
+	// has the same producer-supplied hash, even when delivered under a new UUID.
+	if event.EventType != models.EventTypeAnimalState || payload.StateHash == "" ||
+		!consolidated.StateHash.Valid || consolidated.StateHash.String != payload.StateHash {
+		if err := consolidated.ApplyEvent(*event); err != nil {
+			return err
+		}
 	}
 
 	if err := ep.saveConsolidatedAnimal(consolidated); err != nil {

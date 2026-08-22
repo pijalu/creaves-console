@@ -24,10 +24,10 @@
             </div>
             <div class="card-body">
                 <p>Analyse van dieren per stad en postcode van ontdekking.</p>
-                <a href="/reports/by_location?group_by=city" class="btn btn-primary btn-block">
+                <a href="/reports/by_location?group_by=city&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-primary btn-block">
                     Per stad
                 </a>
-                <a href="/reports/by_location?group_by=postal_code" class="btn btn-outline-primary btn-block mt-2">
+                <a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-outline-primary btn-block mt-2">
                     Per postcode
                 </a>
             </div>
@@ -40,7 +40,7 @@
             </div>
             <div class="card-body">
                 <p>Verdeling van dieren per type (roofvogels, vogels, zoogdieren, enz.).</p>
-                <a href="/reports/by_type" class="btn btn-success btn-block">
+                <a href="/reports/by_type?instance_id=<%= params["instance_id"] %>" class="btn btn-success btn-block">
                     Rapport bekijken
                 </a>
             </div>
@@ -53,7 +53,7 @@
             </div>
             <div class="card-body">
                 <p>Gedetailleerde analyse per soort met statistieken per jaar.</p>
-                <a href="/reports/by_species" class="btn btn-info btn-block">
+                <a href="/reports/by_species?instance_id=<%= params["instance_id"] %>" class="btn btn-info btn-block">
                     Rapport bekijken
                 </a>
             </div>

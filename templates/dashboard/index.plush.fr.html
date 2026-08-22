@@ -1,0 +1,118 @@
+<div data-locale="fr">
+<div class="row">
+    <div class="col-md-12">
+        <form method="GET" action="/dashboard" class="form-inline mb-3">
+            <label for="instance_id" class="mr-2">Instance:</label>
+            <input name="instance_id" id="instance_id" class="form-control mr-2" value="<%= params["instance_id"] %>" placeholder="All instances">
+            <button class="btn btn-primary">Apply</button>
+        </form>
+        <h1>Tableau de bord</h1>
+        <p class="lead">Consolidated view of animal care data across all instances</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["total_animals"] %></div>
+                <div class="text-muted">Total Animals</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["total_events"] %></div>
+                <div class="text-muted">Total Events</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["unique_instances"] %></div>
+                <div class="text-muted">Active Instances</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["active_webhook_keys"] %></div>
+                <div class="text-muted">Active API Keys</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Animals by Status</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th class="text-right">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (status, count) in stats["by_status"] { %>
+                            <tr>
+                                <td>
+                                    <span class="badge badge-<%= if (status == "in_care") { %>success<% } else if (status == "released") { %>primary<% } else if (status == "died") { %>danger<% } else { %>secondary<% } %>">
+                                        <%= status %>
+                                    </span>
+                                </td>
+                                <td class="text-right"><%= count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Animals by Instance</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Instance</th>
+                            <th class="text-right">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (instance, count) in stats["by_instance"] { %>
+                            <tr>
+                                <td><%= instance %></td>
+                                <td class="text-right"><%= count %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <a href="/consolidated_animals" class="btn btn-primary">
+            <i class="fas fa-list"></i> View All Animals
+        </a>
+        <%= if (current_user.Admin) { %>
+            <a href="/webhook_api_keys" class="btn btn-success">
+                <i class="fas fa-key"></i> Manage API Keys
+            </a>
+        <% } %>
+    </div>
+</div>
+</div>

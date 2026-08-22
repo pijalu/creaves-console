@@ -121,6 +121,8 @@ buffalo task consolidation:stats     # Show statistics
 |------|---------|
 | `actions/app.go` | All routes + middleware |
 | `actions/webhook.go` | **Webhook receiver** — accepts events from Creaves instances |
+| `actions/instances.go` | Registered instance listing and transactional cleanup |
+| `actions/webhook_resync_handlers.go` | Resync start/status admin endpoints |
 | `actions/webhook_api_keys.go` | CRUD for webhook API keys (admin UI) |
 | `actions/event_processor.go` | Processes events into `consolidated_animals` |
 | `actions/consolidation_runner.go` | Orchestrates processing workflow |
@@ -155,6 +157,10 @@ buffalo task consolidation:stats     # Show statistics
 | Method | Path | Handler | Auth |
 |--------|------|---------|------|
 | POST | `/webhook/events` | `WebhookEventsHandler` | **Bearer token** (API key) |
+| GET | `/instances` | `InstancesIndex` | Session |
+| POST | `/instances/:instance_id/cleanup` | `InstanceCleanup` | Admin |
+| GET/POST | `/webhook_resync`, `/webhook_resync/start` | Resync handlers | Admin |
+| GET | `/webhook_resync/status.json` | `WebhookResyncStatus` | Session |
 | GET | `/` | `DashboardIndex` | Session |
 | GET | `/dashboard` | `DashboardIndex` | Session |
 | GET | `/auth/new` | `AuthNew` | None |
@@ -184,7 +190,7 @@ call). All other routes use session auth + CSRF.
 
 This is the HTTP contract between Creaves (main) and Creaves Console.
 
-**Canonical values**: payload display values (`species`, `animal_type`, `animal_age`, outtake `type`, etc.) are always the **canonical base-locale (French) reference names** from the producing instance's base table columns, regardless of that instance's UI language. Multilingual reference data (translations table) never appears in payloads. Matching/dedup in the Console can rely on these canonical French names. A future `translations` map in the payload is possible but out of scope.
+**Canonical values**: payload display values remain canonical base-locale (French) reference names. Sync v2 additionally accepts an optional `translations` map in each payload and stores it for localized display; matching/report grouping continues to use canonical values.
 
 ### Endpoint
 
@@ -226,6 +232,7 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
 | `animal_status_changed` | Status update (e.g. in_care → under_treatment) |
 | `animal_released` | Animal released back to wild |
 | `animal_died` | Animal died in care |
+| `animal_state` | Full current-state resync snapshot (replace semantics) |
 
 ### Payload Structure (the `payload` field)
 

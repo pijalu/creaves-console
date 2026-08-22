@@ -1,0 +1,3 @@
+add_column("consolidated_animals", "translations", "json", {null: true})
+add_column("consolidated_animals", "state_hash", "string", {null: true})
+add_column("consolidated_animals", "last_state_at", "datetime", {null: true})

@@ -168,6 +168,130 @@ func TestE2E_EventDelivery(t *testing.T) {
 	assert.Equal(t, "Forest Reserve", animal.OuttakeLocation.String)
 }
 
+func TestE2E_V2Resync_IdempotentAndLocalized(t *testing.T) {
+	tx := setupTest(t)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	instanceID := "v2-resync-center"
+	state := func(id int, species, zone, cage string, eventID string) e2ePusherEvent {
+		payload, err := json.Marshal(models.EventPayload{
+			Animal:        models.AnimalPayload{ID: id, Year: 2025, YearNumber: id, Species: species, Zone: zone, Cage: cage},
+			CurrentStatus: "in_care",
+			Translations:  map[string]map[string]string{"fr": {"species": species}, "en-US": {"species": species + " EN"}},
+			StateHash:     species + "-" + zone,
+		})
+		require.NoError(t, err)
+		return e2ePusherEvent{ID: eventID, InstanceID: instanceID, AnimalID: id, EventType: string(models.EventTypeAnimalState), Payload: payload, CreatedAt: time.Date(2025, 1, id, 10, 0, 0, 0, time.UTC)}
+	}
+	events := []e2ePusherEvent{
+		state(1, "Hérisson", "Quarantine", "A1", "11111111-1111-4111-8111-111111111111"),
+		state(2, "Renard", "Recovery", "B2", "22222222-2222-4222-8222-222222222222"),
+	}
+	code, response := deliverToConsole(t, tx, rawKey, events)
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 2, response["processed"])
+
+	code, response = deliverToConsole(t, tx, rawKey, events)
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 2, response["processed"], "replayed state batch is deduplicated success")
+	count, err := tx.Where("instance_id = ?", instanceID).Count(&models.ConsolidatedAnimal{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+	var first models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", instanceID, 1).First(&first))
+	assert.Equal(t, 0, first.EventCount, "state snapshots do not increment lifecycle event count")
+	assert.Equal(t, "Hérisson EN", first.LocalizedField("en-US", "species"))
+
+	changed := state(1, "Hérisson", "Rehab", "", "33333333-3333-4333-8333-333333333333")
+	code, response = deliverToConsole(t, tx, rawKey, []e2ePusherEvent{changed})
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 1, response["processed"])
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", instanceID, 1).First(&first))
+	assert.Equal(t, "Rehab", first.Zone.String)
+	assert.False(t, first.Cage.Valid, "state replacement clears omitted fields")
+}
+
+func TestE2E_V2CleanupThenResync(t *testing.T) {
+	tx := setupTest(t)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	instanceID := "v2-recovery-center"
+	payload, err := json.Marshal(models.EventPayload{
+		Animal:        models.AnimalPayload{ID: 9, Year: 2025, Species: "Blaireau", Zone: "Care", Cage: "C9"},
+		CurrentStatus: "in_care", StateHash: "recovery-hash",
+	})
+	require.NoError(t, err)
+	event := e2ePusherEvent{ID: "44444444-4444-4444-8444-444444444444", InstanceID: instanceID, AnimalID: 9, EventType: string(models.EventTypeAnimalState), Payload: payload, CreatedAt: time.Now().UTC()}
+	code, response := deliverToConsole(t, tx, rawKey, []e2ePusherEvent{event})
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 1, response["processed"])
+	require.NoError(t, purgeInstance(tx, instanceID))
+	var removed models.ConsolidatedAnimal
+	assert.Error(t, tx.Where("instance_id = ?", instanceID).First(&removed))
+
+	code, response = deliverToConsole(t, tx, rawKey, []e2ePusherEvent{event})
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 1, response["processed"])
+	var rebuilt models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", instanceID, 9).First(&rebuilt))
+	assert.Equal(t, "Blaireau", rebuilt.Species.String)
+	assert.Equal(t, "Care", rebuilt.Zone.String)
+	assert.Equal(t, "C9", rebuilt.Cage.String)
+	assert.Equal(t, "recovery-hash", rebuilt.StateHash.String)
+	var registered models.CreavesInstance
+	require.NoError(t, tx.Where("instance_id = ?", instanceID).First(&registered))
+}
+
+func TestE2E_InstanceScopedReports(t *testing.T) {
+	tx := setupTest(t)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	makeEvent := func(instance string, id int, kind string) e2ePusherEvent {
+		payload, err := json.Marshal(models.EventPayload{Animal: models.AnimalPayload{ID: id, AnimalType: kind, Species: kind}, InitialStatus: "in_care"})
+		require.NoError(t, err)
+		return e2ePusherEvent{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: instance, AnimalID: id, EventType: string(models.EventTypeAnimalDiscovered), Payload: payload, CreatedAt: time.Now().UTC()}
+	}
+	code, _ := deliverToConsole(t, tx, rawKey, []e2ePusherEvent{makeEvent("report-a", 1, "Mammal"), makeEvent("report-b", 2, "Bird")})
+	require.Equal(t, http.StatusOK, code)
+	app := newReportScopeTestApp(tx)
+	app.GET("/reports/by_type/{instance_id}", ReportsByType)
+	for instance, labels := range map[string][2]string{"report-a": {"Mammal", "Bird"}, "report-b": {"Bird", "Mammal"}} {
+		included, excluded := labels[0], labels[1]
+		req := httptest.NewRequest(http.MethodGet, "/reports/by_type/"+instance, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), included)
+		assert.NotContains(t, rec.Body.String(), excluded, "scoped report must not include other instance")
+	}
+}
+
+func TestE2E_V2StateIdempotentAndLocalized(t *testing.T) {
+	tx := setupTest(t)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	instanceID, animalID := "v2-center", 77
+	payload, err := json.Marshal(models.EventPayload{
+		Animal:        models.AnimalPayload{Species: "Hérisson", Zone: "Zone 2", Cage: "A1"},
+		CurrentStatus: "in_care",
+		Translations:  map[string]map[string]string{"en-US": {"species": "Hedgehog"}},
+		StateHash:     "state-hash-1",
+	})
+	require.NoError(t, err)
+	eventID := uuid.Must(uuid.NewV4()).String()
+	event := e2ePusherEvent{ID: eventID, InstanceID: instanceID, AnimalID: animalID, EventType: string(models.EventTypeAnimalState), Payload: payload, CreatedAt: time.Now()}
+	code, response := deliverToConsole(t, tx, rawKey, []e2ePusherEvent{event})
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 1, response["processed"])
+	var animal models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).First(&animal))
+	assert.Equal(t, "Hedgehog", animal.LocalizedField("en-US", "species"))
+	assert.Equal(t, 0, animal.EventCount)
+	assert.Equal(t, "state-hash-1", animal.StateHash.String)
+	code, response = deliverToConsole(t, tx, rawKey, []e2ePusherEvent{event})
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 1, response["processed"])
+	count, err := tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).Count(&models.ConsolidatedAnimal{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+}
+
 // TestE2E_IdempotentRedelivery proves a duplicate pusher delivery (e.g. a retry
 // after a transient receiver error that the pusher already persisted) does not
 // corrupt the consolidated view.
@@ -230,7 +354,7 @@ func TestE2E_MultipleInstancesAndAnimals(t *testing.T) {
 			AnimalID:   animal,
 			EventType:  string(models.EventTypeAnimalDiscovered),
 			Payload:    b,
-			CreatedAt:   time.Now(),
+			CreatedAt:  time.Now(),
 		}
 	}
 

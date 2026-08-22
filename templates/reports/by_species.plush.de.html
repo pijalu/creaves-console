@@ -7,7 +7,7 @@
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <form method="GET" action="/reports/by_species" class="form-inline">
+        <form method="GET" action="/reports/by_species" class="form-inline"><input type="hidden" name="instance_id" value="<%= instanceID %>">
             <div class="form-group mr-2">
                 <label for="year" class="mr-2">Jahr:</label>
                 <select name="year" id="year" class="form-control">
@@ -41,7 +41,7 @@
                 <tbody>
                     <%= for (r) in results { %>
                         <tr>
-                            <td><strong><%= r.Species %></strong></td>
+                            <td><strong><%= tlabel_localized(r.Species, localizedLabels) %></strong></td>
                             <td class="text-right"><span class="badge badge-dark"><%= r.Count %></span></td>
                             <td class="text-right"><span class="badge badge-success"><%= r.InCare %></span></td>
                             <td class="text-right"><span class="badge badge-primary"><%= r.Released %></span></td>

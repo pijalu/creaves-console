@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.4.9, for macos26.4 (arm64)
+-- MySQL dump 10.13  Distrib 8.4.11, for macos26.6 (arm64)
 --
 -- Host: localhost    Database: consolidation
 -- ------------------------------------------------------
--- Server version	8.4.8
+-- Server version	8.4.11
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -53,6 +53,9 @@ CREATE TABLE `consolidated_animals` (
   `discovery_city` varchar(255) DEFAULT NULL,
   `discovery_postal_code` varchar(255) DEFAULT NULL,
   `entry_cause` varchar(255) DEFAULT NULL,
+  `translations` json DEFAULT NULL,
+  `state_hash` varchar(255) DEFAULT NULL,
+  `last_state_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `consolidated_animals_instance_id_animal_id_idx` (`instance_id`,`animal_id`),
   KEY `consolidated_animals_instance_id_idx` (`instance_id`),
@@ -60,6 +63,29 @@ CREATE TABLE `consolidated_animals` (
   KEY `consolidated_animals_species_idx` (`species`),
   KEY `consolidated_animals_discovery_city_idx` (`discovery_city`),
   KEY `consolidated_animals_animal_type_idx` (`animal_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `creaves_instances`
+--
+
+DROP TABLE IF EXISTS `creaves_instances`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `creaves_instances` (
+  `id` char(36) NOT NULL,
+  `instance_id` varchar(255) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `first_seen_at` datetime DEFAULT NULL,
+  `last_seen_at` datetime DEFAULT NULL,
+  `last_event_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `creaves_instances_instance_id_idx` (`instance_id`),
+  KEY `creaves_instances_last_seen_at_idx` (`last_seen_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -180,4 +206,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-24 15:27:34
+-- Dump completed on 2026-08-22 12:40:11

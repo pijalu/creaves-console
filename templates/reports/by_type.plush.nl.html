@@ -7,7 +7,7 @@
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <a href="/reports" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Terug naar de rapporten</a>
+        <a href="/reports?instance_id=<%= instanceID %>" class="btn btn-secondary">Terug naar de rapporten</a>
     </div>
 </div>
 
@@ -28,7 +28,7 @@
                 <tbody>
                     <%= for (r) in results { %>
                         <tr>
-                            <td><strong><%= r.AnimalType %></strong></td>
+                            <td><strong><%= tlabel_localized(r.AnimalType, localizedLabels) %></strong></td>
                             <td class="text-right"><span class="badge badge-dark"><%= r.Count %></span></td>
                             <td class="text-right"><span class="badge badge-success"><%= r.InCare %></span></td>
                             <td class="text-right"><span class="badge badge-primary"><%= r.Released %></span></td>

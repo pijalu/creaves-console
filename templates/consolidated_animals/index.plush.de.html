@@ -108,7 +108,7 @@
                         <tr>
                             <td><%= animal.Year %></td>
                             <td><%= animal.YearNumber %></td>
-                            <td><%= if (animal.Species.Valid) { animal.Species.String } else { "-" } %></td>
+                            <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
                             <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
                             <td>
                                 <%= if (animal.IntakeDate.Valid) { %>

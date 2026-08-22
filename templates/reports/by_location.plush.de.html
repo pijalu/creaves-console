@@ -7,9 +7,9 @@
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <a href="/reports/by_location?group_by=city" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Nach Stadt</a>
-        <a href="/reports/by_location?group_by=postal_code" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Nach Postleitzahl</a>
-        <a href="/reports" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Zurück</a>
+        <a href="/reports/by_location?group_by=city&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Nach Stadt</a>
+        <a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Nach Postleitzahl</a>
+        <a href="/reports?instance_id=<%= instanceID %>" class="btn btn-secondary ml-2">Zurück</a>
     </div>
 </div>
 

@@ -8,8 +8,8 @@ import (
 	"github.com/gobuffalo/validate/v3"
 	"github.com/gobuffalo/validate/v3/validators"
 	"github.com/gofrs/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User represents an authority user for the consolidation app

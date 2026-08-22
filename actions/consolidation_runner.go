@@ -26,12 +26,12 @@ func NewConsolidationRunner(tx *pop.Connection) *ConsolidationRunner {
 
 // RunResult contains the results of a consolidation run
 type RunResult struct {
-	ImportRunID      uuid.UUID
-	StartedAt        time.Time
-	CompletedAt      time.Time
-	Duration         time.Duration
-	EventsProcessed  int
-	Errors           []string
+	ImportRunID     uuid.UUID
+	StartedAt       time.Time
+	CompletedAt     time.Time
+	Duration        time.Duration
+	EventsProcessed int
+	Errors          []string
 }
 
 // Run executes a full process cycle

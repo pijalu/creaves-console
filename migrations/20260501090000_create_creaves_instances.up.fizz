@@ -1,0 +1,13 @@
+create_table("creaves_instances") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("instance_id", "string", {null: false})
+	t.Column("name", "string", {null: true})
+	t.Column("description", "string", {null: true})
+	t.Column("first_seen_at", "timestamp", {null: false})
+	t.Column("last_seen_at", "timestamp", {null: false})
+	t.Column("last_event_at", "timestamp", {null: true})
+	t.Timestamps()
+}
+
+add_index("creaves_instances", "instance_id", {unique: true})
+add_index("creaves_instances", "last_seen_at", {})

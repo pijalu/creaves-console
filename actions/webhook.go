@@ -25,9 +25,18 @@ type WebhookEvent struct {
 	CreatedAt  time.Time       `json:"created_at"`
 }
 
-// WebhookPayload represents the incoming webhook request body
+// InstanceInfo identifies the producing Creaves installation.
+type InstanceInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// WebhookPayload represents the incoming webhook request body.
 type WebhookPayload struct {
-	Events []WebhookEvent `json:"events"`
+	ContractVersion int            `json:"contract_version,omitempty"`
+	Instance        *InstanceInfo  `json:"instance,omitempty"`
+	Events          []WebhookEvent `json:"events"`
 }
 
 // WebhookEventsHandler receives events from Creaves instances
@@ -75,6 +84,13 @@ func WebhookEventsHandler(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": "invalid json"}))
 	}
 
+	// Register envelope instance before ingest; upsert errors are non-fatal.
+	if payload.Instance != nil && payload.Instance.ID != "" {
+		if err := models.UpsertByInstanceID(tx, payload.Instance.ID, payload.Instance.Name, payload.Instance.Description, now, nil); err != nil {
+			fmt.Printf("Failed to upsert instance %s: %v\n", payload.Instance.ID, err)
+		}
+	}
+
 	if len(payload.Events) == 0 {
 		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
 			"processed": 0,
@@ -90,6 +106,17 @@ func WebhookEventsHandler(c buffalo.Context) error {
 
 	for _, webhookEvent := range payload.Events {
 		// Validate instance_id if key is restricted
+		// Envelope instance, when present, must match event source.
+		if payload.Instance != nil && payload.Instance.ID != "" && webhookEvent.InstanceID != payload.Instance.ID {
+			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance block mismatch", webhookEvent.ID))
+			continue
+		}
+		// Lazily register v1 event sources and maintain latest event timestamp.
+		eventAt := webhookEvent.CreatedAt
+		if err := models.UpsertByInstanceID(tx, webhookEvent.InstanceID, "", "", now, &eventAt); err != nil {
+			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance registration failed", webhookEvent.ID))
+			continue
+		}
 		if key.InstanceID != "" && webhookEvent.InstanceID != key.InstanceID {
 			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance_id mismatch", webhookEvent.ID))
 			continue

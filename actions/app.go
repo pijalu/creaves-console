@@ -10,9 +10,9 @@ import (
 	"github.com/gobuffalo/mw-i18n/v2"
 	"github.com/gobuffalo/mw-paramlogger"
 
+	"creaves-console/locales"
 	"creaves-console/models"
 	"creaves-console/public"
-	"creaves-console/locales"
 )
 
 var ENV = envy.Get("GO_ENV", "development")
@@ -61,6 +61,11 @@ func App() *buffalo.App {
 
 		// Webhook API keys management
 		app.Resource("/webhook_api_keys", WebhookAPIKeysResource{})
+
+		// Registered source instances and destructive cleanup.
+		app.GET("/instances", InstancesIndex)
+		app.GET("/instances/{instance_id}", InstanceShow)
+		app.POST("/instances/{instance_id}/cleanup", InstanceCleanup)
 
 		// Consolidated animals
 		app.GET("/consolidated_animals", ConsolidatedAnimalsIndex)

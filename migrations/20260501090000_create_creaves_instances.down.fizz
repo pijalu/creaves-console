@@ -1,0 +1,1 @@
+drop_table("creaves_instances")

@@ -1,0 +1,152 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Animal Drill-Down</h1>
+        <p class="text-muted">Detailed view with event history for the consolidated animal record.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Basic Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Instance:</strong></td>
+                        <td><%= animal.InstanceID %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Animal ID:</strong></td>
+                        <td><%= animal.AnimalID %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Year/Number:</strong></td>
+                        <td><%= animal.Year %>/<%= animal.YearNumber %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Species:</strong></td>
+                        <td><%= if (animal.Species.Valid) { animal.Species.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Type:</strong></td>
+                        <td><%= if (animal.AnimalType.Valid) { animal.AnimalType.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Age:</strong></td>
+                        <td><%= if (animal.AnimalAge.Valid) { animal.AnimalAge.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Zone/Cage:</strong></td>
+                        <td><%= animal.Zone %> / <%= animal.Cage %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ring:</strong></td>
+                        <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
+                                <%= animal.CurrentStatus %>
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Discovery &amp; Intake</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Discovery Location:</strong></td>
+                        <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Discovery Date:</strong></td>
+                        <td><%= if (animal.DiscoveryDate.Valid) { animal.DiscoveryDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Intake Date:</strong></td>
+                        <td><%= if (animal.IntakeDate.Valid) { animal.IntakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>General State:</strong></td>
+                        <td><%= if (animal.IntakeGeneral.Valid) { animal.IntakeGeneral.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Wounds:</strong></td>
+                        <td><%= if (animal.IntakeWounds.Valid) { animal.IntakeWounds.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Parasites:</strong></td>
+                        <td><%= if (animal.IntakeParasites.Valid) { animal.IntakeParasites.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Remarks:</strong></td>
+                        <td><%= if (animal.IntakeRemarks.Valid) { animal.IntakeRemarks.String } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Outtake Date:</strong></td>
+                        <td><%= if (animal.OuttakeDate.Valid) { animal.OuttakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Outtake Location:</strong></td>
+                        <td><%= if (animal.OuttakeLocation.Valid) { animal.OuttakeLocation.String } else { "-" } %></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Event History (<%= len(events) %> events)</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event Type</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%= for (event) in events { %>
+                            <tr>
+                                <td><%= event.CreatedAt.Format("2006-01-02 15:04:05") %></td>
+                                <td>
+                                    <span class="badge badge-<%= if (event.EventType.String() == "animal_discovered") { %>info<% } else if (event.EventType.String() == "animal_released") { %>success<% } else if (event.EventType.String() == "animal_died") { %>danger<% } else { %>warning<% } %>">
+                                        <%= event.EventType %>
+                                    </span>
+                                </td>
+                                <td><%= event.SourceDB %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Animal Details
+        </a>
+        <a href="/consolidated_animals" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>

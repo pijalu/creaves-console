@@ -4,6 +4,7 @@ import (
 	"creaves-console/models"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
@@ -16,81 +17,93 @@ func DashboardIndex(c buffalo.Context) error {
 	if !ok {
 		return fmt.Errorf("no transaction found")
 	}
-
-	// Get statistics
-	stats := make(map[string]interface{})
-
-	// Total animals
-	totalAnimals, err := tx.Count(&models.ConsolidatedAnimal{})
+	scope, err := reportScope(c, tx)
 	if err != nil {
 		return err
 	}
-	stats["total_animals"] = totalAnimals
-
-	// By status
+	stats := make(map[string]interface{})
+	var animalCount int
+	if scope.IsGlobal() {
+		animalCount, err = tx.Count(&models.ConsolidatedAnimal{})
+	} else {
+		animalCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.ConsolidatedAnimal{})
+	}
+	stats["total_animals"] = animalCount
+	if err != nil {
+		return err
+	}
 	statusCounts := []struct {
 		Status string `db:"current_status"`
 		Count  int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals GROUP BY current_status").All(&statusCounts); err != nil {
+	where, args := ScopedWhere(scope, "")
+	if err = tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY current_status", args...).All(&statusCounts); err != nil {
 		return err
 	}
 	statusMap := make(map[string]int)
-	for _, sc := range statusCounts {
-		statusMap[sc.Status] = sc.Count
+	for _, x := range statusCounts {
+		statusMap[x.Status] = x.Count
 	}
 	stats["by_status"] = statusMap
-
-	// By instance
 	instanceCounts := []struct {
 		InstanceID string `db:"instance_id"`
 		Count      int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT instance_id, COUNT(*) as count FROM consolidated_animals GROUP BY instance_id").All(&instanceCounts); err != nil {
+	if err = tx.RawQuery("SELECT instance_id, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY instance_id", args...).All(&instanceCounts); err != nil {
 		return err
 	}
 	instanceMap := make(map[string]int)
-	for _, ic := range instanceCounts {
-		instanceMap[ic.InstanceID] = ic.Count
+	for _, x := range instanceCounts {
+		instanceMap[x.InstanceID] = x.Count
 	}
 	stats["by_instance"] = instanceMap
-
-	// Total events
-	totalEvents, err := tx.Count(&models.EventStream{})
+	var eventCount int
+	if scope.IsGlobal() {
+		eventCount, err = tx.Count(&models.EventStream{})
+	} else {
+		eventCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.EventStream{})
+	}
+	stats["total_events"] = eventCount
 	if err != nil {
 		return err
 	}
-	stats["total_events"] = totalEvents
-
-	// Unprocessed events
-	unprocessedEvents, err := tx.Where("processed_at IS NULL").Count(&models.EventStream{})
-	if err != nil {
+	unprocessedQuery := tx.Where("processed_at IS NULL")
+	if !scope.IsGlobal() {
+		unprocessedQuery = unprocessedQuery.Where("instance_id = ?", scope.InstanceID)
+	}
+	if stats["unprocessed_events"], err = unprocessedQuery.Count(&models.EventStream{}); err != nil {
 		return err
 	}
-	stats["unprocessed_events"] = unprocessedEvents
-
-	// Unique instances (from event_streams)
+	uniqueQuery := "SELECT COUNT(DISTINCT instance_id) FROM event_streams"
+	var uniqueArgs []interface{}
+	if !scope.IsGlobal() {
+		uniqueQuery += " WHERE instance_id = ?"
+		uniqueArgs = append(uniqueArgs, scope.InstanceID)
+	}
 	var uniqueInstances int
-	if err := tx.RawQuery("SELECT COUNT(DISTINCT instance_id) FROM event_streams").First(&uniqueInstances); err != nil {
+	if err = tx.RawQuery(uniqueQuery, uniqueArgs...).First(&uniqueInstances); err != nil {
 		return err
 	}
 	stats["unique_instances"] = uniqueInstances
-
-	// Total webhook API keys
-	totalKeys, err := tx.Count(&models.WebhookAPIKey{})
+	var keyCount int
+	if scope.IsGlobal() {
+		keyCount, err = tx.Count(&models.WebhookAPIKey{})
+	} else {
+		keyCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.WebhookAPIKey{})
+	}
+	stats["total_webhook_keys"] = keyCount
 	if err != nil {
 		return err
 	}
-	stats["total_webhook_keys"] = totalKeys
-
-	activeKeys, err := tx.Where("active = ?", true).Count(&models.WebhookAPIKey{})
-	if err != nil {
+	activeKeyQuery := tx.Where("active = ?", true)
+	if !scope.IsGlobal() {
+		activeKeyQuery = activeKeyQuery.Where("instance_id = ?", scope.InstanceID)
+	}
+	if stats["active_webhook_keys"], err = activeKeyQuery.Count(&models.WebhookAPIKey{}); err != nil {
 		return err
 	}
-	stats["active_webhook_keys"] = activeKeys
-
 	c.Set("stats", stats)
-
+	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("dashboard/index.plush.html"))
 }
 
@@ -103,13 +116,23 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 
 	animals := &models.ConsolidatedAnimals{}
 	q := tx.PaginateFromParams(c.Params())
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+	if !scope.IsGlobal() {
+		q = q.Where("instance_id = ?", scope.InstanceID)
+	}
 
 	// Apply filters
 	viewMode := c.Param("view_mode")
 	if viewMode == "" {
 		viewMode = "global"
 	}
-	if viewMode == "instance" {
+	if !scope.IsGlobal() {
+		viewMode = "instance"
+	}
+	if viewMode == "instance" && scope.IsGlobal() {
 		if instanceID := c.Param("instance_id"); instanceID != "" {
 			q = q.Where("instance_id = ?", instanceID)
 		}
@@ -239,67 +262,67 @@ func ReportsIndex(c buffalo.Context) error {
 	if !ok {
 		return fmt.Errorf("no transaction found")
 	}
-
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+	where, args := ScopedWhere(scope, "")
 	stats := make(map[string]interface{})
-
-	// Total animals
-	totalAnimals, err := tx.Count(&models.ConsolidatedAnimal{})
+	var totalAnimals int
+	if scope.IsGlobal() {
+		totalAnimals, err = tx.Count(&models.ConsolidatedAnimal{})
+	} else {
+		totalAnimals, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.ConsolidatedAnimal{})
+	}
 	if err != nil {
 		return err
 	}
 	stats["total_animals"] = totalAnimals
-
-	// By status
 	statusCounts := []struct {
 		Status string `db:"current_status"`
 		Count  int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals GROUP BY current_status").All(&statusCounts); err != nil {
+	if err = tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY current_status", args...).All(&statusCounts); err != nil {
 		return err
 	}
 	stats["by_status"] = statusCounts
-
-	// By year
 	yearCounts := []struct {
 		Year  int `db:"year"`
 		Count int `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT year, COUNT(*) as count FROM consolidated_animals GROUP BY year ORDER BY year DESC").All(&yearCounts); err != nil {
+	if err = tx.RawQuery("SELECT year, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY year ORDER BY year DESC", args...).All(&yearCounts); err != nil {
 		return err
 	}
 	stats["by_year"] = yearCounts
-
-	// Top species
 	speciesCounts := []struct {
 		Species string `db:"species"`
 		Count   int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT species, COUNT(*) as count FROM consolidated_animals WHERE species IS NOT NULL GROUP BY species ORDER BY count DESC LIMIT 20").All(&speciesCounts); err != nil {
+	speciesWhere, speciesArgs := ScopedWhere(scope, "WHERE species IS NOT NULL")
+	if err = tx.RawQuery("SELECT species, COUNT(*) as count FROM consolidated_animals "+speciesWhere+" GROUP BY species ORDER BY count DESC LIMIT 20", speciesArgs...).All(&speciesCounts); err != nil {
 		return err
 	}
 	stats["top_species"] = speciesCounts
-
-	// Top cities
 	cityCounts := []struct {
 		City  string `db:"city"`
 		Count int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT discovery_city as city, COUNT(*) as count FROM consolidated_animals WHERE discovery_city IS NOT NULL GROUP BY discovery_city ORDER BY count DESC LIMIT 20").All(&cityCounts); err != nil {
+	cityWhere, cityArgs := ScopedWhere(scope, "WHERE discovery_city IS NOT NULL")
+	if err = tx.RawQuery("SELECT discovery_city as city, COUNT(*) as count FROM consolidated_animals "+cityWhere+" GROUP BY discovery_city ORDER BY count DESC LIMIT 20", cityArgs...).All(&cityCounts); err != nil {
 		return err
 	}
 	stats["top_cities"] = cityCounts
-
-	// Top types
 	typeCounts := []struct {
 		AnimalType string `db:"animal_type"`
 		Count      int    `db:"count"`
 	}{}
-	if err := tx.RawQuery("SELECT animal_type, COUNT(*) as count FROM consolidated_animals WHERE animal_type IS NOT NULL GROUP BY animal_type ORDER BY count DESC").All(&typeCounts); err != nil {
+	typeWhere, typeArgs := ScopedWhere(scope, "WHERE animal_type IS NOT NULL")
+	if err = tx.RawQuery("SELECT animal_type, COUNT(*) as count FROM consolidated_animals "+typeWhere+" GROUP BY animal_type ORDER BY count DESC", typeArgs...).All(&typeCounts); err != nil {
 		return err
 	}
 	stats["by_type"] = typeCounts
-
 	c.Set("stats", stats)
+	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/index.plush.html"))
 }
 
@@ -309,6 +332,11 @@ func ReportsByLocation(c buffalo.Context) error {
 	if !ok {
 		return fmt.Errorf("no transaction found")
 	}
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+	whereLocation, locationArgs := ScopedWhere(scope, "WHERE discovery_city IS NOT NULL")
 
 	groupBy := c.Param("group_by")
 	if groupBy == "" {
@@ -316,13 +344,13 @@ func ReportsByLocation(c buffalo.Context) error {
 	}
 
 	var results []struct {
-		Location     string `db:"location"`
-		PostalCode   string `db:"postal_code"`
-		City         string `db:"city"`
-		Count        int    `db:"count"`
-		InCare       int    `db:"in_care"`
-		Released     int    `db:"released"`
-		Died         int    `db:"died"`
+		Location   string `db:"location"`
+		PostalCode string `db:"postal_code"`
+		City       string `db:"city"`
+		Count      int    `db:"count"`
+		InCare     int    `db:"in_care"`
+		Released   int    `db:"released"`
+		Died       int    `db:"died"`
 	}
 
 	var query string
@@ -336,8 +364,8 @@ func ReportsByLocation(c buffalo.Context) error {
 			SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
 			SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
 			FROM consolidated_animals 
-			WHERE discovery_postal_code IS NOT NULL 
-			GROUP BY discovery_postal_code 
+			%s
+			GROUP BY discovery_postal_code
 			ORDER BY count DESC`
 	} else {
 		query = `SELECT 
@@ -349,27 +377,64 @@ func ReportsByLocation(c buffalo.Context) error {
 			SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
 			SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
 			FROM consolidated_animals 
-			WHERE discovery_city IS NOT NULL 
-			GROUP BY discovery_city 
+			%s
+			GROUP BY discovery_city
 			ORDER BY count DESC`
 	}
 
-	if err := tx.RawQuery(query).All(&results); err != nil {
+	query = fmt.Sprintf(query, whereLocation)
+	if err := tx.RawQuery(query, locationArgs...).All(&results); err != nil {
 		return err
 	}
-
 	c.Set("results", results)
 	c.Set("groupBy", groupBy)
+	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_location.plush.html"))
 }
 
-// ReportsByType shows animals grouped by type
+func requestUILang(c buffalo.Context) string {
+	if cookie, err := c.Request().Cookie("lang"); err == nil && cookie.Value != "" {
+		return normalizeUILang(cookie.Value)
+	}
+	return "en-US"
+}
+
+func localizedGroupLabels(tx *pop.Connection, scope ReportScope, field, lang, baseWhere string, baseArgs []interface{}) (map[string]string, error) {
+	var animals []models.ConsolidatedAnimal
+	where, scopeArgs := ScopedWhere(scope, baseWhere)
+	args := append(baseArgs, scopeArgs...)
+	if err := tx.RawQuery("SELECT "+field+", translations FROM consolidated_animals "+where, args...).All(&animals); err != nil {
+		return nil, err
+	}
+	labels := make(map[string]string)
+	for _, animal := range animals {
+		var canonical string
+		switch field {
+		case "animal_type":
+			canonical = animal.AnimalType.String
+		case "species":
+			canonical = animal.Species.String
+		}
+		if canonical != "" {
+			if _, exists := labels[canonical]; !exists {
+				labels[canonical] = animal.LocalizedField(lang, field)
+			}
+		}
+	}
+	return labels, nil
+}
+
 func ReportsByType(c buffalo.Context) error {
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
 		return fmt.Errorf("no transaction found")
 	}
 
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+	whereType, typeArgs := ScopedWhere(scope, "WHERE animal_type IS NOT NULL")
 	var results []struct {
 		AnimalType string `db:"animal_type"`
 		Count      int    `db:"count"`
@@ -385,15 +450,21 @@ func ReportsByType(c buffalo.Context) error {
 		SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
 		SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
 		FROM consolidated_animals 
-		WHERE animal_type IS NOT NULL 
-		GROUP BY animal_type 
+		%s
+		GROUP BY animal_type
 		ORDER BY count DESC`
 
-	if err := tx.RawQuery(query).All(&results); err != nil {
+	query = fmt.Sprintf(query, whereType)
+	if err := tx.RawQuery(query, typeArgs...).All(&results); err != nil {
 		return err
 	}
-
+	labels, err := localizedGroupLabels(tx, scope, "animal_type", requestUILang(c), "WHERE animal_type IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
 	c.Set("results", results)
+	c.Set("localizedLabels", labels)
+	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_type.plush.html"))
 }
 
@@ -406,9 +477,20 @@ func ReportsBySpecies(c buffalo.Context) error {
 
 	year := c.Param("year")
 	whereClause := "WHERE species IS NOT NULL"
-	if year != "" {
-		whereClause = fmt.Sprintf("WHERE species IS NOT NULL AND year = %s", year)
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
 	}
+	var labelArgs []interface{}
+	var queryArgs []interface{}
+	labelWhere := "WHERE species IS NOT NULL"
+	if parsedYear, parseErr := strconv.Atoi(year); year != "" && parseErr == nil {
+		whereClause = "WHERE species IS NOT NULL AND year = ?"
+		labelWhere = "WHERE species IS NOT NULL AND year = ?"
+		labelArgs = append(labelArgs, parsedYear)
+	}
+	whereClause, scopeArgs := ScopedWhere(scope, whereClause)
+	queryArgs = append(queryArgs, scopeArgs...)
 
 	var results []struct {
 		Species  string `db:"species"`
@@ -429,7 +511,8 @@ func ReportsBySpecies(c buffalo.Context) error {
 		GROUP BY species 
 		ORDER BY count DESC`, whereClause)
 
-	if err := tx.RawQuery(query).All(&results); err != nil {
+	query = fmt.Sprintf(query, whereClause)
+	if err := tx.RawQuery(query, queryArgs...).All(&results); err != nil {
 		return err
 	}
 
@@ -437,10 +520,15 @@ func ReportsBySpecies(c buffalo.Context) error {
 	var years []struct {
 		Year int `db:"year"`
 	}
-	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals ORDER BY year DESC").All(&years)
+	yearWhere, yearArgs := ScopedWhere(scope, "")
+	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals "+yearWhere+" ORDER BY year DESC", yearArgs...).All(&years)
 
-	c.Set("results", results)
-	c.Set("years", years)
+	labels, err := localizedGroupLabels(tx, scope, "species", requestUILang(c), labelWhere, labelArgs)
+	if err != nil {
+		return err
+	}
+	c.Set("localizedLabels", labels)
 	c.Set("selectedYear", year)
+	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_species.plush.html"))
 }

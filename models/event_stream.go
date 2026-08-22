@@ -20,6 +20,7 @@ const (
 	EventTypeAnimalStatusChanged EventType = "animal_status_changed"
 	EventTypeAnimalReleased      EventType = "animal_released"
 	EventTypeAnimalDied          EventType = "animal_died"
+	EventTypeAnimalState         EventType = "animal_state"
 )
 
 // EventStream represents an event imported from a source instance
@@ -122,6 +123,10 @@ type EventPayload struct {
 
 	// Common fields
 	Timestamp string `json:"timestamp"`
+
+	// Full-state resync metadata.
+	Translations map[string]map[string]string `json:"translations,omitempty"`
+	StateHash    string                       `json:"state_hash,omitempty"`
 }
 
 func (e EventStream) String() string {

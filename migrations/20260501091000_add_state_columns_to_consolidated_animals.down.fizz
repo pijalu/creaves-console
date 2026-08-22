@@ -1,0 +1,3 @@
+remove_column("consolidated_animals", "last_state_at")
+remove_column("consolidated_animals", "state_hash")
+remove_column("consolidated_animals", "translations")

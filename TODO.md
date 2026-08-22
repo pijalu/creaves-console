@@ -1,5 +1,9 @@
 # Consolidation Application - Implementation Plan
 
+## Sync v2 rollout status
+
+Console-first Sync v2 implementation validated through T7.3; deployment-specific manual cross-project checks are documented in `docs/plan/subplans/phase-7-e2e-docs.md`.
+
 ## Overview
 The consolidation application must run as a standalone CLI tool that can be executed independently of the Buffalo web server. It should support cron-based periodic execution, incremental imports (remembering last import time), and idempotent processing.
 

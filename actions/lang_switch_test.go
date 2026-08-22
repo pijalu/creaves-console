@@ -4,6 +4,7 @@
 package actions
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"creaves-console/locales"
+	"creaves-console/templates"
 )
 
 // newLangTestApp mirrors the real App() wiring for the /lang group: it runs
@@ -44,6 +46,42 @@ func newLangTestApp() *buffalo.App {
 		return c.Render(http.StatusOK, r.HTML("dashboard/index.plush.html"))
 	})
 	return app
+}
+
+func TestRenderFr_VariantsExistForAllTemplates(t *testing.T) {
+	err := fs.WalkDir(locales.FS(), ".", func(path string, d fs.DirEntry, err error) error { return err })
+	require.NoError(t, err)
+	// Verify embedded template tree directly through render's configured FS.
+	frCount := 0
+	err = fs.WalkDir(templates.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".plush.html") || strings.HasSuffix(path, ".plush.fr.html") {
+			return nil
+		}
+		frCount++
+		_, err = fs.Stat(templates.FS(), strings.TrimSuffix(path, ".plush.html")+".plush.fr.html")
+		return err
+	})
+	require.NoError(t, err)
+	require.Greater(t, frCount, 0)
+}
+
+func TestLangSwitcher_RendersFrenchVariant(t *testing.T) {
+	app := newLangTestApp()
+	req := httptest.NewRequest("GET", "/dashboard", nil)
+	req.AddCookie(&http.Cookie{Name: "lang", Value: "fr"})
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	require.Contains(t, body, `<html lang="fr">`)
+	require.Contains(t, body, "Tableau de bord")
+	require.Contains(t, body, "/lang/?lang=en-US")
+	require.Contains(t, body, "/lang/?lang=de")
+	require.Contains(t, body, "/lang/?lang=nl")
 }
 
 func TestLangSwitcher_RendersGermanVariant(t *testing.T) {

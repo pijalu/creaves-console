@@ -41,6 +41,9 @@ type ConsolidatedAnimal struct {
 	OuttakeDate         nulls.Time   `json:"outtake_date" db:"outtake_date"`
 	OuttakeType         nulls.String `json:"outtake_type" db:"outtake_type"`
 	OuttakeLocation     nulls.String `json:"outtake_location" db:"outtake_location"`
+	Translations        nulls.String `json:"translations" db:"translations"`
+	StateHash           nulls.String `json:"state_hash" db:"state_hash"`
+	LastStateAt         nulls.Time   `json:"last_state_at" db:"last_state_at"`
 	LastEventAt         time.Time    `json:"last_event_at" db:"last_event_at"`
 	EventCount          int          `json:"event_count" db:"event_count"`
 	CreatedAt           time.Time    `json:"created_at" db:"created_at"`
@@ -50,6 +53,35 @@ type ConsolidatedAnimal struct {
 func (c ConsolidatedAnimal) String() string {
 	jc, _ := json.Marshal(c)
 	return string(jc)
+}
+
+// LocalizedField returns stored translation for field, falling back to canonical value.
+func (c ConsolidatedAnimal) LocalizedField(lang, field string) string {
+	canonical := ""
+	switch field {
+	case "species":
+		canonical = c.Species.String
+	case "animal_type":
+		canonical = c.AnimalType.String
+	case "animal_age":
+		canonical = c.AnimalAge.String
+	case "zone":
+		canonical = c.Zone.String
+	case "outtake_type":
+		canonical = c.OuttakeType.String
+	case "entry_cause":
+		canonical = c.EntryCause.String
+	}
+	if !c.Translations.Valid {
+		return canonical
+	}
+	var translations map[string]map[string]string
+	if json.Unmarshal([]byte(c.Translations.String), &translations) == nil {
+		if values, ok := translations[lang]; ok && values[field] != "" {
+			return values[field]
+		}
+	}
+	return canonical
 }
 
 type ConsolidatedAnimals []ConsolidatedAnimal
@@ -69,6 +101,32 @@ func (c *ConsolidatedAnimal) ValidateCreate(tx *pop.Connection) (*validate.Error
 
 func (c *ConsolidatedAnimal) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
+}
+
+func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Time) {
+	// State events are snapshots: clear fields omitted by producer before applying.
+	c.Species, c.Gender, c.Cage, c.Zone, c.Ring = nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
+	c.AnimalType, c.AnimalAge = nulls.String{}, nulls.String{}
+	c.DiscoveryLocation, c.DiscoveryDate, c.DiscoveryCity, c.DiscoveryPostalCode = nulls.String{}, nulls.Time{}, nulls.String{}, nulls.String{}
+	c.EntryCause = nulls.String{}
+	c.IntakeDate, c.IntakeGeneral, c.IntakeWounds, c.IntakeParasites, c.IntakeRemarks = nulls.Time{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
+	c.OuttakeDate, c.OuttakeType, c.OuttakeLocation = nulls.Time{}, nulls.String{}, nulls.String{}
+	previousCount := c.EventCount
+	c.CurrentStatus = ""
+	c.UpdateFromPayload(payload, EventTypeAnimalState, eventTime)
+	c.CurrentStatus = payload.CurrentStatus
+	if c.CurrentStatus == "" {
+		c.CurrentStatus = payload.InitialStatus
+	}
+	c.EventCount = previousCount
+	c.LastEventAt = eventTime
+}
+
+func nullableString(value string) nulls.String {
+	if value == "" {
+		return nulls.String{}
+	}
+	return nulls.NewString(value)
 }
 
 func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType EventType, eventTime time.Time) {
@@ -181,6 +239,19 @@ func (c *ConsolidatedAnimal) ApplyEvent(event EventStream) error {
 	payload, err := event.GetPayload()
 	if err != nil {
 		return err
+	}
+	if event.EventType == EventTypeAnimalState {
+		c.applyState(payload, event.CreatedAt)
+		if payload.Translations == nil {
+			c.Translations = nulls.String{}
+		} else if encoded, marshalErr := json.Marshal(payload.Translations); marshalErr == nil {
+			c.Translations = nulls.NewString(string(encoded))
+		}
+		if payload.StateHash != "" {
+			c.StateHash = nulls.NewString(payload.StateHash)
+		}
+		c.LastStateAt = nulls.NewTime(event.CreatedAt)
+		return nil
 	}
 	c.UpdateFromPayload(payload, event.EventType, event.CreatedAt)
 	return nil

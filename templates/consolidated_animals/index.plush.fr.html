@@ -1,0 +1,164 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-book"></i> Animal Register</h1>
+        <p class="lead">Consolidated view of all animals</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <form method="GET" action="/consolidated_animals" class="form-inline">
+            <div class="form-group mr-2">
+                <label for="view_mode" class="mr-2">View:</label>
+                <select name="view_mode" id="view_mode" class="form-control">
+                    <option value="global" <%= if (viewMode == "global") { %>selected<% } %>>Global (all instances)</option>
+                    <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>By instance</option>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="instance_id" class="mr-2">Instance:</label>
+                <select name="instance_id" id="instance_id" class="form-control">
+                    <option value="">All</option>
+                    <%= for (inst) in instances { %>
+                        <option value="<%= inst.InstanceID %>" <%= if (params["instance_id"] == inst.InstanceID) { %>selected<% } %>><%= inst.InstanceID %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="year" class="mr-2">Year:</label>
+                <select name="year" id="year" class="form-control">
+                    <option value="">All</option>
+                    <%= for (y) in yearsList { %>
+                        <option value="<%= y.Year %>" <%= if (params["year"] == string(y.Year)) { %>selected<% } %>><%= y.Year %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="status" class="mr-2">Status:</label>
+                <select name="status" id="status" class="form-control">
+                    <option value="">All</option>
+                    <option value="in_care" <%= if (params["status"] == "in_care") { %>selected<% } %>>In care</option>
+                    <option value="released" <%= if (params["status"] == "released") { %>selected<% } %>>Released</option>
+                    <option value="died" <%= if (params["status"] == "died") { %>selected<% } %>>Deceased</option>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="species" class="mr-2">Species:</label>
+                <select name="species" id="species" class="form-control">
+                    <option value="">All</option>
+                    <%= for (sp) in speciesList { %>
+                        <option value="<%= sp.Species %>" <%= if (params["species"] == sp.Species) { %>selected<% } %>><%= sp.Species %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="animal_type" class="mr-2">Type:</label>
+                <select name="animal_type" id="animal_type" class="form-control">
+                    <option value="">All</option>
+                    <%= for (t) in typesList { %>
+                        <option value="<%= t.AnimalType %>" <%= if (params["animal_type"] == t.AnimalType) { %>selected<% } %>><%= t.AnimalType %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="city" class="mr-2">City:</label>
+                <select name="city" id="city" class="form-control">
+                    <option value="">All</option>
+                    <%= for (ct) in citiesList { %>
+                        <option value="<%= ct.City %>" <%= if (params["city"] == ct.City) { %>selected<% } %>><%= ct.City %></option>
+                    <% } %>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            <a href="/consolidated_animals" class="btn btn-secondary ml-2">
+                <i class="fas fa-times"></i> Reset
+            </a>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Year</th>
+                        <th>N°</th>
+                        <th>Species</th>
+                        <th>Identification</th>
+                        <th>Intake date</th>
+                        <th>Time</th>
+                        <th>Discovery location</th>
+                        <th>PC</th>
+                        <th>City</th>
+                        <th>Cause</th>
+                        <th>Outtake</th>
+                        <th>Outtake date</th>
+                        <th>Outtake location</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%= for (animal) in animals { %>
+                        <tr>
+                            <td><%= animal.Year %></td>
+                            <td><%= animal.YearNumber %></td>
+                            <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
+                            <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
+                            <td>
+                                <%= if (animal.IntakeDate.Valid) { %>
+                                    <%= animal.IntakeDate.Time.Format("02/01/2006") %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.IntakeDate.Valid) { %>
+                                    <%= animal.IntakeDate.Time.Format("15:04") %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
+                            <td><%= if (animal.DiscoveryPostalCode.Valid) { animal.DiscoveryPostalCode.String } else { "-" } %></td>
+                            <td><%= if (animal.DiscoveryCity.Valid) { animal.DiscoveryCity.String } else { "-" } %></td>
+                            <td><%= if (animal.EntryCause.Valid) { animal.EntryCause.String } else { "-" } %></td>
+                            <td>
+                                <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
+                                    <%= animal.CurrentStatus %>
+                                </span>
+                                <%= if (animal.OuttakeType.Valid) { %>
+                                    <small><%= animal.OuttakeType.String %></small>
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.OuttakeDate.Valid) { %>
+                                    <%= animal.OuttakeDate.Time.Format("02/01/2006") %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td><%= if (animal.OuttakeLocation.Valid) { animal.OuttakeLocation.String } else { "-" } %></td>
+                            <td>
+                                <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-sm btn-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="text-center">
+            <%= paginator(pagination) %>
+        </div>
+    </div>
+</div>

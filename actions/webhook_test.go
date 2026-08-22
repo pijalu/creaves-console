@@ -214,7 +214,7 @@ func TestWebhookEventsHandler_Idempotent(t *testing.T) {
 		AnimalID:   7,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
 
@@ -253,7 +253,7 @@ func TestWebhookEventsHandler_InstanceRestriction(t *testing.T) {
 		AnimalID:   1,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
 
@@ -285,7 +285,7 @@ func TestWebhookEventsHandler_InvalidEventID(t *testing.T) {
 		AnimalID:   1,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
 
@@ -316,7 +316,7 @@ func TestWebhookEventsHandler_BatchAndLastUsedAt(t *testing.T) {
 			AnimalID:   1,
 			EventType:  string(models.EventTypeAnimalDiscovered),
 			Payload:    []byte(`{"initial_status":"in_care"}`),
-			CreatedAt:   time.Now(),
+			CreatedAt:  time.Now(),
 		},
 		{
 			ID:         uuid.Must(uuid.NewV4()).String(),
@@ -324,7 +324,7 @@ func TestWebhookEventsHandler_BatchAndLastUsedAt(t *testing.T) {
 			AnimalID:   2,
 			EventType:  string(models.EventTypeAnimalDiscovered),
 			Payload:    []byte(`{"initial_status":"in_care"}`),
-			CreatedAt:   time.Now(),
+			CreatedAt:  time.Now(),
 		},
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: events})
@@ -369,7 +369,7 @@ func TestWebhookEventsHandler_PartialFailure(t *testing.T) {
 		AnimalID:   1,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	// An invalid (non-UUID) id forces a per-event failure.
 	badEvent := WebhookEvent{
@@ -378,7 +378,7 @@ func TestWebhookEventsHandler_PartialFailure(t *testing.T) {
 		AnimalID:   2,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{goodEvent, badEvent}})
 
@@ -443,7 +443,7 @@ func TestWebhookEventsHandler_RedeliveryReprocessesUnprocessed(t *testing.T) {
 		AnimalID:   99,
 		EventType:  string(models.EventTypeAnimalDiscovered),
 		Payload:    []byte(`{"initial_status":"in_care"}`),
-		CreatedAt:   time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
 	rec := postWebhook(app, "Bearer "+rawKey, payload)
@@ -465,4 +465,55 @@ func TestWebhookEventsHandler_RedeliveryReprocessesUnprocessed(t *testing.T) {
 	var got models.EventStream
 	require.NoError(t, tx.Find(&got, eventID))
 	assert.NotNil(t, got.ProcessedAt, "redelivery should have processed the existing event")
+}
+
+func TestWebhookEventsHandler_AutoRegistersUnknownInstance(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	created := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	event := WebhookEvent{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: "center-new", AnimalID: 9, EventType: string(models.EventTypeAnimalDiscovered), Payload: []byte(`{"initial_status":"in_care"}`), CreatedAt: created}
+	body, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
+	rec := postWebhook(app, "Bearer "+rawKey, body)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var instances models.CreavesInstances
+	require.NoError(t, tx.All(&instances))
+	require.Len(t, instances, 1)
+	assert.Equal(t, "center-new", instances[0].InstanceID)
+	assert.WithinDuration(t, instances[0].FirstSeenAt, instances[0].LastSeenAt, time.Second)
+	require.NotNil(t, instances[0].LastEventAt)
+	assert.WithinDuration(t, created, *instances[0].LastEventAt, time.Second)
+}
+
+func TestWebhookEventsHandler_InstanceBlockUpserts(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	makeBody := func(name string) []byte {
+		e := WebhookEvent{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: "center-block", AnimalID: 1, EventType: string(models.EventTypeAnimalDiscovered), Payload: []byte(`{"initial_status":"in_care"}`), CreatedAt: time.Now()}
+		b, _ := json.Marshal(map[string]interface{}{"contract_version": 2, "instance": map[string]string{"id": "center-block", "name": name}, "events": []WebhookEvent{e}})
+		return b
+	}
+	require.Equal(t, http.StatusOK, postWebhook(app, "Bearer "+rawKey, makeBody("First Name")).Code)
+	require.Equal(t, http.StatusOK, postWebhook(app, "Bearer "+rawKey, makeBody("Updated Name")).Code)
+	var instances models.CreavesInstances
+	require.NoError(t, tx.All(&instances))
+	require.Len(t, instances, 1)
+	assert.Equal(t, "Updated Name", instances[0].Name)
+}
+
+func TestWebhookEventsHandler_InstanceBlockMismatchFailsEvent(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	e := WebhookEvent{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: "event-instance", AnimalID: 1, EventType: string(models.EventTypeAnimalDiscovered), Payload: []byte(`{"initial_status":"in_care"}`), CreatedAt: time.Now()}
+	body, _ := json.Marshal(map[string]interface{}{"contract_version": 2, "instance": map[string]string{"id": "other-instance"}, "events": []WebhookEvent{e}})
+	rec := postWebhook(app, "Bearer "+rawKey, body)
+	var response map[string]interface{}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+	assert.EqualValues(t, 0, response["processed"])
+	assert.NotEmpty(t, response["errors"])
+	count, err := tx.Count(&models.EventStream{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
 }
