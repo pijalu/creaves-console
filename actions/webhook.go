@@ -144,7 +144,21 @@ func WebhookEventsHandler(c buffalo.Context) error {
 				eventErrors = append(eventErrors, fmt.Sprintf("failed to load existing event %s: %v", webhookEvent.ID, err))
 				continue
 			}
-			if existing.ProcessedAt == nil {
+			needsProcessing := existing.ProcessedAt == nil
+			if !needsProcessing {
+				// Disaster-recovery path: if the consolidated row was lost
+				// (e.g. console DB partially wiped) but the event log
+				// survived, a resync redelivers the same deterministic
+				// event UUIDs. Re-apply them so the center's state is
+				// rebuilt instead of skipped as "already processed".
+				rowExists, err := tx.Where("instance_id = ? AND animal_id = ?", existing.InstanceID, existing.AnimalID).Exists(&models.ConsolidatedAnimal{})
+				if err != nil {
+					eventErrors = append(eventErrors, fmt.Sprintf("failed to check consolidated row for event %s: %v", webhookEvent.ID, err))
+					continue
+				}
+				needsProcessing = !rowExists
+			}
+			if needsProcessing {
 				if err := processor.processEvent(existing); err != nil {
 					eventErrors = append(eventErrors, fmt.Sprintf("failed to process existing event %s: %v", webhookEvent.ID, err))
 					continue

@@ -467,6 +467,57 @@ func TestWebhookEventsHandler_RedeliveryReprocessesUnprocessed(t *testing.T) {
 	assert.NotNil(t, got.ProcessedAt, "redelivery should have processed the existing event")
 }
 
+// If the consolidated row was lost (disaster recovery / partial wipe) but the
+// event log survived, a resync redelivers the same deterministic event UUIDs.
+// The receiver must rebuild the missing row instead of skipping the event as
+// "already processed".
+func TestWebhookEventsHandler_RedeliveryRebuildsMissingConsolidatedRow(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+
+	eventID := uuid.Must(uuid.NewV4())
+	now := time.Now()
+	existing := &models.EventStream{
+		ID:          eventID,
+		InstanceID:  "inst-1",
+		AnimalID:    77,
+		EventType:   models.EventTypeAnimalState,
+		Payload:     []byte(`{"animal":{"id":77,"species":"Hedgehog","year":2025,"year_number":3},"current_status":"in_care","state_hash":"h123"}`),
+		ImportedAt:  now,
+		CreatedAt:   now,
+		ProcessedAt: &now, // already processed in a previous delivery
+	}
+	require.NoError(t, tx.Create(existing))
+
+	// Consolidated row is gone (wiped), event row survived.
+	total, err := tx.Count(&models.ConsolidatedAnimal{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, total)
+
+	event := WebhookEvent{
+		ID:         eventID.String(),
+		InstanceID: "inst-1",
+		AnimalID:   77,
+		EventType:  string(models.EventTypeAnimalState),
+		Payload:    existing.Payload,
+		CreatedAt:  now,
+	}
+	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{event}})
+	rec := postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.EqualValues(t, 1, resp["processed"])
+	assert.Empty(t, resp["errors"])
+
+	var row models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", "inst-1", 77).First(&row))
+	assert.Equal(t, "Hedgehog", row.Species.String)
+	assert.Equal(t, "h123", row.StateHash.String)
+}
+
 func TestWebhookEventsHandler_AutoRegistersUnknownInstance(t *testing.T) {
 	tx := setupTest(t)
 	app := newWebhookTestApp(tx)

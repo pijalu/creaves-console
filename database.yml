@@ -5,6 +5,12 @@ development:
   port: "3306"
   user: "creaves"
   password: "creaves"
+  # Cap the dev pool (same rationale as creaves/database.yml): unlimited
+  # pooled connections accumulate across e2e runs → MySQL Error 1040.
+  pool: 25
+  idlepool: 5
+  connmaxlifetime: 10m
+  connmaxidletime: 1m
 
 test:
   dialect: "sqlite"

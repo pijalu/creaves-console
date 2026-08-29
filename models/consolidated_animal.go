@@ -285,6 +285,13 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 		c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
 	}
 
+	// Store translations when provided (keep existing ones otherwise)
+	if payload.Translations != nil {
+		if encoded, marshalErr := json.Marshal(payload.Translations); marshalErr == nil {
+			c.Translations = nulls.NewString(string(encoded))
+		}
+	}
+
 	// Update metadata
 	c.LastEventAt = eventTime
 	c.EventCount++
