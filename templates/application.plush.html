@@ -36,6 +36,15 @@
                                 <i class="fas fa-list"></i> Animals
                             </a>
                         </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-toggle="dropdown">
+                                <i class="fas fa-chart-bar"></i> Reports
+                            </a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="/reports">Overview</a>
+                                <a class="dropdown-item" href="/reports/annual">Annual statistics</a>
+                            </div>
+                        </li>
                         <%= if (current_user.Admin) { %>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown">

@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/gobuffalo/nulls"
@@ -21,6 +22,10 @@ type ConsolidatedAnimal struct {
 	Year                int          `json:"year" db:"year"`
 	YearNumber          int          `json:"year_number" db:"year_number"`
 	Species             nulls.String `json:"species" db:"species"`
+	SpeciesClass        nulls.String `json:"species_class" db:"species_class"`
+	SpeciesAGWGroup     nulls.String `json:"species_agw_group" db:"species_agw_group"`
+	SpeciesSubsideGroup nulls.String `json:"species_subside_group" db:"species_subside_group"`
+	SpeciesNativeStatus nulls.String `json:"species_native_status" db:"species_native_status"`
 	Gender              nulls.String `json:"gender" db:"gender"`
 	Cage                nulls.String `json:"cage" db:"cage"`
 	Zone                nulls.String `json:"zone" db:"zone"`
@@ -32,6 +37,8 @@ type ConsolidatedAnimal struct {
 	DiscoveryCity       nulls.String `json:"discovery_city" db:"discovery_city"`
 	DiscoveryPostalCode nulls.String `json:"discovery_postal_code" db:"discovery_postal_code"`
 	EntryCause          nulls.String `json:"entry_cause" db:"entry_cause"`
+	EntryCauseDetail    nulls.String `json:"entry_cause_detail" db:"entry_cause_detail"`
+	EntryCauseNature    nulls.String `json:"entry_cause_nature" db:"entry_cause_nature"`
 	CurrentStatus       string       `json:"current_status" db:"current_status"`
 	IntakeDate          nulls.Time   `json:"intake_date" db:"intake_date"`
 	IntakeGeneral       nulls.String `json:"intake_general" db:"intake_general"`
@@ -41,6 +48,8 @@ type ConsolidatedAnimal struct {
 	OuttakeDate         nulls.Time   `json:"outtake_date" db:"outtake_date"`
 	OuttakeType         nulls.String `json:"outtake_type" db:"outtake_type"`
 	OuttakeLocation     nulls.String `json:"outtake_location" db:"outtake_location"`
+	OuttakeRating       nulls.Int    `json:"outtake_rating" db:"outtake_rating"`
+	OuttakeDead         nulls.Bool   `json:"outtake_dead" db:"outtake_dead"`
 	Translations        nulls.String `json:"translations" db:"translations"`
 	StateHash           nulls.String `json:"state_hash" db:"state_hash"`
 	LastStateAt         nulls.Time   `json:"last_state_at" db:"last_state_at"`
@@ -71,6 +80,26 @@ func (c ConsolidatedAnimal) LocalizedField(lang, field string) string {
 		canonical = c.OuttakeType.String
 	case "entry_cause":
 		canonical = c.EntryCause.String
+	case "entry_cause_detail":
+		canonical = c.EntryCauseDetail.String
+	case "entry_cause_nature":
+		canonical = c.EntryCauseNature.String
+	case "species_class":
+		canonical = c.SpeciesClass.String
+	case "species_agw_group":
+		canonical = c.SpeciesAGWGroup.String
+	case "species_subside_group":
+		canonical = c.SpeciesSubsideGroup.String
+	case "species_native_status":
+		canonical = c.SpeciesNativeStatus.String
+	case "outtake_rating":
+		if c.OuttakeRating.Valid {
+			canonical = strconv.Itoa(c.OuttakeRating.Int)
+		}
+	case "outtake_dead":
+		if c.OuttakeDead.Valid {
+			canonical = strconv.FormatBool(c.OuttakeDead.Bool)
+		}
 	}
 	if !c.Translations.Valid {
 		return canonical
@@ -106,11 +135,13 @@ func (c *ConsolidatedAnimal) ValidateUpdate(tx *pop.Connection) (*validate.Error
 func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Time) {
 	// State events are snapshots: clear fields omitted by producer before applying.
 	c.Species, c.Gender, c.Cage, c.Zone, c.Ring = nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
+	c.SpeciesClass, c.SpeciesAGWGroup, c.SpeciesSubsideGroup, c.SpeciesNativeStatus = nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.AnimalType, c.AnimalAge = nulls.String{}, nulls.String{}
 	c.DiscoveryLocation, c.DiscoveryDate, c.DiscoveryCity, c.DiscoveryPostalCode = nulls.String{}, nulls.Time{}, nulls.String{}, nulls.String{}
-	c.EntryCause = nulls.String{}
+	c.EntryCause, c.EntryCauseDetail, c.EntryCauseNature = nulls.String{}, nulls.String{}, nulls.String{}
 	c.IntakeDate, c.IntakeGeneral, c.IntakeWounds, c.IntakeParasites, c.IntakeRemarks = nulls.Time{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.OuttakeDate, c.OuttakeType, c.OuttakeLocation = nulls.Time{}, nulls.String{}, nulls.String{}
+	c.OuttakeRating, c.OuttakeDead = nulls.Int{}, nulls.Bool{}
 	previousCount := c.EventCount
 	c.CurrentStatus = ""
 	c.UpdateFromPayload(payload, EventTypeAnimalState, eventTime)
@@ -142,6 +173,18 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Animal.Species != "" {
 		c.Species = nulls.NewString(payload.Animal.Species)
+	}
+	if payload.Animal.SpeciesClass != "" {
+		c.SpeciesClass = nulls.NewString(payload.Animal.SpeciesClass)
+	}
+	if payload.Animal.SpeciesAGWGroup != "" {
+		c.SpeciesAGWGroup = nulls.NewString(payload.Animal.SpeciesAGWGroup)
+	}
+	if payload.Animal.SpeciesSubsideGroup != "" {
+		c.SpeciesSubsideGroup = nulls.NewString(payload.Animal.SpeciesSubsideGroup)
+	}
+	if payload.Animal.SpeciesNativeStatus != "" {
+		c.SpeciesNativeStatus = nulls.NewString(payload.Animal.SpeciesNativeStatus)
 	}
 	if payload.Animal.Gender != "" {
 		c.Gender = nulls.NewString(payload.Animal.Gender)
@@ -179,6 +222,12 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Discovery.EntryCause != "" {
 		c.EntryCause = nulls.NewString(payload.Discovery.EntryCause)
+	}
+	if payload.Discovery.EntryCauseDetail != "" {
+		c.EntryCauseDetail = nulls.NewString(payload.Discovery.EntryCauseDetail)
+	}
+	if payload.Discovery.EntryCauseNature != "" {
+		c.EntryCauseNature = nulls.NewString(payload.Discovery.EntryCauseNature)
 	}
 
 	// Update intake info
@@ -228,6 +277,12 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Outtake.Location != "" {
 		c.OuttakeLocation = nulls.NewString(payload.Outtake.Location)
+	}
+	if payload.Outtake.Rating != 0 {
+		c.OuttakeRating = nulls.NewInt(payload.Outtake.Rating)
+	}
+	if payload.Outtake.Dead {
+		c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
 	}
 
 	// Update metadata

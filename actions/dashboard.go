@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/x/responder"
 )
@@ -125,36 +126,8 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	}
 
 	// Apply filters
-	viewMode := c.Param("view_mode")
-	if viewMode == "" {
-		viewMode = "global"
-	}
-	if !scope.IsGlobal() {
-		viewMode = "instance"
-	}
-	if viewMode == "instance" && scope.IsGlobal() {
-		if instanceID := c.Param("instance_id"); instanceID != "" {
-			q = q.Where("instance_id = ?", instanceID)
-		}
-	}
-	if status := c.Param("status"); status != "" {
-		q = q.Where("current_status = ?", status)
-	}
-	if species := c.Param("species"); species != "" {
-		q = q.Where("species = ?", species)
-	}
-	if animalType := c.Param("animal_type"); animalType != "" {
-		q = q.Where("animal_type = ?", animalType)
-	}
-	if city := c.Param("city"); city != "" {
-		q = q.Where("discovery_city = ?", city)
-	}
-	if postalCode := c.Param("postal_code"); postalCode != "" {
-		q = q.Where("discovery_postal_code = ?", postalCode)
-	}
-	if year := c.Param("year"); year != "" {
-		q = q.Where("year = ?", year)
-	}
+	viewMode := animalsViewMode(c, scope)
+	q = applyConsolidatedAnimalFilters(q, c, viewMode, scope)
 
 	if err := q.Order("year desc, year_number asc").All(animals); err != nil {
 		return err
@@ -186,6 +159,36 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	}
 	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals ORDER BY year DESC").All(&yearsList)
 
+	var entryCausesList []struct {
+		EntryCause string `db:"entry_cause"`
+	}
+	tx.RawQuery("SELECT DISTINCT entry_cause FROM consolidated_animals WHERE entry_cause IS NOT NULL ORDER BY entry_cause").All(&entryCausesList)
+
+	var agesList []struct {
+		AnimalAge string `db:"animal_age"`
+	}
+	tx.RawQuery("SELECT DISTINCT animal_age FROM consolidated_animals WHERE animal_age IS NOT NULL ORDER BY animal_age").All(&agesList)
+
+	var outtakeTypesList []struct {
+		OuttakeType string `db:"outtake_type"`
+	}
+	tx.RawQuery("SELECT DISTINCT outtake_type FROM consolidated_animals WHERE outtake_type IS NOT NULL ORDER BY outtake_type").All(&outtakeTypesList)
+
+	// Localized dropdown labels for translatable fields
+	uiLang := requestUILang(c)
+	entryCauseLabels, err := localizedGroupLabels(tx, scope, "entry_cause", uiLang, "WHERE entry_cause IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
+	animalAgeLabels, err := localizedGroupLabels(tx, scope, "animal_age", uiLang, "WHERE animal_age IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
+	outtakeTypeLabels, err := localizedGroupLabels(tx, scope, "outtake_type", uiLang, "WHERE outtake_type IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
+
 	return responder.Wants("html", func(c buffalo.Context) error {
 		c.Set("pagination", q.Paginator)
 		c.Set("animals", animals)
@@ -194,11 +197,168 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 		c.Set("typesList", typesList)
 		c.Set("citiesList", citiesList)
 		c.Set("yearsList", yearsList)
+		c.Set("entryCausesList", entryCausesList)
+		c.Set("agesList", agesList)
+		c.Set("outtakeTypesList", outtakeTypesList)
+		c.Set("entryCauseLabels", entryCauseLabels)
+		c.Set("animalAgeLabels", animalAgeLabels)
+		c.Set("outtakeTypeLabels", outtakeTypeLabels)
 		c.Set("viewMode", viewMode)
 		return c.Render(http.StatusOK, r.HTML("consolidated_animals/index.plush.html"))
 	}).Wants("json", func(c buffalo.Context) error {
 		return c.Render(200, r.JSON(animals))
 	}).Respond(c)
+}
+
+// animalsViewMode resolves the register view mode from params and scope.
+func animalsViewMode(c buffalo.Context, scope ReportScope) string {
+	viewMode := c.Param("view_mode")
+	if viewMode == "" {
+		viewMode = "global"
+	}
+	if !scope.IsGlobal() {
+		viewMode = "instance"
+	}
+	return viewMode
+}
+
+// applyConsolidatedAnimalFilters adds WHERE clauses for the register search
+// filters. entry_cause, animal_age and outtake_type match exactly on the
+// stored canonical value; ring matches partially (LIKE).
+func applyConsolidatedAnimalFilters(q *pop.Query, c buffalo.Context, viewMode string, scope ReportScope) *pop.Query {
+	if viewMode == "instance" && scope.IsGlobal() {
+		if instanceID := c.Param("instance_id"); instanceID != "" {
+			q = q.Where("instance_id = ?", instanceID)
+		}
+	}
+	if status := c.Param("status"); status != "" {
+		q = q.Where("current_status = ?", status)
+	}
+	if species := c.Param("species"); species != "" {
+		q = q.Where("species = ?", species)
+	}
+	if animalType := c.Param("animal_type"); animalType != "" {
+		q = q.Where("animal_type = ?", animalType)
+	}
+	if city := c.Param("city"); city != "" {
+		q = q.Where("discovery_city = ?", city)
+	}
+	if postalCode := c.Param("postal_code"); postalCode != "" {
+		q = q.Where("discovery_postal_code = ?", postalCode)
+	}
+	if year := c.Param("year"); year != "" {
+		q = q.Where("year = ?", year)
+	}
+	if entryCause := c.Param("entry_cause"); entryCause != "" {
+		q = q.Where("entry_cause = ?", entryCause)
+	}
+	if animalAge := c.Param("animal_age"); animalAge != "" {
+		q = q.Where("animal_age = ?", animalAge)
+	}
+	if ring := c.Param("ring"); ring != "" {
+		q = q.Where("ring LIKE ?", "%"+ring+"%")
+	}
+	if outtakeType := c.Param("outtake_type"); outtakeType != "" {
+		q = q.Where("outtake_type = ?", outtakeType)
+	}
+	return q
+}
+
+// consolidatedAnimalsCSVHeader returns the register export column headers in
+// the request language (falls back to English).
+func consolidatedAnimalsCSVHeader(lang string) []string {
+	switch lang {
+	case "fr":
+		return []string{
+			"Instance", "Année", "Numéro", "Espèce", "Type", "Âge", "Bague",
+			"Date d'entrée", "Lieu de découverte", "Code postal", "Ville",
+			"Cause d'entrée", "Statut", "Type de sortie", "Date de sortie", "Lieu de sortie",
+		}
+	case "de":
+		return []string{
+			"Instanz", "Jahr", "Nummer", "Art", "Typ", "Alter", "Ring",
+			"Aufnahmedatum", "Fundort", "PLZ", "Stadt",
+			"Fundursache", "Status", "Abgabeart", "Abgabedatum", "Abgabeort",
+		}
+	case "nl":
+		return []string{
+			"Instantie", "Jaar", "Nummer", "Soort", "Type", "Leeftijd", "Ring",
+			"Opnamedatum", "Vindplaats", "Postcode", "Stad",
+			"Vangstreden", "Status", "Afgifte type", "Afgiftedatum", "Afgifteplaats",
+		}
+	default:
+		return []string{
+			"Instance", "Year", "Number", "Species", "Type", "Age", "Ring",
+			"Intake date", "Discovery location", "Postal code", "City",
+			"Entry cause", "Status", "Outtake type", "Outtake date", "Outtake location",
+		}
+	}
+}
+
+func nullStr(s nulls.String) string {
+	if s.Valid {
+		return s.String
+	}
+	return ""
+}
+
+func formatDate(t nulls.Time) string {
+	if t.Valid {
+		return t.Time.Format("02/01/2006 15:04")
+	}
+	return ""
+}
+
+// ConsolidatedAnimalsExportCSV exports the consolidated animal register as a
+// CSV file. It applies the same filters and report scope as
+// ConsolidatedAnimalsIndex but no pagination.
+func ConsolidatedAnimalsExportCSV(c buffalo.Context) error {
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return fmt.Errorf("no transaction found")
+	}
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+
+	q := tx.Q()
+	if !scope.IsGlobal() {
+		q = q.Where("instance_id = ?", scope.InstanceID)
+	}
+	viewMode := animalsViewMode(c, scope)
+	q = applyConsolidatedAnimalFilters(q, c, viewMode, scope)
+
+	animals := &models.ConsolidatedAnimals{}
+	if err := q.Order("year desc, year_number asc").All(animals); err != nil {
+		return err
+	}
+
+	lang := requestUILang(c)
+	header := consolidatedAnimalsCSVHeader(lang)
+	rows := make([][]string, 0, len(*animals))
+	for _, a := range *animals {
+		rows = append(rows, []string{
+			a.InstanceID,
+			strconv.Itoa(a.Year),
+			strconv.Itoa(a.YearNumber),
+			a.LocalizedField(lang, "species"),
+			a.LocalizedField(lang, "animal_type"),
+			a.LocalizedField(lang, "animal_age"),
+			nullStr(a.Ring),
+			formatDate(a.IntakeDate),
+			nullStr(a.DiscoveryLocation),
+			nullStr(a.DiscoveryPostalCode),
+			nullStr(a.DiscoveryCity),
+			a.LocalizedField(lang, "entry_cause"),
+			a.CurrentStatus,
+			a.LocalizedField(lang, "outtake_type"),
+			formatDate(a.OuttakeDate),
+			nullStr(a.OuttakeLocation),
+		})
+	}
+
+	return writeCSV(c, "consolidated_animals.csv", header, rows)
 }
 
 // ConsolidatedAnimalShow displays a single consolidated animal with drill-down

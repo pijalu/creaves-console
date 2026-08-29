@@ -175,6 +175,8 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | GET | `/reports/by_location` | `ReportsByLocation` | Session |
 | GET | `/reports/by_type` | `ReportsByType` | Session |
 | GET | `/reports/by_species` | `ReportsBySpecies` | Session |
+| GET | `/reports/annual` | `ReportsAnnualIndex` | Session |
+| GET | `/reports/annual/export.csv` | `ReportsAnnualExportCSV` | Session |
 
 ### Middleware Stack
 
@@ -243,12 +245,15 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
     "id": 42, "year": 2024, "year_number": 17,
     "species": "Hérisson", "gender": "M", "cage": "A12",
     "zone": "Quarantine", "ring": "FR-2024-017",
-    "animal_type": "Mammifère", "animal_age": "Adulte"
+    "animal_type": "Mammifère", "animal_age": "Adulte",
+    "species_class": "Mammalia", "species_agw_group": "...",
+    "species_subside_group": "...", "species_native_status": "Indigène"
   },
   "discovery": {
     "id": "uuid", "location": "...", "postal_code": "67000",
     "city": "Strasbourg", "date": "2024/01/15 10:30",
-    "entry_cause": "...", "reason": "...", "note": "...",
+    "entry_cause": "...", "entry_cause_detail": "...",
+    "entry_cause_nature": "...", "reason": "...", "note": "...",
     "return_habitat": false, "in_garden": true,
     "discoverer_firstname": "...", "discoverer_lastname": "...",
     "discoverer_address": "...", "discoverer_city": "...",
@@ -263,7 +268,8 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
   },
   "outtake": {
     "id": "uuid", "date": "2024/03/01 09:00",
-    "type": "Released to Wild", "location": "...", "note": "..."
+    "type": "Released to Wild", "location": "...", "note": "...",
+    "rating": 1, "dead": false
   },
   "initial_status": "in_care",
   "current_status": "in_care",
@@ -329,12 +335,16 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `instance_id` + `animal_id` | UNIQUE | Composite uniqueness per source animal |
 | `year`, `year_number` | int | Animal identification |
 | `species`, `gender`, `cage`, `zone`, `ring` | varchar NULL | |
+| `species_class`, `species_agw_group`, `species_subside_group`, `species_native_status` | varchar NULL | Species taxonomy from source species table |
 | `animal_type`, `animal_age` | varchar NULL | |
 | `discovery_location`, `discovery_date`, `discovery_city`, `discovery_postal_code` | | |
 | `entry_cause` | varchar NULL | |
+| `entry_cause_detail`, `entry_cause_nature` | varchar NULL | |
 | `current_status` | varchar NOT NULL | in_care / under_treatment / released / died |
 | `intake_date`, `intake_general`, `intake_wounds`, `intake_parasites`, `intake_remarks` | | |
 | `outtake_date`, `outtake_type`, `outtake_location` | | |
+| `outtake_rating` | int NULL | From outtake type definition |
+| `outtake_dead` | bool NULL | From outtake type definition |
 | `last_event_at` | datetime | |
 | `event_count` | int | Number of events applied |
 | `created_at`, `updated_at` | datetime | |
