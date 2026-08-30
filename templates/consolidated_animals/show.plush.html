@@ -26,15 +26,15 @@
                     </tr>
                     <tr>
                         <td><strong>Species:</strong></td>
-                        <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
+                        <td><%= if (animal.Species.Valid) { %><%= tfield_localized(animal, "species") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Type:</strong></td>
-                        <td><%= if (animal.AnimalType.Valid) { tfield_localized(animal, "animal_type") } else { "-" } %></td>
+                        <td><%= if (animal.AnimalType.Valid) { %><%= tfield_localized(animal, "animal_type") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Age:</strong></td>
-                        <td><%= if (animal.AnimalAge.Valid) { tfield_localized(animal, "animal_age") } else { "-" } %></td>
+                        <td><%= if (animal.AnimalAge.Valid) { %><%= tfield_localized(animal, "animal_age") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>
@@ -57,31 +57,43 @@
                 <table class="table table-borderless">
                     <tr>
                         <td><strong>Discovery Location:</strong></td>
-                        <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
+                        <td><%= if (animal.DiscoveryLocation.Valid) { %><%= animal.DiscoveryLocation.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Discovery Date:</strong></td>
-                        <td><%= if (animal.DiscoveryDate.Valid) { animal.DiscoveryDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                        <td><%= if (animal.DiscoveryDate.Valid) { %><%= animal.DiscoveryDate.Time.Format("2006-01-02 15:04") %><% } else { %>-<% } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Entry Cause:</strong></td>
+                        <td><%= if (animal.EntryCause.Valid) { %><%= tfield_localized(animal, "entry_cause") %><% } else { %>-<% } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Entry Cause Detail:</strong></td>
+                        <td><%= if (animal.EntryCauseDetail.Valid) { %><%= tfield_localized(animal, "entry_cause_detail") %><% } else { %>-<% } %></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Entry Cause Nature:</strong></td>
+                        <td><%= if (animal.EntryCauseNature.Valid) { %><%= tfield_localized(animal, "entry_cause_nature") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Intake Date:</strong></td>
-                        <td><%= if (animal.IntakeDate.Valid) { animal.IntakeDate.Time.Format("2006-01-02 15:04") } else { "-" } %></td>
+                        <td><%= if (animal.IntakeDate.Valid) { %><%= animal.IntakeDate.Time.Format("2006-01-02 15:04") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>General State:</strong></td>
-                        <td><%= if (animal.IntakeGeneral.Valid) { animal.IntakeGeneral.String } else { "-" } %></td>
+                        <td><%= if (animal.IntakeGeneral.Valid) { %><%= animal.IntakeGeneral.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Wounds:</strong></td>
-                        <td><%= if (animal.IntakeWounds.Valid) { animal.IntakeWounds.String } else { "-" } %></td>
+                        <td><%= if (animal.IntakeWounds.Valid) { %><%= animal.IntakeWounds.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Parasites:</strong></td>
-                        <td><%= if (animal.IntakeParasites.Valid) { animal.IntakeParasites.String } else { "-" } %></td>
+                        <td><%= if (animal.IntakeParasites.Valid) { %><%= animal.IntakeParasites.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Remarks:</strong></td>
-                        <td><%= if (animal.IntakeRemarks.Valid) { animal.IntakeRemarks.String } else { "-" } %></td>
+                        <td><%= if (animal.IntakeRemarks.Valid) { %><%= animal.IntakeRemarks.String %><% } else { %>-<% } %></td>
                     </tr>
                 </table>
             </div>

@@ -11,8 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"creaves-console/locales"
 	"creaves-console/models"
 
+	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/mw-i18n/v2"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -379,4 +382,129 @@ func TestE2E_MultipleInstancesAndAnimals(t *testing.T) {
 	instB, err := tx.Where("instance_id = ?", "inst-b").Count(&models.ConsolidatedAnimal{})
 	require.NoError(t, err)
 	assert.Equal(t, 1, instB)
+}
+
+// newConsolidatedAnimalViewTestApp mounts the show and drill-down pages with
+// the i18n middleware (so the lang cookie drives tfield_localized) and the
+// shared testDB connection, mirroring the production App() wiring for those
+// routes without auth/session middleware.
+func newConsolidatedAnimalViewTestApp(tx *pop.Connection) *buffalo.App {
+	app := buffalo.New(buffalo.Options{Env: "test"})
+	tr, err := i18n.New(locales.FS(), "en-US")
+	if err != nil {
+		panic(err)
+	}
+	T = tr
+	app.Use(tr.Middleware())
+	app.Use(func(next buffalo.Handler) buffalo.Handler {
+		return func(c buffalo.Context) error {
+			c.Set("tx", tx)
+			return next(c)
+		}
+	})
+	app.GET("/consolidated_animals/{consolidated_animal_id}", ConsolidatedAnimalShow)
+	app.GET("/consolidated_animals/{consolidated_animal_id}/drill_down", ConsolidatedAnimalDrillDown)
+	return app
+}
+
+// TestE2E_TranslationsMapLocalized drives a full lifecycle (discovered ->
+// released) whose payloads carry the translations map for every translatable
+// field (species, animal_type, animal_age, entry_cause, entry_cause_detail,
+// entry_cause_nature, outtake_type), then verifies:
+//
+//  1. the persisted consolidated_animal exposes localized values per language
+//     through LocalizedField (fr translations, en-US canonical fallback);
+//  2. the show and drill-down HTML pages render the localized entry_cause_*
+//     values when the lang cookie selects fr.
+func TestE2E_TranslationsMapLocalized(t *testing.T) {
+	tx := setupTest(t)
+	rawKey, _ := seedAPIKey(t, tx, "")
+	instanceID, animalID := "localized-center", 4242
+
+	fr := map[string]string{
+		"species":            "Blaireau européen",
+		"animal_type":        "Sauvage",
+		"animal_age":         "Adulte",
+		"entry_cause":        "Chute du nid",
+		"entry_cause_detail": "Collision avec véhicule",
+		"entry_cause_nature": "Traumatique",
+		"outtake_type":       "Relâché",
+	}
+
+	discovered, err := json.Marshal(models.EventPayload{
+		Animal: models.AnimalPayload{
+			ID: animalID, Year: 2025, YearNumber: 3,
+			Species: "Meles meles", AnimalType: "wild", AnimalAge: "adult",
+		},
+		Discovery: models.DiscoveryPayload{
+			Location: "Forest Road", City: "Lyon", Date: "2025/04/01 09:15",
+			EntryCause:       "collision",
+			EntryCauseDetail: "vehicle collision",
+			EntryCauseNature: "traumatic",
+		},
+		InitialStatus: "in_care",
+		Translations:  map[string]map[string]string{"fr": fr},
+		Timestamp:     "2025-04-01T09:15:00Z",
+	})
+	require.NoError(t, err)
+
+	released, err := json.Marshal(models.EventPayload{
+		Outtake: models.OuttakePayload{
+			Date:     "2025/05/10 11:00",
+			Type:     "release",
+			Location: "Forest Reserve",
+		},
+		Translations: map[string]map[string]string{"fr": fr},
+		Timestamp:    "2025-05-10T11:00:00Z",
+	})
+	require.NoError(t, err)
+
+	base := time.Now()
+	events := []e2ePusherEvent{
+		{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: instanceID, AnimalID: animalID, EventType: string(models.EventTypeAnimalDiscovered), Payload: discovered, CreatedAt: base},
+		{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: instanceID, AnimalID: animalID, EventType: string(models.EventTypeAnimalReleased), Payload: released, CreatedAt: base.Add(time.Hour)},
+	}
+
+	code, resp := deliverToConsole(t, tx, rawKey, events)
+	require.Equal(t, http.StatusOK, code)
+	assert.EqualValues(t, 2, resp["processed"])
+	assert.EqualValues(t, 2, resp["total"])
+
+	var animal models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).First(&animal),
+		"consolidated animal must exist for the delivered instance/animal")
+
+	// LocalizedField returns the fr translation for every translatable field.
+	for _, field := range []string{"species", "animal_type", "animal_age", "entry_cause", "entry_cause_detail", "entry_cause_nature", "outtake_type"} {
+		assert.Equal(t, fr[field], animal.LocalizedField("fr", field), "fr translation for %s", field)
+	}
+
+	// en-US has no stored translations: LocalizedField falls back to canonical.
+	assert.Equal(t, "Meles meles", animal.LocalizedField("en-US", "species"))
+	assert.Equal(t, "wild", animal.LocalizedField("en-US", "animal_type"))
+	assert.Equal(t, "adult", animal.LocalizedField("en-US", "animal_age"))
+	assert.Equal(t, "collision", animal.LocalizedField("en-US", "entry_cause"))
+	assert.Equal(t, "vehicle collision", animal.LocalizedField("en-US", "entry_cause_detail"))
+	assert.Equal(t, "traumatic", animal.LocalizedField("en-US", "entry_cause_nature"))
+	assert.Equal(t, "release", animal.LocalizedField("en-US", "outtake_type"))
+
+	// Show and drill-down pages render the localized entry_cause_* values for
+	// a fr-language session.
+	app := newConsolidatedAnimalViewTestApp(tx)
+	paths := []string{
+		"/consolidated_animals/" + animal.ID.String(),
+		"/consolidated_animals/" + animal.ID.String() + "/drill_down",
+	}
+	for _, path := range paths {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.AddCookie(&http.Cookie{Name: "lang", Value: "fr"})
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code, "GET %s", path)
+		body := rec.Body.String()
+		assert.Contains(t, body, fr["entry_cause"], "%s must render localized entry_cause", path)
+		assert.Contains(t, body, fr["entry_cause_detail"], "%s must render localized entry_cause_detail", path)
+		assert.Contains(t, body, fr["entry_cause_nature"], "%s must render localized entry_cause_nature", path)
+		assert.Contains(t, body, fr["species"], "%s must render localized species", path)
+	}
 }
