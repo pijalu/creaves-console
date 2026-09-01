@@ -41,8 +41,8 @@
                                 <i class="fas fa-chart-bar"></i> Rapporten
                             </a>
                             <div class="dropdown-menu">
-                                <a class="dropdown-item" href="/reports">Overzicht</a>
-                                <a class="dropdown-item" href="/reports/annual">Jaarlijkse statistieken</a>
+                                <a class="dropdown-item" href="/reports"><i class="fas fa-chart-line"></i> Overzicht</a>
+                                <a class="dropdown-item" href="/reports/annual"><i class="fas fa-calendar-alt"></i> Jaarlijkse statistieken</a>
                             </div>
                         </li>
                         <%= if (current_user.Admin) { %>
@@ -51,8 +51,8 @@
                                     <i class="fas fa-cog"></i> Beheer
                                 </a>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="/users">Gebruikers</a>
-                                    <a class="dropdown-item" href="/webhook_api_keys">Webhook-API-sleutels</a>
+                                    <a class="dropdown-item" href="/users"><i class="fas fa-users"></i> Gebruikers</a>
+                                    <a class="dropdown-item" href="/webhook_api_keys"><i class="fas fa-key"></i> Webhook-API-sleutels</a>
                                 </div>
                             </li>
                         <% } %>

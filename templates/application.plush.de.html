@@ -41,8 +41,8 @@
                                 <i class="fas fa-chart-bar"></i> Berichte
                             </a>
                             <div class="dropdown-menu">
-                                <a class="dropdown-item" href="/reports">Übersicht</a>
-                                <a class="dropdown-item" href="/reports/annual">Jahresstatistik</a>
+                                <a class="dropdown-item" href="/reports"><i class="fas fa-chart-line"></i> Übersicht</a>
+                                <a class="dropdown-item" href="/reports/annual"><i class="fas fa-calendar-alt"></i> Jahresstatistik</a>
                             </div>
                         </li>
                         <%= if (current_user.Admin) { %>
@@ -51,8 +51,8 @@
                                     <i class="fas fa-cog"></i> Verwaltung
                                 </a>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="/users">Benutzer</a>
-                                    <a class="dropdown-item" href="/webhook_api_keys">Webhook-API-Schlüssel</a>
+                                    <a class="dropdown-item" href="/users"><i class="fas fa-users"></i> Benutzer</a>
+                                    <a class="dropdown-item" href="/webhook_api_keys"><i class="fas fa-key"></i> Webhook-API-Schlüssel</a>
                                 </div>
                             </li>
                         <% } %>
