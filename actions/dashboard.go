@@ -416,6 +416,27 @@ func ConsolidatedAnimalDrillDown(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.HTML("consolidated_animals/drill_down.plush.html"))
 }
 
+// statusCount is one row of the current_status grouping.
+type statusCount struct {
+	Status string `db:"current_status"`
+	Count  int    `db:"count"`
+}
+
+// tallyStatusCounts picks the well-known statuses out of a grouping.
+func tallyStatusCounts(counts []statusCount) (inCare, released, died int) {
+	for _, sc := range counts {
+		switch sc.Status {
+		case "in_care":
+			inCare = sc.Count
+		case "released":
+			released = sc.Count
+		case "died":
+			died = sc.Count
+		}
+	}
+	return inCare, released, died
+}
+
 // ReportsIndex shows the main reports dashboard
 func ReportsIndex(c buffalo.Context) error {
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -438,14 +459,15 @@ func ReportsIndex(c buffalo.Context) error {
 		return err
 	}
 	stats["total_animals"] = totalAnimals
-	statusCounts := []struct {
-		Status string `db:"current_status"`
-		Count  int    `db:"count"`
-	}{}
+	statusCounts := []statusCount{}
 	if err = tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY current_status", args...).All(&statusCounts); err != nil {
 		return err
 	}
 	stats["by_status"] = statusCounts
+	inCare, released, died := tallyStatusCounts(statusCounts)
+	stats["in_care"] = inCare
+	stats["released"] = released
+	stats["died"] = died
 	yearCounts := []struct {
 		Year  int `db:"year"`
 		Count int `db:"count"`

@@ -21,7 +21,31 @@
         <div class="card stat-card bg-primary text-white">
             <div class="card-body">
                 <div class="stat-number"><%= stats["total_animals"] %></div>
-                <div>Total Animals</div>
+                <div>Animaux au total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["in_care"] %></div>
+                <div>Animaux en cours de soins</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["released"] %></div>
+                <div>Relâchés</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["died"] %></div>
+                <div>Décédés</div>
             </div>
         </div>
     </div>
