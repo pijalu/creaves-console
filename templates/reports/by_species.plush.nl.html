@@ -7,7 +7,15 @@
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <form method="GET" action="/reports/by_species" class="form-inline"><input type="hidden" name="instance_id" value="<%= instanceID %>">
+        <form method="GET" action="/reports/by_species" class="form-inline">
+            <div class="form-group mr-2">
+                <label for="instance_id" class="mr-2">Centrum:</label>
+                <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
+                    <%= for (i) in instances { %>
+                        <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>Alle centra<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
+                    <% } %>
+                </select>
+            </div>
             <div class="form-group mr-2">
                 <label for="year" class="mr-2">Jaar:</label>
                 <select name="year" id="year" class="form-control">

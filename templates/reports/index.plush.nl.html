@@ -6,6 +6,22 @@
 </div>
 
 <div class="row">
+    <div class="col-md-12">
+        <form method="GET" action="/reports" class="form-inline mb-3">
+            <div class="form-group mr-2">
+                <label for="instance_id" class="mr-2">Centrum:</label>
+                <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
+                    <%= for (i) in instances { %>
+                        <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>Alle centra<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
+                    <% } %>
+                </select>
+            </div>
+            <noscript><button class="btn btn-primary">Toepassen</button></noscript>
+        </form>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-3">
         <div class="card stat-card bg-primary text-white">
             <div class="card-body">

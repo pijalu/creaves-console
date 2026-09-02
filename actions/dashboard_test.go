@@ -74,15 +74,15 @@ func seedRegisterFixtures(t *testing.T, tx *pop.Connection) {
 	}
 	for _, f := range fixtures {
 		a := &models.ConsolidatedAnimal{
-			ID:           uuid.Must(uuid.NewV4()),
-			InstanceID:   f.instanceID,
-			AnimalID:     f.number,
-			Year:         f.year,
-			YearNumber:   f.number,
+			ID:            uuid.Must(uuid.NewV4()),
+			InstanceID:    f.instanceID,
+			AnimalID:      f.number,
+			Year:          f.year,
+			YearNumber:    f.number,
 			CurrentStatus: f.status,
-			LastEventAt:  now,
-			CreatedAt:    now,
-			UpdatedAt:    now,
+			LastEventAt:   now,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		}
 		if f.species != "" {
 			a.Species = nullsString(f.species)

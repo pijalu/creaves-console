@@ -481,7 +481,12 @@ func ReportsIndex(c buffalo.Context) error {
 		return err
 	}
 	stats["by_type"] = typeCounts
+	instances, err := listAnnualInstances(tx, scope)
+	if err != nil {
+		return err
+	}
 	c.Set("stats", stats)
+	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/index.plush.html"))
 }
@@ -554,6 +559,11 @@ func ReportsByLocation(c buffalo.Context) error {
 	}
 	c.Set("results", results)
 	c.Set("groupBy", groupBy)
+	instances, err := listAnnualInstances(tx, scope)
+	if err != nil {
+		return err
+	}
+	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_location.plush.html"))
 }
@@ -630,6 +640,11 @@ func ReportsByType(c buffalo.Context) error {
 	}
 	c.Set("results", results)
 	c.Set("localizedLabels", labels)
+	instances, err := listAnnualInstances(tx, scope)
+	if err != nil {
+		return err
+	}
+	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_type.plush.html"))
 }
@@ -702,6 +717,11 @@ func ReportsBySpecies(c buffalo.Context) error {
 	c.Set("years", years)
 	c.Set("localizedLabels", labels)
 	c.Set("selectedYear", year)
+	instances, err := listAnnualInstances(tx, scope)
+	if err != nil {
+		return err
+	}
+	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_species.plush.html"))
 }

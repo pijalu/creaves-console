@@ -31,6 +31,7 @@ func newReportsTestApp(tx *pop.Connection) *buffalo.App {
 	})
 	app.GET("/reports", ReportsIndex)
 	app.GET("/reports/by_location", ReportsByLocation)
+	app.GET("/reports/by_type", ReportsByType)
 	app.GET("/reports/by_species", ReportsBySpecies)
 	return app
 }
@@ -91,6 +92,51 @@ func TestReportsBySpeciesRenders(t *testing.T) {
 	// Unknown instance → 404.
 	res = getReportsPage(t, app, "/reports/by_species?instance_id=nope")
 	assert.Equal(t, http.StatusNotFound, res.Code)
+}
+
+// TestReportsInstanceDropdownOnAllPages asserts every report page renders the
+// instance selector as a dropdown ("All centers" + "Name (ID)" entries), that
+// the current scope stays selected across pages, and that unknown instances
+// still 404.
+func TestReportsInstanceDropdownOnAllPages(t *testing.T) {
+	paths := []string{
+		"/reports",
+		"/reports/by_location?group_by=city",
+		"/reports/by_type",
+		"/reports/by_species",
+	}
+
+	app := newReportsTestApp(testDB)
+	seedRegisterFixtures(t, testDB)
+
+	for _, path := range paths {
+		res := getReportsPage(t, app, path)
+		require.Equal(t, http.StatusOK, res.Code, "path %s: body: %s", path, res.Body.String())
+		body := res.Body.String()
+		assert.Contains(t, body, `<select name="instance_id"`, "%s: instance filter must be a dropdown", path)
+		assert.Contains(t, body, `>All centers<`, "%s: dropdown must offer global scope", path)
+		assert.Contains(t, body, `center-a (center-a)`, "%s: dropdown entries must show name + ID", path)
+		assert.Contains(t, body, `center-b (center-b)`, "%s: dropdown must list all instances", path)
+	}
+
+	// Selection persists across pages: instance_id=center-a must render as the
+	// selected option on every report page.
+	for _, path := range paths {
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		res := getReportsPage(t, app, path+sep+"instance_id=center-a")
+		require.Equal(t, http.StatusOK, res.Code, "path %s: body: %s", path, res.Body.String())
+		assert.Contains(t, res.Body.String(), `<option value="center-a" selected`,
+			"%s: center-a must stay selected", path)
+	}
+
+	// Unknown instance → 404 on the pages not otherwise covered.
+	for _, path := range []string{"/reports", "/reports/by_type", "/reports/by_location?group_by=city"} {
+		res := getReportsPage(t, app, path+"&instance_id=nope")
+		assert.Equal(t, http.StatusNotFound, res.Code, "%s: unknown instance must 404", path)
+	}
 }
 
 func TestReportsByLocationNullHandling(t *testing.T) {
