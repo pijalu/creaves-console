@@ -109,8 +109,13 @@ func localizedField(value interface{}, field string, help plush.HelperContext) (
 }
 
 // csrfToken resolves the CSRF token set by the csrf middleware (or empty
-// when rendering without it, e.g. in minimal unit-test apps), so the logout
-// form in the layout can include the hidden authenticity_token input.
+// when rendering without it, e.g. in minimal unit-test apps), so forms in
+// the layout can include the hidden authenticity_token input.
+// Registered under the name "csrf_token": mw-csrf itself stores the masked
+// token string under "authenticity_token" on the buffalo context, and that
+// key would otherwise collide with the helper function (buffalo merges the
+// helper map over the context data, so a bare <%= authenticity_token %>
+// would resolve to the function object and render as an empty string).
 func csrfToken(help plush.HelperContext) string {
 	if tok, ok := help.Value("authenticity_token").(string); ok {
 		return tok
@@ -132,10 +137,10 @@ func init() {
 				}
 				return "✗"
 			},
-			"langLinks":          langLinks,
-			"tfield_localized":   localizedField,
-			"tlabel_localized":   localizedLabel,
-			"authenticity_token": csrfToken,
+			"langLinks":        langLinks,
+			"tfield_localized": localizedField,
+			"tlabel_localized": localizedLabel,
+			"csrf_token":       csrfToken,
 		},
 	})
 }

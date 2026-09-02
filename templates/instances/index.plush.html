@@ -7,5 +7,41 @@
 <td><code><%= instance.InstanceID %></code></td><td><%= instance.FirstSeenAt.Format("2006-01-02 15:04") %></td><td><%= instance.LastSeenAt.Format("2006-01-02 15:04") %></td>
 <td><%= if (instance.LastEventAt) { %><%= instance.LastEventAt.Format("2006-01-02 15:04") %><% } else { %><em>Never</em><% } %></td>
 <td><%= instance.AnimalCount %></td><td><%= instance.EventCount %></td><td><%= instance.KeyCount %></td>
-<td><a class="btn btn-sm btn-info" href="/instances/<%= instance.InstanceID %>">Details</a></td></tr><% } %>
+<td>
+<a class="btn btn-sm btn-info" href="/instances/<%= instance.InstanceID %>">Details</a>
+<button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#delete-instance-modal" data-instance-id="<%= instance.InstanceID %>" data-animals="<%= instance.AnimalCount %>" data-events="<%= instance.EventCount %>" data-keys="<%= instance.KeyCount %>">Delete</button>
+</td></tr><% } %>
 </tbody></table></div></div>
+<div class="modal fade" id="delete-instance-modal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal-dialog" role="document"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title text-danger">Delete instance data</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+<form id="delete-instance-form" method="POST">
+<div class="modal-body">
+<input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+<p>This permanently deletes <strong id="delete-instance-animals">0</strong> animals, <strong id="delete-instance-events">0</strong> events, <strong id="delete-instance-keys">0</strong> restricted API keys, and the registry entry of instance <code id="delete-instance-id"></code>.</p>
+<p class="text-danger">This action cannot be undone. Trigger a full resync from Creaves afterward to rebuild the data.</p>
+<div class="form-group"><label for="delete-instance-confirmation">Type <code id="delete-instance-id-echo"></code> to confirm</label><input class="form-control" id="delete-instance-confirmation" name="instance_id_confirmation" autocomplete="off" required></div>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+<button type="submit" class="btn btn-danger">Delete instance data</button>
+</div>
+</form>
+</div></div></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var modal = document.getElementById('delete-instance-modal');
+  if (!modal) { return; }
+  modal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    if (!button) { return; }
+    var id = button.getAttribute('data-instance-id') || '';
+    modal.querySelector('#delete-instance-id').textContent = id;
+    modal.querySelector('#delete-instance-id-echo').textContent = id;
+    modal.querySelector('#delete-instance-animals').textContent = button.getAttribute('data-animals');
+    modal.querySelector('#delete-instance-events').textContent = button.getAttribute('data-events');
+    modal.querySelector('#delete-instance-keys').textContent = button.getAttribute('data-keys');
+    modal.querySelector('#delete-instance-form').setAttribute('action', '/instances/' + encodeURIComponent(id) + '/cleanup');
+  });
+});
+</script>

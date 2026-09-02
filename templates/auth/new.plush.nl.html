@@ -12,7 +12,7 @@
             </div>
             <div class="card-body">
                 <form action="/auth" method="POST">
-                    <input type="hidden" name="authenticity_token" value="<%= authenticity_token %>">
+                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
                     <div class="form-group">
                         <label for="login">Gebruikersnaam</label>
                         <input type="text" class="form-control" id="login" name="login" required>
