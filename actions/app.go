@@ -83,6 +83,10 @@ func App() *buffalo.App {
 		app.GET("/reports/by_species", ReportsBySpecies)
 		app.GET("/reports/annual", ReportsAnnualIndex)
 		app.GET("/reports/annual/export.csv", ReportsAnnualExportCSV)
+		app.GET("/reports/register", RegisterIndex)
+		app.GET("/reports/register/export.csv", RegisterExportCSV)
+		app.GET("/reports/snapshot", SnapshotIndex)
+		app.GET("/reports/snapshot/export.csv", SnapshotExportCSV)
 
 		if ENV != "development" {
 			app.ErrorHandlers[500] = func(status int, err error, c buffalo.Context) error {

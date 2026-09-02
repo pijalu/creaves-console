@@ -1,0 +1,74 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-camera"></i> Instantané du registre</h1>
+        <p class="lead">Animaux présents en soin à une date donnée, sur tous les centres ou un seul centre</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <form method="GET" action="/reports/snapshot" class="form-inline">
+            <div class="form-group mr-3">
+                <label for="snapshotDate" class="mr-2">Date :</label>
+                <input type="date" id="snapshotDate" name="snapshotDate" class="form-control" value="<%= snapshotDate %>" onchange="this.form.submit()" required />
+            </div>
+            <div class="form-group mr-3">
+                <label for="instance_id" class="mr-2">Centre :</label>
+                <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
+                    <%= for (i) in instances { %>
+                        <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>Tous les centres<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
+                    <% } %>
+                </select>
+            </div>
+            <noscript><button type="submit" class="btn btn-primary"Appliquer</button></noscript>
+            <a href="/reports/snapshot/export.csv?snapshotDate=<%= snapshotDate %>&amp;instance_id=<%= instanceID %>" class="btn btn-success ml-auto" title="Export CSV">
+                <i class="fas fa-cloud-download-alt"></i> Export CSV
+            </a>
+            <a href="/reports?instance_id=<%= instanceID %>" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Retour</a>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info py-2">
+    Animaux en soin le <%= snapshotDate %>: <strong><%= total %></strong>
+    <%= if (total > limit) { %>
+        <span class="text-danger">(affichage des premiers <%= limit %>)</span>
+    <% } %>
+</div>
+
+<table class="table table-hover table-bordered">
+  <thead class="thead-light">
+    <tr>
+      <th>Numéro</th>
+      <%= if (instanceID == "") { %><th>Centre</th><% } %>
+      <th>Type</th>
+      <th>Espèce</th>
+      <th>Identification</th>
+      <th>Zone</th>
+      <th>Cage</th>
+      <th>Date d'entrée</th>
+      <th>Lieu de découverte</th>
+      <th>Âge</th>
+      <th>Motif</th>
+    </tr>
+  </thead>
+  <tbody>
+    <%= for (animal) in animals { %>
+      <tr>
+        <td class="align-middle">
+          <a class="btn btn-primary btn-sm" href="/consolidated_animals/<%= animal.ID %>"><%= animal.YearNumber %></a>
+        </td>
+        <%= if (instanceID == "") { %><td class="align-middle"><%= animal.InstanceID %></td><% } %>
+        <td class="align-middle"><%= if (animal.AnimalType.Valid) { %><%= animal.AnimalType.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.Species.Valid) { %><%= animal.Species.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.Ring.Valid) { %><%= animal.Ring.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.Zone.Valid) { %><%= animal.Zone.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.Cage.Valid) { %><%= animal.Cage.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.IntakeDate.Valid) { %><%= animal.IntakeDate.Time.Format("02/01/2006") %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.DiscoveryLocation.Valid) { %><%= animal.DiscoveryLocation.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.AnimalAge.Valid) { %><%= animal.AnimalAge.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.EntryCause.Valid) { %><%= animal.EntryCause.String %><% } else { %>-<% } %></td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>
