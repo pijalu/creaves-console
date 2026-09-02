@@ -53,6 +53,7 @@ func App() *buffalo.App {
 		auth.GET("/", AuthLanding)
 		auth.GET("/new", AuthNew)
 		auth.POST("/", AuthCreate)
+		auth.POST("/logout", AuthDestroy)
 		auth.DELETE("/", AuthDestroy)
 		auth.Middleware.Skip(Authorize, AuthLanding, AuthNew, AuthCreate)
 

@@ -79,9 +79,12 @@
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/auth" data-method="DELETE">
-                                <i class="fas fa-sign-out-alt"></i> Abmelden
-                            </a>
+                            <form action="/auth/logout" method="POST" class="form-inline">
+                                <input type="hidden" name="authenticity_token" value="<%= authenticity_token %>">
+                                <button type="submit" class="btn btn-link nav-link p-0">
+                                    <i class="fas fa-sign-out-alt"></i> Abmelden
+                                </button>
+                            </form>
                         </li>
                     <% } else { %>
                         <li class="nav-item">

@@ -108,6 +108,16 @@ func localizedField(value interface{}, field string, help plush.HelperContext) (
 	}
 }
 
+// csrfToken resolves the CSRF token set by the csrf middleware (or empty
+// when rendering without it, e.g. in minimal unit-test apps), so the logout
+// form in the layout can include the hidden authenticity_token input.
+func csrfToken(help plush.HelperContext) string {
+	if tok, ok := help.Value("authenticity_token").(string); ok {
+		return tok
+	}
+	return ""
+}
+
 var r *render.Engine
 
 func init() {
@@ -122,9 +132,10 @@ func init() {
 				}
 				return "✗"
 			},
-			"langLinks":        langLinks,
-			"tfield_localized": localizedField,
-			"tlabel_localized": localizedLabel,
+			"langLinks":          langLinks,
+			"tfield_localized":   localizedField,
+			"tlabel_localized":   localizedLabel,
+			"authenticity_token": csrfToken,
 		},
 	})
 }

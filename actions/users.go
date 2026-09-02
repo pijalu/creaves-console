@@ -12,9 +12,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthLanding default implementation.
+// AuthLanding redirects GET /auth to a sensible page: signed-in users go to
+// the dashboard, everyone else to the sign-in page. (The scaffold rendered an
+// auth/landing template that was never created, so any direct GET /auth —
+// e.g. the logout fallback when JS is unavailable — returned a 500 error.)
 func AuthLanding(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.HTML("auth/landing.plush.html"))
+	if GetCurrentUser(c) != nil {
+		return c.Redirect(http.StatusFound, "/dashboard")
+	}
+	return c.Redirect(http.StatusFound, "/auth/new")
 }
 
 // AuthNew loads the signin page
