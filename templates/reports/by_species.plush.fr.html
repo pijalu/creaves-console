@@ -13,7 +13,7 @@
                 <select name="year" id="year" class="form-control">
                     <option value="">All</option>
                     <%= for (y) in years { %>
-                        <option value="<%= y.Year %>" <%= if (selectedYear == string(y.Year)) { %>selected<% } %><%= y.Year %></option>
+                        <option value="<%= y.Year %>" <%= if (y.Selected) { %>selected<% } %>><%= y.Year %></option>
                     <% } %>
                 </select>
             </div>

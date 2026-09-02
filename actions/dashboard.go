@@ -496,12 +496,18 @@ func ReportsByLocation(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
-	whereLocation, locationArgs := ScopedWhere(scope, "WHERE discovery_city IS NOT NULL")
-
 	groupBy := c.Param("group_by")
 	if groupBy == "" {
 		groupBy = "city"
 	}
+
+	// Filter out rows missing the grouping column so grouped values are
+	// never NULL (plain string scan targets).
+	locationBase := "WHERE discovery_city IS NOT NULL"
+	if groupBy == "postal_code" {
+		locationBase = "WHERE discovery_postal_code IS NOT NULL"
+	}
+	whereLocation, locationArgs := ScopedWhere(scope, locationBase)
 
 	var results []struct {
 		Location   string `db:"location"`
@@ -518,7 +524,7 @@ func ReportsByLocation(c buffalo.Context) error {
 		query = `SELECT 
 			discovery_postal_code as location,
 			discovery_postal_code as postal_code,
-			MAX(discovery_city) as city,
+			COALESCE(MAX(discovery_city), '') as city,
 			COUNT(*) as count,
 			SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
 			SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
@@ -530,7 +536,7 @@ func ReportsByLocation(c buffalo.Context) error {
 	} else {
 		query = `SELECT 
 			discovery_city as location,
-			MAX(discovery_postal_code) as postal_code,
+			COALESCE(MAX(discovery_postal_code), '') as postal_code,
 			discovery_city as city,
 			COUNT(*) as count,
 			SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
@@ -650,6 +656,7 @@ func ReportsBySpecies(c buffalo.Context) error {
 		labelArgs = append(labelArgs, parsedYear)
 	}
 	whereClause, scopeArgs := ScopedWhere(scope, whereClause)
+	queryArgs = append(queryArgs, labelArgs...)
 	queryArgs = append(queryArgs, scopeArgs...)
 
 	var results []struct {
@@ -671,22 +678,28 @@ func ReportsBySpecies(c buffalo.Context) error {
 		GROUP BY species 
 		ORDER BY count DESC`, whereClause)
 
-	query = fmt.Sprintf(query, whereClause)
 	if err := tx.RawQuery(query, queryArgs...).All(&results); err != nil {
 		return err
 	}
 
 	// Get available years for filter
-	var years []struct {
+	var yearsRows []struct {
 		Year int `db:"year"`
 	}
 	yearWhere, yearArgs := ScopedWhere(scope, "")
-	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals "+yearWhere+" ORDER BY year DESC", yearArgs...).All(&years)
+	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals "+yearWhere+" ORDER BY year DESC", yearArgs...).All(&yearsRows)
+
+	years := make([]yearOption, 0, len(yearsRows))
+	for _, y := range yearsRows {
+		years = append(years, yearOption{Year: y.Year, Selected: c.Param("year") == strconv.Itoa(y.Year)})
+	}
 
 	labels, err := localizedGroupLabels(tx, scope, "species", requestUILang(c), labelWhere, labelArgs)
 	if err != nil {
 		return err
 	}
+	c.Set("results", results)
+	c.Set("years", years)
 	c.Set("localizedLabels", labels)
 	c.Set("selectedYear", year)
 	c.Set("instanceID", scope.InstanceID)

@@ -50,6 +50,12 @@ func scopedWhere(scope ReportScope, base string) (string, []interface{}) {
 	return "WHERE " + base + " AND instance_id = ?", []interface{}{scope.InstanceID}
 }
 
+// yearOption is one entry of a year dropdown.
+type yearOption struct {
+	Year     int
+	Selected bool
+}
+
 func reportScope(c buffalo.Context, tx *pop.Connection) (ReportScope, error) {
 	scope := ResolveReportScope(c.Param("instance_id"))
 	if scope.IsGlobal() {
