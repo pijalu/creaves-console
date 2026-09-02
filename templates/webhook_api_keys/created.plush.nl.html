@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>API-sleutel aangemaakt</h1>
+
+        <div class="alert alert-warning mt-4">
+            <strong>Belangrijk:</strong> dit is de enige keer dat de volledige API-sleutel wordt getoond.
+            Kopieer hem nu en bewaar hem veilig &mdash; hij kan later niet meer worden opgehaald.
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><%= webhookAPIKey.Name %></h5>
+            </div>
+            <div class="card-body">
+                <label for="raw-api-key"><strong>Uw API-sleutel:</strong></label>
+                <div class="input-group">
+                    <input type="text" class="form-control text-monospace" id="raw-api-key" readonly value="<%= rawKey %>" onclick="this.select()">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="button" id="copy-api-key-btn" onclick="copyApiKey()">Kopiëren</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" class="btn btn-secondary">Verder naar de sleutelgegevens</a>
+                <a href="/webhook_api_keys" class="btn btn-outline-secondary">Terug naar de lijst</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyApiKey() {
+    var input = document.getElementById('raw-api-key');
+    input.focus();
+    input.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value);
+    } else {
+        document.execCommand('copy');
+    }
+}
+</script>

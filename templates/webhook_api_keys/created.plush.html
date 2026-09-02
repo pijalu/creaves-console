@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1>API Key Created</h1>
+
+        <div class="alert alert-warning mt-4">
+            <strong>Important:</strong> this is the only time the full API key is shown.
+            Copy it now and store it safely &mdash; it cannot be retrieved later.
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><%= webhookAPIKey.Name %></h5>
+            </div>
+            <div class="card-body">
+                <label for="raw-api-key"><strong>Your API key:</strong></label>
+                <div class="input-group">
+                    <input type="text" class="form-control text-monospace" id="raw-api-key" readonly value="<%= rawKey %>" onclick="this.select()">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="button" id="copy-api-key-btn" onclick="copyApiKey()">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" class="btn btn-secondary">Continue to key details</a>
+                <a href="/webhook_api_keys" class="btn btn-outline-secondary">Back to list</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyApiKey() {
+    var input = document.getElementById('raw-api-key');
+    input.focus();
+    input.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value);
+    } else {
+        document.execCommand('copy');
+    }
+}
+</script>

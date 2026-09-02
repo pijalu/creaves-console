@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -39,6 +40,7 @@ func newAdminTestApp(tx *pop.Connection, admin bool) *buffalo.App {
 		}
 	})
 	app.Resource("/webhook_api_keys", WebhookAPIKeysResource{})
+	app.GET("/webhook_api_keys/{webhook_api_key_id}/created", WebhookAPIKeysResource{}.Created)
 	return app
 }
 
@@ -471,4 +473,86 @@ func TestWebhookAPIKeys_ValidationFailXML(t *testing.T) {
 	rec = httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+}
+
+// ---------------------------------------------------------------------------
+// Created (one-time raw key display page)
+// ---------------------------------------------------------------------------
+
+// createKeyWithSession runs a real Create POST and returns the recorder, whose
+// redirect target and session cookies feed the follow-up Created request.
+func createKeyWithSession(t *testing.T, tx *pop.Connection, name string) *httptest.ResponseRecorder {
+	t.Helper()
+	app := newAdminTestApp(tx, true)
+
+	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name="+name))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code, "create should redirect")
+	require.Contains(t, rec.Header().Get("Location"), "/created", "redirect must target the dedicated created page")
+	return rec
+}
+
+// replayWithCookies copies the cookies set by rec onto a new request.
+func replayWithCookies(rec *httptest.ResponseRecorder, method, target string) *http.Request {
+	req := httptest.NewRequest(method, target, nil)
+	for _, ck := range rec.Result().Cookies() {
+		req.AddCookie(ck)
+	}
+	return req
+}
+
+func TestWebhookAPIKeys_CreatedShowsRawKeyOnce(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+
+	createRec := createKeyWithSession(t, tx, "OneTimeKey")
+	createdURL := createRec.Header().Get("Location")
+
+	// Follow the redirect with the session cookie: the raw key must be shown
+	// on the dedicated page with the one-time warning and a copy affordance.
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, replayWithCookies(createRec, "GET", createdURL))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	body := rec.Body.String()
+	assert.Contains(t, body, "creaves_", "raw key must be visible on the created page")
+	assert.Contains(t, body, "only time", "one-time warning must be present")
+	assert.Contains(t, body, "copy-api-key-btn", "copy affordance must be present")
+
+	// The displayed raw key must authenticate against the stored hash.
+	re := regexp.MustCompile(`creaves_[0-9a-fA-F-]+`)
+	rawShown := re.FindString(body)
+	require.NotEmpty(t, rawShown, "a raw key should appear in the page")
+	keys := &models.WebhookAPIKeys{}
+	require.NoError(t, tx.All(keys))
+	require.Len(t, *keys, 1)
+	assert.True(t, (*keys)[0].Authenticate(rawShown), "displayed raw key must authenticate")
+
+	// Second visit (replaying the updated session cookie): the raw key is gone
+	// (one-time display) → back to show.
+	rec2 := httptest.NewRecorder()
+	app.ServeHTTP(rec2, replayWithCookies(rec, "GET", createdURL))
+	assert.Equal(t, http.StatusSeeOther, rec2.Code)
+	assert.NotContains(t, rec2.Body.String(), "creaves_", "raw key must never leak after the first display")
+}
+
+func TestWebhookAPIKeys_CreatedWithoutSessionRedirectsToShow(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+
+	_, stored := seedAPIKey(t, tx, "")
+
+	rec := perform(app, "GET", "/webhook_api_keys/"+stored.ID.String()+"/created")
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "creaves_")
+}
+
+func TestWebhookAPIKeys_CreatedNonAdminForbidden(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, false)
+
+	rec := perform(app, "GET", "/webhook_api_keys/"+uuid.Must(uuid.NewV4()).String()+"/created")
+	assert.Equal(t, http.StatusForbidden, rec.Code)
 }

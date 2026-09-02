@@ -61,6 +61,7 @@ func App() *buffalo.App {
 
 		// Webhook API keys management
 		app.Resource("/webhook_api_keys", WebhookAPIKeysResource{})
+		app.GET("/webhook_api_keys/{webhook_api_key_id}/created", WebhookAPIKeysResource{}.Created)
 
 		// Registered source instances and destructive cleanup.
 		app.GET("/instances", InstancesIndex)

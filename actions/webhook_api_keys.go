@@ -124,11 +124,15 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 		}).Respond(c)
 	}
 
-	// Store raw key in flash to show once
-	c.Flash().Add("success", fmt.Sprintf("API Key created successfully. Your key is: %s (copy it now - it will not be shown again)", rawKey))
+	// Hand the raw key over to the dedicated one-time display page through the
+	// session (never through the URL, which would leak into logs/history).
+	c.Session().Set(rawKeySessionKey(key.ID), rawKey)
+	if err := c.Session().Save(); err != nil {
+		return errors.WithStack(err)
+	}
 
 	return responder.Wants("html", func(c buffalo.Context) error {
-		return c.Redirect(http.StatusSeeOther, "/webhook_api_keys/%v", key.ID)
+		return c.Redirect(http.StatusSeeOther, "/webhook_api_keys/%v/created", key.ID)
 	}).Wants("json", func(c buffalo.Context) error {
 		return c.Render(http.StatusCreated, r.JSON(map[string]interface{}{
 			"id":         key.ID,
@@ -136,6 +140,50 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 			"key_prefix": key.KeyPrefix,
 			"raw_key":    rawKey, // Only shown once on creation
 		}))
+	}).Respond(c)
+}
+
+// rawKeySessionKey is the session key under which the raw API key is stored
+// between Create (POST) and the dedicated one-time display page (GET).
+func rawKeySessionKey(id uuid.UUID) string {
+	return "raw_api_key_" + id.String()
+}
+
+// Created shows the raw API key exactly once, right after Create. The raw key
+// is passed through the session (never through the URL) and removed from the
+// session as soon as it has been displayed.
+func (v WebhookAPIKeysResource) Created(c buffalo.Context) error {
+	cu := GetCurrentUser(c)
+	if cu == nil || !cu.Admin {
+		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+	}
+
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return fmt.Errorf("no transaction found")
+	}
+
+	key := &models.WebhookAPIKey{}
+	if err := tx.Find(key, c.Param("webhook_api_key_id")); err != nil {
+		return c.Error(http.StatusNotFound, err)
+	}
+
+	sessKey := rawKeySessionKey(key.ID)
+	raw := c.Session().Get(sessKey)
+	if raw == nil {
+		// Already displayed (or unknown navigation): the raw key is gone for good.
+		c.Flash().Add("warning", "The raw API key is no longer available. It is only shown once, right after creation.")
+		return c.Redirect(http.StatusSeeOther, "/webhook_api_keys/%v", key.ID)
+	}
+	c.Session().Delete(sessKey)
+	if err := c.Session().Save(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return responder.Wants("html", func(c buffalo.Context) error {
+		c.Set("webhookAPIKey", key)
+		c.Set("rawKey", raw)
+		return c.Render(http.StatusOK, r.HTML("webhook_api_keys/created.plush.html"))
 	}).Respond(c)
 }
 
