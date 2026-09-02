@@ -119,6 +119,7 @@
             <table class="table table-striped table-hover table-sm">
                 <thead class="thead-dark">
                     <tr>
+                        <th>Instance</th>
                         <th>Year</th>
                         <th>N°</th>
                         <th>Species</th>
@@ -138,6 +139,7 @@
                 <tbody>
                     <%= for (animal) in animals { %>
                         <tr>
+                            <td><%= animal.InstanceID %></td>
                             <td><%= animal.Year %></td>
                             <td><%= animal.YearNumber %></td>
                             <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>

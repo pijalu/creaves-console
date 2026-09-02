@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,8 @@ func newDashboardTestApp(tx *pop.Connection) *buffalo.App {
 	})
 	app.GET("/consolidated_animals", ConsolidatedAnimalsIndex)
 	app.GET("/consolidated_animals/export.csv", ConsolidatedAnimalsExportCSV)
+	app.GET("/consolidated_animals/{consolidated_animal_id}", ConsolidatedAnimalShow)
+	app.GET("/consolidated_animals/{consolidated_animal_id}/drill_down", ConsolidatedAnimalDrillDown)
 	return app
 }
 
@@ -131,6 +134,56 @@ func TestConsolidatedAnimalsFilterEntryCause(t *testing.T) {
 	require.Len(t, got, 3)
 	for _, a := range got {
 		assert.Equal(t, "Collision", a.EntryCause.String)
+	}
+}
+
+// getAnimalsPage requests the register list page as HTML.
+func getAnimalsPage(t *testing.T, app *buffalo.App, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req, err := http.NewRequest("GET", path, nil)
+	require.NoError(t, err)
+	req.Header.Set("Accept", "text/html")
+	res := httptest.NewRecorder()
+	app.ServeHTTP(res, req)
+	return res
+}
+
+// TestConsolidatedAnimalsRegisterShowsInstance asserts the register list page
+// renders an Instance column displaying each animal's source instance.
+func TestConsolidatedAnimalsRegisterShowsInstance(t *testing.T) {
+	app := newDashboardTestApp(testDB)
+	seedRegisterFixtures(t, testDB)
+
+	res := getAnimalsPage(t, app, "/consolidated_animals")
+	require.Equal(t, http.StatusOK, res.Code, "body: %s", res.Body.String())
+	body := res.Body.String()
+	assert.Contains(t, body, "<th>Instance</th>", "register table must have an Instance column")
+	assert.Contains(t, body, "<td>center-a</td>", "rows must show the source instance")
+	assert.Contains(t, body, "<td>center-b</td>", "rows must show the source instance")
+	// Column order matches the CSV export: Instance first.
+	assert.Less(t, strings.Index(body, "<th>Instance</th>"), strings.Index(body, "<th>Year</th>"),
+		"Instance column must precede Year, matching the CSV header order")
+}
+
+// TestConsolidatedAnimalShowAndDrillDownShowInstance asserts the show and
+// drill-down pages display the animal's source instance.
+func TestConsolidatedAnimalShowAndDrillDownShowInstance(t *testing.T) {
+	app := newDashboardTestApp(testDB)
+	seedRegisterFixtures(t, testDB)
+
+	animals := getAnimals(t, app, "")
+	require.NotEmpty(t, animals)
+	id := animals[0].ID
+	instance := animals[0].InstanceID
+
+	for _, path := range []string{
+		"/consolidated_animals/" + id.String(),
+		"/consolidated_animals/" + id.String() + "/drill_down",
+	} {
+		res := getAnimalsPage(t, app, path)
+		require.Equal(t, http.StatusOK, res.Code, "path %s: body: %s", path, res.Body.String())
+		assert.Contains(t, res.Body.String(), "<td>"+instance+"</td>",
+			"%s: page must display the animal's instance", path)
 	}
 }
 
