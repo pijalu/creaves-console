@@ -31,7 +31,7 @@
                         <%= for (key) in webhookAPIKeys { %>
                             <tr>
                                 <td><%= key.Name %></td>
-                                <td><code><%= key.KeyPrefix %>...</code></td>
+                                <td><code>creaves_<%= key.KeyPrefix %>&hellip;</code></td>
                                 <td><%= if (key.InstanceID) { %><%= key.InstanceID %><% } else { %><em>Any</em><% } %></td>
                                 <td>
                                     <%= if (key.Active) { %>
