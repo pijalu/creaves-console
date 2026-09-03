@@ -1,0 +1,50 @@
+<div class="row"><div class="col-md-12">
+<h1>Animals Sync Management</h1>
+<p class="lead">Manage synchronized animal data received from Creaves instances.</p>
+
+<%= if (flash["success"]) { %><div class="alert alert-success"><%= flash["success"] %></div><% } %>
+<%= if (flash["danger"]) { %><div class="alert alert-danger"><%= flash["danger"] %></div><% } %>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Overview</h5>
+    <p class="card-text">
+      <strong>Total animals in database:</strong> <%= totalAnimals %><br>
+      <%= if (orphanAnimals > 0) { %><strong class="text-warning">Animals without registered instance:</strong> <%= orphanAnimals %><br><% } %>
+    </p>
+    <table class="table table-striped">
+      <thead><tr><th>Name</th><th>Instance ID</th><th>Animals</th><th></th></tr></thead>
+      <tbody>
+        <%= for (row) in instanceRows { %>
+        <tr>
+          <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
+          <td><code><%= row.InstanceID %></code></td>
+          <td><%= row.AnimalCount %></td>
+          <td>
+            <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('Delete ALL <%= row.AnimalCount %> animals of instance <%= row.InstanceID %>? This cannot be undone. Trigger a full resync from Creaves afterward to rebuild the data.');" style="display:inline">
+              <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+              <input type="hidden" name="instance_id" value="<%= row.InstanceID %>">
+              <button type="submit" class="btn btn-sm btn-danger" <%= if (row.AnimalCount == 0) { %>disabled<% } %>>Delete animals</button>
+            </form>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card border-danger mb-4">
+  <div class="card-body">
+    <h5 class="card-title text-danger">Danger zone</h5>
+    <p class="card-text">
+      Permanently delete <strong>all <%= totalAnimals %> animals</strong> from the database, across all instances.
+      Instance registry, events and API keys are kept. Trigger a full resync from each Creaves instance afterward to rebuild the data.
+    </p>
+    <form method="POST" action="/sync_management/delete-all-animals" onsubmit="return confirm('Delete ALL <%= totalAnimals %> animals from the database? This cannot be undone.');">
+      <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+      <button type="submit" class="btn btn-danger" <%= if (totalAnimals == 0) { %>disabled<% } %>>Delete ALL animals</button>
+    </form>
+  </div>
+</div>
+</div></div>

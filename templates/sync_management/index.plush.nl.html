@@ -1,0 +1,50 @@
+<div class="row"><div class="col-md-12">
+<h1>Beheer dierensynchronisatie</h1>
+<p class="lead">Gesynchroniseerde diergegevens beheren die van Creaves-instanties zijn ontvangen.</p>
+
+<%= if (flash["success"]) { %><div class="alert alert-success"><%= flash["success"] %></div><% } %>
+<%= if (flash["danger"]) { %><div class="alert alert-danger"><%= flash["danger"] %></div><% } %>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Overzicht</h5>
+    <p class="card-text">
+      <strong>Totaal aantal dieren in de database:</strong> <%= totalAnimals %><br>
+      <%= if (orphanAnimals > 0) { %><strong class="text-warning">Dieren zonder geregistreerde instantie:</strong> <%= orphanAnimals %><br><% } %>
+    </p>
+    <table class="table table-striped">
+      <thead><tr><th>Naam</th><th>Instantie-ID</th><th>Dieren</th><th></th></tr></thead>
+      <tbody>
+        <%= for (row) in instanceRows { %>
+        <tr>
+          <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
+          <td><code><%= row.InstanceID %></code></td>
+          <td><%= row.AnimalCount %></td>
+          <td>
+            <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('ALLE <%= row.AnimalCount %> dieren van instantie <%= row.InstanceID %> verwijderen? Dit kan niet ongedaan worden gemaakt. Start daarna een volledige hersynchronisatie vanuit Creaves om de gegevens opnieuw op te bouwen.');" style="display:inline">
+              <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+              <input type="hidden" name="instance_id" value="<%= row.InstanceID %>">
+              <button type="submit" class="btn btn-sm btn-danger" <%= if (row.AnimalCount == 0) { %>disabled<% } %>>Dieren verwijderen</button>
+            </form>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card border-danger mb-4">
+  <div class="card-body">
+    <h5 class="card-title text-danger">Gevarenzone</h5>
+    <p class="card-text">
+      <strong>Alle <%= totalAnimals %> dieren</strong> in de database van alle instanties permanent verwijderen.
+      Instantieregister, gebeurtenissen en API-sleutels blijven behouden. Start daarna vanuit elke Creaves-instantie een volledige hersynchronisatie om de gegevens opnieuw op te bouwen.
+    </p>
+    <form method="POST" action="/sync_management/delete-all-animals" onsubmit="return confirm('ALLE <%= totalAnimals %> dieren uit de database verwijderen? Dit kan niet ongedaan worden gemaakt.');">
+      <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+      <button type="submit" class="btn btn-danger" <%= if (totalAnimals == 0) { %>disabled<% } %>>ALLE dieren verwijderen</button>
+    </form>
+  </div>
+</div>
+</div></div>

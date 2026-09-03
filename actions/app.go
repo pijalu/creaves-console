@@ -69,6 +69,11 @@ func App() *buffalo.App {
 		app.GET("/instances/{instance_id}", InstanceShow)
 		app.POST("/instances/{instance_id}/cleanup", InstanceCleanup)
 
+		// Animals sync management (admin): delete all animals / per instance.
+		app.GET("/sync_management", SyncManagementIndex)
+		app.POST("/sync_management/delete-all-animals", SyncManagementDeleteAllAnimals)
+		app.POST("/sync_management/delete-instance-animals", SyncManagementDeleteInstanceAnimals)
+
 		// Consolidated animals
 		app.GET("/consolidated_animals", ConsolidatedAnimalsIndex)
 		app.GET("/consolidated_animals/export.csv", ConsolidatedAnimalsExportCSV)

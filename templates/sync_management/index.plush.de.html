@@ -1,0 +1,50 @@
+<div class="row"><div class="col-md-12">
+<h1>Verwaltung der Tiersynchronisation</h1>
+<p class="lead">Synchronisierte Tierdaten verwalten, die von Creaves-Instanzen empfangen wurden.</p>
+
+<%= if (flash["success"]) { %><div class="alert alert-success"><%= flash["success"] %></div><% } %>
+<%= if (flash["danger"]) { %><div class="alert alert-danger"><%= flash["danger"] %></div><% } %>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Übersicht</h5>
+    <p class="card-text">
+      <strong>Tiere in der Datenbank gesamt:</strong> <%= totalAnimals %><br>
+      <%= if (orphanAnimals > 0) { %><strong class="text-warning">Tiere ohne registrierte Instanz:</strong> <%= orphanAnimals %><br><% } %>
+    </p>
+    <table class="table table-striped">
+      <thead><tr><th>Name</th><th>Instanz-ID</th><th>Tiere</th><th></th></tr></thead>
+      <tbody>
+        <%= for (row) in instanceRows { %>
+        <tr>
+          <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
+          <td><code><%= row.InstanceID %></code></td>
+          <td><%= row.AnimalCount %></td>
+          <td>
+            <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('ALLE <%= row.AnimalCount %> Tiere der Instanz <%= row.InstanceID %> löschen? Dies kann nicht rückgängig gemacht werden. Starten Sie anschließend eine vollständige Resynchronisation von Creaves, um die Daten wiederherzustellen.');" style="display:inline">
+              <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+              <input type="hidden" name="instance_id" value="<%= row.InstanceID %>">
+              <button type="submit" class="btn btn-sm btn-danger" <%= if (row.AnimalCount == 0) { %>disabled<% } %>>Tiere löschen</button>
+            </form>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card border-danger mb-4">
+  <div class="card-body">
+    <h5 class="card-title text-danger">Gefahrenzone</h5>
+    <p class="card-text">
+      <strong>Alle <%= totalAnimals %> Tiere</strong> in der Datenbank über alle Instanzen hinweg dauerhaft löschen.
+      Instanzregister, Ereignisse und API-Schlüssel bleiben erhalten. Starten Sie anschließend von jeder Creaves-Instanz eine vollständige Resynchronisation, um die Daten wiederherzustellen.
+    </p>
+    <form method="POST" action="/sync_management/delete-all-animals" onsubmit="return confirm('ALLE <%= totalAnimals %> Tiere aus der Datenbank löschen? Dies kann nicht rückgängig gemacht werden.');">
+      <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+      <button type="submit" class="btn btn-danger" <%= if (totalAnimals == 0) { %>disabled<% } %>>ALLE Tiere löschen</button>
+    </form>
+  </div>
+</div>
+</div></div>
