@@ -16,7 +16,7 @@ import (
 type WebhookAPIKey struct {
 	ID         uuid.UUID  `json:"id" db:"id"`
 	Name       string     `json:"name" db:"name"`
-	KeyHash    string     `json:"key_hash" db:"key_hash"`
+	KeyHash    string     `json:"-" db:"key_hash"`
 	KeyPrefix  string     `json:"key_prefix" db:"key_prefix"`
 	InstanceID string     `json:"instance_id" db:"instance_id"`
 	Active     bool       `json:"active" db:"active"`

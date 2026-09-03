@@ -22,7 +22,7 @@ type User struct {
 	Email        string    `json:"email" db:"email" form:"email"`
 	Admin        bool      `json:"admin" db:"admin" form:"admin"`
 	Active       bool      `json:"active" db:"active" form:"active"`
-	PasswordHash string    `json:"password_hash" db:"password_hash"`
+	PasswordHash string    `json:"-" db:"password_hash"`
 
 	Password             string `json:"-" db:"-" form:"password"`
 	PasswordConfirmation string `json:"-" db:"-" form:"password_confirmation"`
