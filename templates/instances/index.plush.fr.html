@@ -31,8 +31,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var modal = document.getElementById('delete-instance-modal');
-  if (!modal) { return; }
-  modal.addEventListener('show.bs.modal', function (event) {
+  if (!modal || !window.jQuery) { return; }
+  // Bootstrap 4 fires show.bs.modal through jQuery, so a native
+  // addEventListener never receives it — bind via jQuery.
+  window.jQuery(modal).on('show.bs.modal', function (event) {
     var button = event.relatedTarget;
     if (!button) { return; }
     var id = button.getAttribute('data-instance-id') || '';
