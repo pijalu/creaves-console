@@ -1,23 +1,23 @@
 <div class="row">
     <div class="col-md-8 offset-md-2">
-        <h1>Create Webhook API Key</h1>
-        <p class="text-muted">Generate a new API key for a Creaves instance to authenticate webhook requests.</p>
+        <h1>Créer une clé API webhook</h1>
+        <p class="text-muted">Générer une nouvelle clé API pour qu'une instance Creaves authentifie les requêtes webhook.</p>
 
         <div class="alert alert-info">
-            <strong>Next steps after creation:</strong>
+            <strong>Étapes suivantes après création :</strong>
             <ol class="mb-0">
-                <li>Copy the key shown on the next screen (it is shown <strong>only once</strong>).</li>
-                <li>In the source <em>Creaves</em> instance, go to <strong>Config → Webhook Configuration</strong>, enable the webhook, paste this key, and set the webhook URL to <code>/webhook/events</code> on this console.</li>
+                <li>Copiez la clé affichée à l'écran suivant (elle n'est affichée <strong>qu'une seule fois</strong>).</li>
+                <li>Dans l'instance <em>Creaves</em> source, allez dans <strong>Config → Configuration webhook</strong>, activez le webhook, collez cette clé, et définissez l'URL du webhook vers <code>/webhook/events</code> sur cette console.</li>
             </ol>
         </div>
 
         <%= form_for(webhookAPIKey, {action: "/webhook_api_keys", method: "POST"}) { %>
-            <%= f.InputTag("Name", {label: "Key Name", placeholder: "e.g., Center Brussels"}) %>
-            <%= f.InputTag("InstanceID", {label: "Instance ID (optional)", placeholder: "e.g., center-brussels"}) %>
+            <%= f.InputTag("Name", {label: "Nom de la clé", placeholder: "ex. Centre Bruxelles"}) %>
+            <%= f.InputTag("InstanceID", {label: "ID d'instance (optionnel)", placeholder: "ex. centre-bruxelles"}) %>
             
             <div class="form-group">
-                <button class="btn btn-primary" type="submit">Generate API Key</button>
-                <a href="/webhook_api_keys" class="btn btn-secondary">Cancel</a>
+                <button class="btn btn-primary" type="submit">Générer la clé API</button>
+                <a href="/webhook_api_keys" class="btn btn-secondary">Annuler</a>
             </div>
         <% } %>
     </div>

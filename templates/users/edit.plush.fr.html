@@ -1,20 +1,20 @@
 <div class="row">
     <div class="col-md-8 offset-md-2">
-        <h1>Edit User</h1>
-        <p class="text-muted">Update the authority account details.</p>
+        <h1>Modifier l'utilisateur</h1>
+        <p class="text-muted">Mettre à jour les informations du compte d'autorité.</p>
 
         <%= form_for(user, {action: "/users/<%= user.ID %>", method: "PUT"}) { %>
-            <%= f.InputTag("Login", {label: "Login"}) %>
-            <%= f.InputTag("Name", {label: "Name"}) %>
-            <%= f.InputTag("Email", {label: "Email", type: "email"}) %>
-            <%= f.InputTag("Password", {label: "Password (leave blank to keep)", type: "password"}) %>
-            <%= f.InputTag("PasswordConfirmation", {label: "Password confirmation", type: "password"}) %>
+            <%= f.InputTag("Login", {label: "Identifiant"}) %>
+            <%= f.InputTag("Name", {label: "Nom"}) %>
+            <%= f.InputTag("Email", {label: "E-mail", type: "email"}) %>
+            <%= f.InputTag("Password", {label: "Mot de passe (laisser vide pour conserver)", type: "password"}) %>
+            <%= f.InputTag("PasswordConfirmation", {label: "Confirmation du mot de passe", type: "password"}) %>
             <%= f.CheckboxTag("Admin", {label: "Admin"}) %>
-            <%= f.CheckboxTag("Active", {label: "Active"}) %>
+            <%= f.CheckboxTag("Active", {label: "Actif"}) %>
 
             <div class="form-group">
-                <button class="btn btn-primary" type="submit">Save</button>
-                <a href="/users/<%= user.ID %>" class="btn btn-secondary">Cancel</a>
+                <button class="btn btn-primary" type="submit">Enregistrer</button>
+                <a href="/users/<%= user.ID %>" class="btn btn-secondary">Annuler</a>
             </div>
         <% } %>
     </div>

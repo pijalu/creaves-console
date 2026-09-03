@@ -11,8 +11,8 @@
             </div>
             <noscript><button class="btn btn-primary">Appliquer</button></noscript>
         </form>
-        <h1><i class="fas fa-chart-bar"></i> Reports</h1>
-        <p class="lead">Overview and analysis of consolidated data</p>
+        <h1><i class="fas fa-chart-bar"></i> Rapports</h1>
+        <p class="lead">Vue d'ensemble et analyse des données consolidées</p>
     </div>
 </div>
 
@@ -52,15 +52,15 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-4"><div class="card"><div class="card-header"><h5>By Discovery Location</h5></div><div class="card-body">
-        <a href="/reports/by_location?group_by=city&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-primary btn-block">By City</a>
-        <a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-outline-primary btn-block mt-2">By Postal Code</a>
+    <div class="col-md-4"><div class="card"><div class="card-header"><h5>Par lieu de découverte</h5></div><div class="card-body">
+        <a href="/reports/by_location?group_by=city&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-primary btn-block">Par ville</a>
+        <a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= params["instance_id"] %>" class="btn btn-outline-primary btn-block mt-2">Par code postal</a>
     </div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-header"><h5>By Type</h5></div><div class="card-body">
-        <a href="/reports/by_type?instance_id=<%= params["instance_id"] %>" class="btn btn-success btn-block">View Report</a>
+    <div class="col-md-4"><div class="card"><div class="card-header"><h5>Par type</h5></div><div class="card-body">
+        <a href="/reports/by_type?instance_id=<%= params["instance_id"] %>" class="btn btn-success btn-block">Voir le rapport</a>
     </div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-header"><h5>By Species</h5></div><div class="card-body">
-        <a href="/reports/by_species?instance_id=<%= params["instance_id"] %>" class="btn btn-info btn-block">View Report</a>
+    <div class="col-md-4"><div class="card"><div class="card-header"><h5>Par espèce</h5></div><div class="card-body">
+        <a href="/reports/by_species?instance_id=<%= params["instance_id"] %>" class="btn btn-info btn-block">Voir le rapport</a>
     </div></div></div>
 </div>
 
@@ -68,14 +68,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>By Status</h5>
+                <h5>Par statut</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Status</th>
-                            <th class="text-right">Count</th>
+                            <th>Statut</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,7 +83,7 @@
                             <tr>
                                 <td>
                                     <span class="badge badge-<%= if (sc.Status == "in_care") { %>success<% } else if (sc.Status == "released") { %>primary<% } else if (sc.Status == "died") { %>danger<% } else { %>secondary<% } %>">
-                                        <%= sc.Status %>
+                                        <%= tstatus_localized(sc.Status) %>
                                     </span>
                                 </td>
                                 <td class="text-right"><%= sc.Count %></td>
@@ -97,14 +97,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>By Year</h5>
+                <h5>Par année</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Year</th>
-                            <th class="text-right">Count</th>
+                            <th>Année</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,14 +125,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Top 20 Species</h5>
+                <h5>Top 20 espèces</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Species</th>
-                            <th class="text-right">Count</th>
+                            <th>Espèce</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -150,14 +150,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Top 20 Cities</h5>
+                <h5>Top 20 villes</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>City</th>
-                            <th class="text-right">Count</th>
+                            <th>Ville</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>

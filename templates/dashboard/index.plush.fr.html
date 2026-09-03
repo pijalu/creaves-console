@@ -2,12 +2,12 @@
 <div class="row">
     <div class="col-md-12">
         <form method="GET" action="/dashboard" class="form-inline mb-3">
-            <label for="instance_id" class="mr-2">Instance:</label>
-            <input name="instance_id" id="instance_id" class="form-control mr-2" value="<%= params["instance_id"] %>" placeholder="All instances">
-            <button class="btn btn-primary">Apply</button>
+            <label for="instance_id" class="mr-2">Instance :</label>
+            <input name="instance_id" id="instance_id" class="form-control mr-2" value="<%= params["instance_id"] %>" placeholder="Toutes les instances">
+            <button class="btn btn-primary">Appliquer</button>
         </form>
         <h1>Tableau de bord</h1>
-        <p class="lead">Consolidated view of animal care data across all instances</p>
+        <p class="lead">Vue consolidée des données de soins animaliers de toutes les instances</p>
     </div>
 </div>
 
@@ -16,7 +16,7 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="stat-number"><%= stats["total_animals"] %></div>
-                <div class="text-muted">Total Animals</div>
+                <div class="text-muted">Animaux au total</div>
             </div>
         </div>
     </div>
@@ -24,7 +24,7 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="stat-number"><%= stats["total_events"] %></div>
-                <div class="text-muted">Total Events</div>
+                <div class="text-muted">Événements au total</div>
             </div>
         </div>
     </div>
@@ -32,7 +32,7 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="stat-number"><%= stats["unique_instances"] %></div>
-                <div class="text-muted">Active Instances</div>
+                <div class="text-muted">Instances actives</div>
             </div>
         </div>
     </div>
@@ -40,7 +40,7 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="stat-number"><%= stats["active_webhook_keys"] %></div>
-                <div class="text-muted">Active API Keys</div>
+                <div class="text-muted">Clés API actives</div>
             </div>
         </div>
     </div>
@@ -50,14 +50,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Animals by Status</h5>
+                <h5>Animaux par statut</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Status</th>
-                            <th class="text-right">Count</th>
+                            <th>Statut</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,7 +65,7 @@
                             <tr>
                                 <td>
                                     <span class="badge badge-<%= if (status == "in_care") { %>success<% } else if (status == "released") { %>primary<% } else if (status == "died") { %>danger<% } else { %>secondary<% } %>">
-                                        <%= status %>
+                                        <%= tstatus_localized(status) %>
                                     </span>
                                 </td>
                                 <td class="text-right"><%= count %></td>
@@ -79,14 +79,14 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Animals by Instance</h5>
+                <h5>Animaux par instance</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
                             <th>Instance</th>
-                            <th class="text-right">Count</th>
+                            <th class="text-right">Nombre</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -106,11 +106,11 @@
 <div class="row mt-4">
     <div class="col-md-12">
         <a href="/consolidated_animals" class="btn btn-primary">
-            <i class="fas fa-list"></i> View All Animals
+            <i class="fas fa-list"></i> Voir tous les animaux
         </a>
         <%= if (current_user.Admin) { %>
             <a href="/webhook_api_keys" class="btn btn-success">
-                <i class="fas fa-key"></i> Manage API Keys
+                <i class="fas fa-key"></i> Gérer les clés API
             </a>
         <% } %>
     </div>

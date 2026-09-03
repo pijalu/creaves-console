@@ -1,6 +1,6 @@
 <div class="row">
     <div class="col-md-12">
-        <h1>Animal Details</h1>
+        <h1>Détails de l'animal</h1>
     </div>
 </div>
 
@@ -8,39 +8,39 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Basic Information</h5>
+                <h5>Informations de base</h5>
             </div>
             <div class="card-body">
                 <table class="table table-borderless">
                     <tr>
-                        <td><strong>Instance:</strong></td>
+                        <td><strong>Instance :</strong></td>
                         <td><%= animal.InstanceID %></td>
                     </tr>
                     <tr>
-                        <td><strong>Animal ID:</strong></td>
+                        <td><strong>ID animal :</strong></td>
                         <td><%= animal.AnimalID %></td>
                     </tr>
                     <tr>
-                        <td><strong>Year/Number:</strong></td>
+                        <td><strong>Année/Numéro :</strong></td>
                         <td><%= animal.Year %>/<%= animal.YearNumber %></td>
                     </tr>
                     <tr>
-                        <td><strong>Species:</strong></td>
+                        <td><strong>Espèce :</strong></td>
                         <td><%= if (animal.Species.Valid) { %><%= tfield_localized(animal, "species") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Type:</strong></td>
+                        <td><strong>Type :</strong></td>
                         <td><%= if (animal.AnimalType.Valid) { %><%= tfield_localized(animal, "animal_type") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Age:</strong></td>
+                        <td><strong>Âge :</strong></td>
                         <td><%= if (animal.AnimalAge.Valid) { %><%= tfield_localized(animal, "animal_age") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Status:</strong></td>
+                        <td><strong>Statut :</strong></td>
                         <td>
                             <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
-                                <%= animal.CurrentStatus %>
+                                <%= tstatus_localized(animal.CurrentStatus) %>
                             </span>
                         </td>
                     </tr>
@@ -51,48 +51,48 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Discovery &amp; Intake</h5>
+                <h5>Découverte &amp; entrée</h5>
             </div>
             <div class="card-body">
                 <table class="table table-borderless">
                     <tr>
-                        <td><strong>Discovery Location:</strong></td>
+                        <td><strong>Lieu de découverte :</strong></td>
                         <td><%= if (animal.DiscoveryLocation.Valid) { %><%= animal.DiscoveryLocation.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Discovery Date:</strong></td>
+                        <td><strong>Date de découverte :</strong></td>
                         <td><%= if (animal.DiscoveryDate.Valid) { %><%= animal.DiscoveryDate.Time.Format("2006-01-02 15:04") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Entry Cause:</strong></td>
+                        <td><strong>Cause d'entrée :</strong></td>
                         <td><%= if (animal.EntryCause.Valid) { %><%= tfield_localized(animal, "entry_cause") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Entry Cause Detail:</strong></td>
+                        <td><strong>Cause d'entrée (détail) :</strong></td>
                         <td><%= if (animal.EntryCauseDetail.Valid) { %><%= tfield_localized(animal, "entry_cause_detail") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Entry Cause Nature:</strong></td>
+                        <td><strong>Nature de la cause d'entrée :</strong></td>
                         <td><%= if (animal.EntryCauseNature.Valid) { %><%= tfield_localized(animal, "entry_cause_nature") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Intake Date:</strong></td>
+                        <td><strong>Date d'entrée :</strong></td>
                         <td><%= if (animal.IntakeDate.Valid) { %><%= animal.IntakeDate.Time.Format("2006-01-02 15:04") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>General State:</strong></td>
+                        <td><strong>État général :</strong></td>
                         <td><%= if (animal.IntakeGeneral.Valid) { %><%= animal.IntakeGeneral.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Wounds:</strong></td>
+                        <td><strong>Blessures :</strong></td>
                         <td><%= if (animal.IntakeWounds.Valid) { %><%= animal.IntakeWounds.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Parasites:</strong></td>
+                        <td><strong>Parasites :</strong></td>
                         <td><%= if (animal.IntakeParasites.Valid) { %><%= animal.IntakeParasites.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Remarks:</strong></td>
+                        <td><strong>Remarques :</strong></td>
                         <td><%= if (animal.IntakeRemarks.Valid) { %><%= animal.IntakeRemarks.String %><% } else { %>-<% } %></td>
                     </tr>
                 </table>
@@ -105,14 +105,14 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5>Event History (<%= len(events) %> events)</h5>
+                <h5>Historique des événements (<%= len(events) %> événements)</h5>
             </div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Event Type</th>
+                            <th>Type d'événement</th>
                             <th>Source</th>
                         </tr>
                     </thead>
@@ -138,7 +138,7 @@
 <div class="row mt-4">
     <div class="col-md-12">
         <a href="/consolidated_animals" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to List
+            <i class="fas fa-arrow-left"></i> Retour à la liste
         </a>
     </div>
 </div>

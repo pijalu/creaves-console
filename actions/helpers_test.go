@@ -12,8 +12,12 @@ package actions
 // with no build tags.
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gobuffalo/nulls"
+	"github.com/gobuffalo/plush/v4"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/stretchr/testify/assert"
 )
@@ -95,4 +99,55 @@ func TestNormalizeUILang_BaseIsEnglish(t *testing.T) {
 	for in, want := range cases {
 		assert.Equal(t, want, normalizeUILang(in), "normalizeUILang(%q)", in)
 	}
+}
+
+func statusHelpWithLang(t *testing.T, lang string) plush.HelperContext {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if lang != "" {
+		req.AddCookie(&http.Cookie{Name: "lang", Value: lang})
+	}
+	return plush.HelperContext{Context: plush.NewContextWith(map[string]interface{}{
+		"request": req,
+	})}
+}
+
+func TestLocalizedStatus_AllLanguages(t *testing.T) {
+	cases := []struct {
+		lang   string
+		status string
+		want   string
+	}{
+		{"", "in_care", "In care"},
+		{"en", "in_care", "In care"},
+		{"fr", "in_care", "En soins"},
+		{"de", "in_care", "In Pflege"},
+		{"nl", "in_care", "In verzorging"},
+		{"fr", "released", "Relâché"},
+		{"de", "released", "Freigelassen"},
+		{"nl", "released", "Vrijgelaten"},
+		{"fr", "died", "Décédé"},
+		{"de", "died", "Verstorben"},
+		{"nl", "died", "Overleden"},
+		{"en-US", "died", "Died"},
+		// Unknown status codes pass through unchanged.
+		{"fr", "other", "other"},
+		{"de", "other", "other"},
+	}
+	for _, tc := range cases {
+		got, err := localizedStatus(tc.status, statusHelpWithLang(t, tc.lang))
+		assert.NoError(t, err)
+		assert.Equal(t, tc.want, got, "localizedStatus(%q, lang=%q)", tc.status, tc.lang)
+	}
+}
+
+func TestLocalizedStatus_NullsString(t *testing.T) {
+	// Valid nulls.String localizes; invalid renders empty.
+	got, err := localizedStatus(nulls.NewString("released"), statusHelpWithLang(t, "fr"))
+	assert.NoError(t, err)
+	assert.Equal(t, "Relâché", got)
+
+	got, err = localizedStatus(nulls.String{}, statusHelpWithLang(t, "fr"))
+	assert.NoError(t, err)
+	assert.Equal(t, "", got)
 }

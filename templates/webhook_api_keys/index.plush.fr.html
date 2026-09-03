@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1>Webhook API Keys</h1>
-        <p class="lead">Manage API keys for Creaves instance webhooks</p>
+        <h1>Clés API webhook</h1>
+        <p class="lead">Gérer les clés API des webhooks des instances Creaves</p>
     </div>
 </div>
 
@@ -9,21 +9,21 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">API Keys</h5>
+                <h5 class="mb-0">Clés API</h5>
                 <a href="/webhook_api_keys/new" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus"></i> Create Key
+                    <i class="fas fa-plus"></i> Créer une clé
                 </a>
             </div>
             <div class="card-body">
                 <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Prefix</th>
-                            <th>Instance ID</th>
-                            <th>Active</th>
-                            <th>Last Used</th>
-                            <th>Created</th>
+                            <th>Nom</th>
+                            <th>Préfixe</th>
+                            <th>ID d'instance</th>
+                            <th>Statut</th>
+                            <th>Dernière utilisation</th>
+                            <th>Créée</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -32,7 +32,7 @@
                             <tr>
                                 <td><%= key.Name %></td>
                                 <td><code>creaves_<%= key.KeyPrefix %>&hellip;</code></td>
-                                <td><%= if (key.InstanceID) { %><%= key.InstanceID %><% } else { %><em>Any</em><% } %></td>
+                                <td><%= if (key.InstanceID) { %><%= key.InstanceID %><% } else { %><em>Toutes</em><% } %></td>
                                 <td>
                                     <%= if (key.Active) { %>
                                         <span class="badge badge-success">Active</span>
@@ -44,7 +44,7 @@
                                     <%= if (key.LastUsedAt) { %>
                                         <%= key.LastUsedAt.Format("2006-01-02 15:04") %>
                                     <% } else { %>
-                                        <em>Never</em>
+                                        <em>Jamais</em>
                                     <% } %>
                                 </td>
                                 <td><%= key.CreatedAt.Format("2006-01-02") %></td>
@@ -55,7 +55,7 @@
                                     <a href="/webhook_api_keys/<%= key.ID %>/edit" class="btn btn-sm btn-warning">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="/webhook_api_keys/<%= key.ID %>" data-method="DELETE" data-confirm="Are you sure?" class="btn btn-sm btn-danger">
+                                    <a href="/webhook_api_keys/<%= key.ID %>" data-method="DELETE" data-confirm="Êtes-vous sûr ?" class="btn btn-sm btn-danger">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 </td>

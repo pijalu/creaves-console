@@ -120,7 +120,7 @@
                             <tr>
                                 <td>
                                     <span class="badge badge-<%= if (sc.Status == "in_care") { %>success<% } else if (sc.Status == "released") { %>primary<% } else if (sc.Status == "died") { %>danger<% } else { %>secondary<% } %>">
-                                        <%= sc.Status %>
+                                        <%= tstatus_localized(sc.Status) %>
                                     </span>
                                 </td>
                                 <td class="text-right"><%= sc.Count %></td>

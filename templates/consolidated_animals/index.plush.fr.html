@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
-        <h1><i class="fas fa-book"></i> Animal Register</h1>
-        <p class="lead">Consolidated view of all animals</p>
+        <h1><i class="fas fa-book"></i> Registre des animaux</h1>
+        <p class="lead">Vue consolidée de tous les animaux</p>
     </div>
 </div>
 
@@ -9,61 +9,61 @@
     <div class="col-md-12">
         <form method="GET" action="/consolidated_animals" class="form-inline">
             <div class="form-group mr-2">
-                <label for="view_mode" class="mr-2">View:</label>
+                <label for="view_mode" class="mr-2">Vue :</label>
                 <select name="view_mode" id="view_mode" class="form-control">
-                    <option value="global" <%= if (viewMode == "global") { %>selected<% } %>>Global (all instances)</option>
-                    <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>By instance</option>
+                    <option value="global" <%= if (viewMode == "global") { %>selected<% } %>>Globale (toutes les instances)</option>
+                    <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>Par instance</option>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="instance_id" class="mr-2">Instance:</label>
+                <label for="instance_id" class="mr-2">Instance :</label>
                 <select name="instance_id" id="instance_id" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Toutes</option>
                     <%= for (inst) in instances { %>
                         <option value="<%= inst.InstanceID %>" <%= if (params["instance_id"] == inst.InstanceID) { %>selected<% } %>><%= inst.InstanceID %></option>
                     <% } %>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="year" class="mr-2">Year:</label>
+                <label for="year" class="mr-2">Année :</label>
                 <select name="year" id="year" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Toutes</option>
                     <%= for (y) in yearsList { %>
                         <option value="<%= y.Year %>" <%= if (params["year"] == string(y.Year)) { %>selected<% } %>><%= y.Year %></option>
                     <% } %>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="status" class="mr-2">Status:</label>
+                <label for="status" class="mr-2">Statut :</label>
                 <select name="status" id="status" class="form-control">
-                    <option value="">All</option>
-                    <option value="in_care" <%= if (params["status"] == "in_care") { %>selected<% } %>>In care</option>
-                    <option value="released" <%= if (params["status"] == "released") { %>selected<% } %>>Released</option>
-                    <option value="died" <%= if (params["status"] == "died") { %>selected<% } %>>Deceased</option>
+                    <option value="">Tous</option>
+                    <option value="in_care" <%= if (params["status"] == "in_care") { %>selected<% } %>>En soins</option>
+                    <option value="released" <%= if (params["status"] == "released") { %>selected<% } %>>Relâché</option>
+                    <option value="died" <%= if (params["status"] == "died") { %>selected<% } %>>Décédé</option>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="species" class="mr-2">Species:</label>
+                <label for="species" class="mr-2">Espèce :</label>
                 <select name="species" id="species" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Toutes</option>
                     <%= for (sp) in speciesList { %>
                         <option value="<%= sp.Species %>" <%= if (params["species"] == sp.Species) { %>selected<% } %>><%= sp.Species %></option>
                     <% } %>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="animal_type" class="mr-2">Type:</label>
+                <label for="animal_type" class="mr-2">Type :</label>
                 <select name="animal_type" id="animal_type" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Tous</option>
                     <%= for (t) in typesList { %>
                         <option value="<%= t.AnimalType %>" <%= if (params["animal_type"] == t.AnimalType) { %>selected<% } %>><%= t.AnimalType %></option>
                     <% } %>
                 </select>
             </div>
             <div class="form-group mr-2">
-                <label for="city" class="mr-2">City:</label>
+                <label for="city" class="mr-2">Ville :</label>
                 <select name="city" id="city" class="form-control">
-                    <option value="">All</option>
+                    <option value="">Toutes</option>
                     <%= for (ct) in citiesList { %>
                         <option value="<%= ct.City %>" <%= if (params["city"] == ct.City) { %>selected<% } %>><%= ct.City %></option>
                     <% } %>
@@ -120,19 +120,19 @@
                 <thead class="thead-dark">
                     <tr>
                         <th>Instance</th>
-                        <th>Year</th>
+                        <th>Année</th>
                         <th>N°</th>
-                        <th>Species</th>
+                        <th>Espèce</th>
                         <th>Identification</th>
-                        <th>Intake date</th>
-                        <th>Time</th>
-                        <th>Discovery location</th>
-                        <th>PC</th>
-                        <th>City</th>
+                        <th>Date d'entrée</th>
+                        <th>Heure</th>
+                        <th>Lieu de découverte</th>
+                        <th>CP</th>
+                        <th>Ville</th>
                         <th>Cause</th>
-                        <th>Outtake</th>
-                        <th>Outtake date</th>
-                        <th>Outtake location</th>
+                        <th>Sortie</th>
+                        <th>Date de sortie</th>
+                        <th>Lieu de sortie</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -164,7 +164,7 @@
                             <td><%= if (animal.EntryCause.Valid) { animal.EntryCause.String } else { "-" } %></td>
                             <td>
                                 <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
-                                    <%= animal.CurrentStatus %>
+                                    <%= tstatus_localized(animal.CurrentStatus) %>
                                 </span>
                                 <%= if (animal.OuttakeType.Valid) { %>
                                     <small><%= animal.OuttakeType.String %></small>
@@ -179,7 +179,7 @@
                             </td>
                             <td><%= if (animal.OuttakeLocation.Valid) { animal.OuttakeLocation.String } else { "-" } %></td>
                             <td>
-                                <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-sm btn-info" title="Details">
+                                <a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-sm btn-info" title="Détails">
                                     <i class="fas fa-eye"></i>
                                 </a>
                             </td>

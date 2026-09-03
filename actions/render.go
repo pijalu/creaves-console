@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/buffalo/render"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/plush/v4"
 )
 
@@ -82,6 +83,55 @@ func currentUILang(help plush.HelperContext) string {
 	return "en-US"
 }
 
+// statusLabels maps internal status codes to UI labels per language.
+var statusLabels = map[string]map[string]string{
+	"in_care": {
+		"en-US": "In care",
+		"fr":    "En soins",
+		"de":    "In Pflege",
+		"nl":    "In verzorging",
+	},
+	"released": {
+		"en-US": "Released",
+		"fr":    "Relâché",
+		"de":    "Freigelassen",
+		"nl":    "Vrijgelaten",
+	},
+	"died": {
+		"en-US": "Died",
+		"fr":    "Décédé",
+		"de":    "Verstorben",
+		"nl":    "Overleden",
+	},
+}
+
+// localizedStatus renders an internal status code (in_care/released/died)
+// as a human-readable label in the current UI language. Unknown values are
+// returned unchanged. Accepts string or nulls.String.
+func localizedStatus(value interface{}, help plush.HelperContext) (string, error) {
+	var status string
+	switch v := value.(type) {
+	case string:
+		status = v
+	case nulls.String:
+		if !v.Valid {
+			return "", nil
+		}
+		status = v.String
+	default:
+		status = fmt.Sprintf("%v", value)
+	}
+	if labels, ok := statusLabels[status]; ok {
+		if label, ok := labels[currentUILang(help)]; ok && label != "" {
+			return label, nil
+		}
+		if label, ok := labels["en-US"]; ok {
+			return label, nil
+		}
+	}
+	return status, nil
+}
+
 func localizedLabel(value string, labels map[string]string, help plush.HelperContext) (string, error) {
 	if label, ok := labels[value]; ok && label != "" {
 		return label, nil
@@ -138,8 +188,9 @@ func init() {
 				return "✗"
 			},
 			"langLinks":        langLinks,
-			"tfield_localized": localizedField,
-			"tlabel_localized": localizedLabel,
+			"tfield_localized":  localizedField,
+			"tlabel_localized":  localizedLabel,
+			"tstatus_localized": localizedStatus,
 			"csrf_token":       csrfToken,
 		},
 	})

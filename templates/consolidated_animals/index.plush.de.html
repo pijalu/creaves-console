@@ -166,7 +166,7 @@
                             <td><%= if (animal.EntryCause.Valid) { animal.EntryCause.String } else { "-" } %></td>
                             <td>
                                 <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
-                                    <%= animal.CurrentStatus %>
+                                    <%= tstatus_localized(animal.CurrentStatus) %>
                                 </span>
                                 <%= if (animal.OuttakeType.Valid) { %>
                                     <small><%= animal.OuttakeType.String %></small>

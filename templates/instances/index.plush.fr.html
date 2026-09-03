@@ -1,30 +1,30 @@
 <div class="row"><div class="col-md-12">
-<h1>Creaves instances</h1>
-<p class="lead">Registered source installations and synchronized data.</p>
-<table class="table table-striped"><thead><tr><th>Name</th><th>Instance ID</th><th>First seen</th><th>Last seen</th><th>Last event</th><th>Animals</th><th>Events</th><th>Keys</th><th></th></tr></thead><tbody>
+<h1>Instances Creaves</h1>
+<p class="lead">Installations sources enregistrées et données synchronisées.</p>
+<table class="table table-striped"><thead><tr><th>Nom</th><th>ID d'instance</th><th>Première vue</th><th>Dernière vue</th><th>Dernier événement</th><th>Animaux</th><th>Événements</th><th>Clés</th><th></th></tr></thead><tbody>
 <%= for (instance) in instances { %><tr>
 <td><%= if (instance.Name != "") { %><%= instance.Name %><% } else { %><%= instance.InstanceID %><% } %></td>
 <td><code><%= instance.InstanceID %></code></td><td><%= instance.FirstSeenAt.Format("2006-01-02 15:04") %></td><td><%= instance.LastSeenAt.Format("2006-01-02 15:04") %></td>
-<td><%= if (instance.LastEventAt) { %><%= instance.LastEventAt.Format("2006-01-02 15:04") %><% } else { %><em>Never</em><% } %></td>
+<td><%= if (instance.LastEventAt) { %><%= instance.LastEventAt.Format("2006-01-02 15:04") %><% } else { %><em>Jamais</em><% } %></td>
 <td><%= instance.AnimalCount %></td><td><%= instance.EventCount %></td><td><%= instance.KeyCount %></td>
 <td>
-<a class="btn btn-sm btn-info" href="/instances/<%= instance.InstanceID %>">Details</a>
-<button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#delete-instance-modal" data-instance-id="<%= instance.InstanceID %>" data-animals="<%= instance.AnimalCount %>" data-events="<%= instance.EventCount %>" data-keys="<%= instance.KeyCount %>">Delete</button>
+<a class="btn btn-sm btn-info" href="/instances/<%= instance.InstanceID %>">Détails</a>
+<button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#delete-instance-modal" data-instance-id="<%= instance.InstanceID %>" data-animals="<%= instance.AnimalCount %>" data-events="<%= instance.EventCount %>" data-keys="<%= instance.KeyCount %>">Supprimer</button>
 </td></tr><% } %>
 </tbody></table></div></div>
 <div class="modal fade" id="delete-instance-modal" tabindex="-1" role="dialog" aria-hidden="true">
 <div class="modal-dialog" role="document"><div class="modal-content">
-<div class="modal-header"><h5 class="modal-title text-danger">Delete instance data</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+<div class="modal-header"><h5 class="modal-title text-danger">Supprimer les données de l'instance</h5><button type="button" class="close" data-dismiss="modal" aria-label="Fermer"><span aria-hidden="true">&times;</span></button></div>
 <form id="delete-instance-form" method="POST">
 <div class="modal-body">
 <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
-<p>This permanently deletes <strong id="delete-instance-animals">0</strong> animals, <strong id="delete-instance-events">0</strong> events, <strong id="delete-instance-keys">0</strong> restricted API keys, and the registry entry of instance <code id="delete-instance-id"></code>.</p>
-<p class="text-danger">This action cannot be undone. Trigger a full resync from Creaves afterward to rebuild the data.</p>
-<div class="form-group"><label for="delete-instance-confirmation">Type <code id="delete-instance-id-echo"></code> to confirm</label><input class="form-control" id="delete-instance-confirmation" name="instance_id_confirmation" autocomplete="off" required></div>
+<p>Cette action supprime définitivement <strong id="delete-instance-animals">0</strong> animaux, <strong id="delete-instance-events">0</strong> événements, <strong id="delete-instance-keys">0</strong> clés API restreintes, ainsi que l'entrée du registre de l'instance <code id="delete-instance-id"></code>.</p>
+<p class="text-danger">Cette action est irréversible. Déclenchez ensuite une resynchronisation complète depuis Creaves pour reconstruire les données.</p>
+<div class="form-group"><label for="delete-instance-confirmation">Saisissez <code id="delete-instance-id-echo"></code> pour confirmer</label><input class="form-control" id="delete-instance-confirmation" name="instance_id_confirmation" autocomplete="off" required></div>
 </div>
 <div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-<button type="submit" class="btn btn-danger">Delete instance data</button>
+<button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+<button type="submit" class="btn btn-danger">Supprimer les données de l'instance</button>
 </div>
 </form>
 </div></div></div>
