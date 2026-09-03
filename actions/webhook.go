@@ -73,9 +73,16 @@ func WebhookEventsHandler(c buffalo.Context) error {
 		fmt.Printf("Failed to update last_used_at for key %s: %v\n", key.ID, err)
 	}
 
-	// Parse request body
+	// Parse request body (size-capped: a webhook batch never needs to be
+	// larger than a few MB; unbounded reads are a memory-exhaustion vector).
+	const maxWebhookBody = 10 << 20 // 10 MB
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxWebhookBody)
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return c.Render(http.StatusRequestEntityTooLarge, r.JSON(map[string]string{"error": "request body too large"}))
+		}
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": "failed to read body"}))
 	}
 
@@ -95,6 +102,14 @@ func WebhookEventsHandler(c buffalo.Context) error {
 		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
 			"processed": 0,
 			"message":   "no events to process",
+		}))
+	}
+
+	// Cap batch size to bound processing time per request.
+	const maxEventsPerBatch = 1000
+	if len(payload.Events) > maxEventsPerBatch {
+		return c.Render(http.StatusRequestEntityTooLarge, r.JSON(map[string]string{
+			"error": fmt.Sprintf("too many events in batch (max %d)", maxEventsPerBatch),
 		}))
 	}
 
