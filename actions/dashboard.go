@@ -416,6 +416,16 @@ func ConsolidatedAnimalDrillDown(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.HTML("consolidated_animals/drill_down.plush.html"))
 }
 
+// Outcome-based classification (bug: reports must group deceased by
+// positive/neutral/negative outtake outcome, not only by current_status).
+//
+// An animal counts as deceased (negative outcome) when its outtake rating is
+// negative or the outtake is marked dead; animals that died in care without
+// an outtake keep their current_status='died' classification. Released
+// (non-negative outcome) covers positive and neutral ratings.
+const sqlOutcomeDied = `(outtake_rating < 0 OR outtake_dead = 1 OR (current_status = 'died' AND outtake_rating IS NULL AND (outtake_dead IS NULL OR outtake_dead = 0)))`
+const sqlOutcomeReleased = `((outtake_rating >= 0 AND (outtake_dead IS NULL OR outtake_dead = 0)) OR (current_status = 'released' AND outtake_rating IS NULL AND (outtake_dead IS NULL OR outtake_dead = 0)))`
+
 // statusCount is one row of the current_status grouping.
 type statusCount struct {
 	Status string `db:"current_status"`
@@ -435,6 +445,35 @@ func tallyStatusCounts(counts []statusCount) (inCare, released, died int) {
 		}
 	}
 	return inCare, released, died
+}
+
+// outcomeTally holds the outcome-based released/died counts plus the
+// positive/neutral/negative breakdown.
+type outcomeTally struct {
+	Released int `db:"released"`
+	Died     int `db:"died"`
+	Positive int `db:"positive"`
+	Neutral  int `db:"neutral"`
+	Negative int `db:"negative"`
+}
+
+// tallyOutcomes computes outcome-based counts over the scoped register:
+// released covers positive and neutral outtake outcomes, died covers
+// negative outcomes plus animals that died in care without an outtake.
+func tallyOutcomes(tx *pop.Connection, where string, args []interface{}) (outcomeTally, error) {
+	var rows []outcomeTally
+	// COALESCE guards the empty-register case: SUM over zero rows is NULL.
+	err := tx.RawQuery(`SELECT
+		COALESCE(SUM(CASE WHEN `+sqlOutcomeReleased+` THEN 1 ELSE 0 END), 0) as released,
+		COALESCE(SUM(CASE WHEN `+sqlOutcomeDied+` THEN 1 ELSE 0 END), 0) as died,
+		COALESCE(SUM(CASE WHEN outtake_rating > 0 AND (outtake_dead IS NULL OR outtake_dead = 0) THEN 1 ELSE 0 END), 0) as positive,
+		COALESCE(SUM(CASE WHEN outtake_rating = 0 AND (outtake_dead IS NULL OR outtake_dead = 0) THEN 1 ELSE 0 END), 0) as neutral,
+		COALESCE(SUM(CASE WHEN outtake_rating < 0 OR outtake_dead = 1 THEN 1 ELSE 0 END), 0) as negative
+		FROM consolidated_animals `+where, args...).All(&rows)
+	if len(rows) == 0 {
+		return outcomeTally{}, err
+	}
+	return rows[0], err
 }
 
 // ReportsIndex shows the main reports dashboard
@@ -464,10 +503,20 @@ func ReportsIndex(c buffalo.Context) error {
 		return err
 	}
 	stats["by_status"] = statusCounts
-	inCare, released, died := tallyStatusCounts(statusCounts)
+	inCare, _, _ := tallyStatusCounts(statusCounts)
 	stats["in_care"] = inCare
-	stats["released"] = released
-	stats["died"] = died
+
+	// Outcome-based released/died counts (positive/neutral vs negative
+	// outtake outcome), with died-in-care fallback via current_status.
+	outcome, err := tallyOutcomes(tx, where, args)
+	if err != nil {
+		return err
+	}
+	stats["released"] = outcome.Released
+	stats["died"] = outcome.Died
+	stats["outcome_positive"] = outcome.Positive
+	stats["outcome_neutral"] = outcome.Neutral
+	stats["outcome_negative"] = outcome.Negative
 	yearCounts := []struct {
 		Year  int `db:"year"`
 		Count int `db:"count"`
@@ -554,8 +603,8 @@ func ReportsByLocation(c buffalo.Context) error {
 			COALESCE(MAX(discovery_city), '') as city,
 			COUNT(*) as count,
 			SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
-			SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
-			SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
+			SUM(CASE WHEN ` + sqlOutcomeReleased + ` THEN 1 ELSE 0 END) as released,
+			SUM(CASE WHEN ` + sqlOutcomeDied + ` THEN 1 ELSE 0 END) as died
 			FROM consolidated_animals 
 			%s
 			GROUP BY discovery_postal_code
@@ -567,8 +616,8 @@ func ReportsByLocation(c buffalo.Context) error {
 			discovery_city as city,
 			COUNT(*) as count,
 			SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
-			SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
-			SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
+			SUM(CASE WHEN ` + sqlOutcomeReleased + ` THEN 1 ELSE 0 END) as released,
+			SUM(CASE WHEN ` + sqlOutcomeDied + ` THEN 1 ELSE 0 END) as died
 			FROM consolidated_animals 
 			%s
 			GROUP BY discovery_city
@@ -645,8 +694,8 @@ func ReportsByType(c buffalo.Context) error {
 		animal_type,
 		COUNT(*) as count,
 		SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
-		SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
-		SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
+		SUM(CASE WHEN ` + sqlOutcomeReleased + ` THEN 1 ELSE 0 END) as released,
+		SUM(CASE WHEN ` + sqlOutcomeDied + ` THEN 1 ELSE 0 END) as died
 		FROM consolidated_animals 
 		%s
 		GROUP BY animal_type
@@ -708,8 +757,8 @@ func ReportsBySpecies(c buffalo.Context) error {
 		species,
 		COUNT(*) as count,
 		SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END) as in_care,
-		SUM(CASE WHEN current_status = 'released' THEN 1 ELSE 0 END) as released,
-		SUM(CASE WHEN current_status = 'died' THEN 1 ELSE 0 END) as died
+		SUM(CASE WHEN `+sqlOutcomeReleased+` THEN 1 ELSE 0 END) as released,
+		SUM(CASE WHEN `+sqlOutcomeDied+` THEN 1 ELSE 0 END) as died
 		FROM consolidated_animals 
 		%s 
 		GROUP BY species 

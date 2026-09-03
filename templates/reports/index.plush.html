@@ -51,6 +51,33 @@
     </div>
 </div>
 
+<div class="row mt-3">
+    <div class="col-md-4">
+        <div class="card stat-card bg-success text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["outcome_positive"] %></div>
+                <div>Outcome: positive</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card bg-info text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["outcome_neutral"] %></div>
+                <div>Outcome: neutral</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card bg-danger text-white">
+            <div class="card-body">
+                <div class="stat-number"><%= stats["outcome_negative"] %></div>
+                <div>Outcome: negative (deceased)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">

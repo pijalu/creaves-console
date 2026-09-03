@@ -436,4 +436,13 @@ func TestReportsAnnualExportCSV(t *testing.T) {
 	assert.Contains(t, body, "Année;Instance;Section;Catégorie;Nombre;%")
 	assert.Contains(t, body, "Tous les centres")
 	assert.Contains(t, body, "Top 20 espèces")
+	// Fixed SQL literal categories are localized too (Mort/Neutre/Vivant/
+	// Relâché/Inconnu) — previously exported raw English.
+	assert.Contains(t, body, "Mort")
+	assert.Contains(t, body, "Neutre")
+	assert.Contains(t, body, "Vivant")
+	assert.Contains(t, body, "Relâché")
+	assert.Contains(t, body, "Inconnu")
+	assert.NotContains(t, body, ";Neutral;")
+	assert.NotContains(t, body, ";Alive;")
 }

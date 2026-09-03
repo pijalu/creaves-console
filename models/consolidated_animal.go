@@ -160,6 +160,37 @@ func nullableString(value string) nulls.String {
 	return nulls.NewString(value)
 }
 
+// applyOuttake updates outtake fields from the payload. The outtake block is
+// present when any outtake field is set; within a present block, rating and
+// dead are applied unconditionally so explicit neutral (0) / dead=false
+// values are stored (the producer used to omit them, and guards here dropped
+// them). The outcome also drives current_status: the producer picks
+// animal_died vs animal_released via the outtake type's "error" flag, so a
+// real death (negative rating or dead=true) can arrive as animal_released.
+func (c *ConsolidatedAnimal) applyOuttake(payload EventPayload) {
+	if payload.Outtake.Date != "" {
+		if dt, err := time.Parse(DateTimeFormat, payload.Outtake.Date); err == nil {
+			c.OuttakeDate = nulls.NewTime(dt)
+		}
+	}
+	if payload.Outtake.Type != "" {
+		c.OuttakeType = nulls.NewString(payload.Outtake.Type)
+	}
+	if payload.Outtake.Location != "" {
+		c.OuttakeLocation = nulls.NewString(payload.Outtake.Location)
+	}
+	if payload.Outtake.Date == "" && payload.Outtake.Type == "" && payload.Outtake.Location == "" {
+		return // no outtake block: leave rating/dead untouched
+	}
+	c.OuttakeRating = nulls.NewInt(payload.Outtake.Rating)
+	c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
+	if payload.Outtake.Rating < 0 || payload.Outtake.Dead {
+		c.CurrentStatus = "died"
+	} else if c.CurrentStatus != "died" {
+		c.CurrentStatus = "released"
+	}
+}
+
 func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType EventType, eventTime time.Time) {
 	// Update animal identification
 	if payload.Animal.ID > 0 {
@@ -266,24 +297,7 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 		c.CurrentStatus = "died"
 	}
 
-	// Update outtake info
-	if payload.Outtake.Date != "" {
-		if dt, err := time.Parse(DateTimeFormat, payload.Outtake.Date); err == nil {
-			c.OuttakeDate = nulls.NewTime(dt)
-		}
-	}
-	if payload.Outtake.Type != "" {
-		c.OuttakeType = nulls.NewString(payload.Outtake.Type)
-	}
-	if payload.Outtake.Location != "" {
-		c.OuttakeLocation = nulls.NewString(payload.Outtake.Location)
-	}
-	if payload.Outtake.Rating != 0 {
-		c.OuttakeRating = nulls.NewInt(payload.Outtake.Rating)
-	}
-	if payload.Outtake.Dead {
-		c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
-	}
+	c.applyOuttake(payload)
 
 	// Store translations when provided (keep existing ones otherwise)
 	if payload.Translations != nil {

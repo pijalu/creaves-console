@@ -150,6 +150,33 @@ func annualStatPercent(count, total int) string {
 	return fmt.Sprintf("%.1f", float64(count)*100.0/float64(total))
 }
 
+// annualCategoryLabels localizes the fixed SQL literal categories produced by
+// the outtake/unknown buckets ('Dead', 'Neutral', 'Alive', 'Released',
+// 'Unknown'), mirroring Creaves' localizeAnnualSections.
+var annualCategoryLabels = map[string]map[string]string{
+	"Dead":    {"fr": "Mort", "de": "Tot", "nl": "Dood", "en-US": "Dead"},
+	"Neutral": {"fr": "Neutre", "de": "Neutral", "nl": "Neutraal", "en-US": "Neutral"},
+	"Alive":   {"fr": "Vivant", "de": "Lebendig", "nl": "Levend", "en-US": "Alive"},
+	"Released": {"fr": "Relâché", "de": "Freigelassen", "nl": "Vrijgelaten", "en-US": "Released"},
+	"Unknown": {"fr": "Inconnu", "de": "Unbekannt", "nl": "Onbekend", "en-US": "Unknown"},
+}
+
+// localizeAnnualSections rewrites fixed-literal category names into the
+// request language. Categories coming from data (species names, entry
+// causes, …) pass through untouched.
+func localizeAnnualSections(sections []annualStatSection, lang string) {
+	for si := range sections {
+		for ri := range sections[si].Rows {
+			cat := sections[si].Rows[ri].Category
+			if labels, ok := annualCategoryLabels[cat]; ok {
+				if label, ok := labels[lang]; ok && label != "" {
+					sections[si].Rows[ri].Category = label
+				}
+			}
+		}
+	}
+}
+
 // annualSectionTitles maps section IDs to localized titles per UI language.
 func annualSectionTitles(lang string) map[string]string {
 	switch lang {
@@ -357,6 +384,7 @@ func annualReportData(c buffalo.Context, lang string) (tx *pop.Connection, scope
 		if sections, err = runAnnualStats(tx, selectedYear, scope, lang); err != nil {
 			return nil, scope, nil, nil, 0, nil, err
 		}
+		localizeAnnualSections(sections, lang)
 	}
 	return tx, scope, years, instances, selectedYear, sections, nil
 }

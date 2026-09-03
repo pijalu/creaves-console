@@ -148,6 +148,65 @@ func TestConsolidatedAnimalUpdateFromPayloadDied(t *testing.T) {
 	}
 }
 
+func TestConsolidatedAnimalUpdateFromPayloadNeutralOuttakeStored(t *testing.T) {
+	// A neutral outcome (rating 0, dead=false) must be stored explicitly —
+	// zero values are real outcomes, not "absent".
+	c := newConsolidatedAnimal()
+	c.CurrentStatus = "in_care"
+	payload := EventPayload{
+		Outtake: OuttakePayload{Type: "Transfert", Date: "2024/06/15 09:00", Rating: 0, Dead: false},
+	}
+
+	c.UpdateFromPayload(payload, EventTypeAnimalReleased, time.Now())
+
+	if !c.OuttakeRating.Valid || c.OuttakeRating.Int != 0 {
+		t.Errorf("expected explicit OuttakeRating 0, got %+v", c.OuttakeRating)
+	}
+	if !c.OuttakeDead.Valid || c.OuttakeDead.Bool {
+		t.Errorf("expected explicit OuttakeDead false, got %+v", c.OuttakeDead)
+	}
+	if c.CurrentStatus != "released" {
+		t.Errorf("expected status %q, got %q", "released", c.CurrentStatus)
+	}
+}
+
+func TestConsolidatedAnimalUpdateFromPayloadNegativeOuttakeOverridesReleasedEvent(t *testing.T) {
+	// The producer picks animal_died vs animal_released via the outtake
+	// type's "error" flag, so a genuine death (rating -1) can arrive as
+	// animal_released. The console derives the status from the outcome.
+	c := newConsolidatedAnimal()
+	c.CurrentStatus = "in_care"
+	payload := EventPayload{
+		Outtake: OuttakePayload{Type: "Euthanasie", Date: "2024/06/15 09:00", Rating: -1, Dead: true},
+	}
+
+	c.UpdateFromPayload(payload, EventTypeAnimalReleased, time.Now())
+
+	if c.CurrentStatus != "died" {
+		t.Errorf("expected status %q, got %q", "died", c.CurrentStatus)
+	}
+	if !c.OuttakeRating.Valid || c.OuttakeRating.Int != -1 {
+		t.Errorf("expected OuttakeRating -1, got %+v", c.OuttakeRating)
+	}
+	if !c.OuttakeDead.Valid || !c.OuttakeDead.Bool {
+		t.Errorf("expected OuttakeDead true, got %+v", c.OuttakeDead)
+	}
+}
+
+func TestConsolidatedAnimalUpdateFromPayloadNoOuttakeLeavesRatingNull(t *testing.T) {
+	c := newConsolidatedAnimal()
+	c.CurrentStatus = "in_care"
+
+	c.UpdateFromPayload(EventPayload{}, EventTypeAnimalStatusChanged, time.Now())
+
+	if c.OuttakeRating.Valid {
+		t.Errorf("expected OuttakeRating to stay NULL, got %+v", c.OuttakeRating)
+	}
+	if c.OuttakeDead.Valid {
+		t.Errorf("expected OuttakeDead to stay NULL, got %+v", c.OuttakeDead)
+	}
+}
+
 func TestConsolidatedAnimalUpdateFromPayloadDiscoveryDateParsing(t *testing.T) {
 	c := newConsolidatedAnimal()
 	payload := EventPayload{
