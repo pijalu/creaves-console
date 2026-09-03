@@ -9,8 +9,10 @@
             <%= f.InputTag("Email", {label: "E-mail", type: "email"}) %>
             <%= f.InputTag("Password", {label: "Wachtwoord (leeg laten om te behouden)", type: "password"}) %>
             <%= f.InputTag("PasswordConfirmation", {label: "Wachtwoord bevestigen", type: "password"}) %>
+            <%= if (current_user.Admin) { %>
             <%= f.CheckboxTag("Admin", {label: "Beheerder"}) %>
             <%= f.CheckboxTag("Active", {label: "Actief"}) %>
+            <% } %>
 
             <div class="form-group">
                 <button class="btn btn-primary" type="submit">Opslaan</button>

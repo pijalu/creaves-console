@@ -9,8 +9,10 @@
             <%= f.InputTag("Email", {label: "E-Mail", type: "email"}) %>
             <%= f.InputTag("Password", {label: "Passwort (leer lassen, um zu behalten)", type: "password"}) %>
             <%= f.InputTag("PasswordConfirmation", {label: "Passwort bestätigen", type: "password"}) %>
+            <%= if (current_user.Admin) { %>
             <%= f.CheckboxTag("Admin", {label: "Admin"}) %>
             <%= f.CheckboxTag("Active", {label: "Aktiv"}) %>
+            <% } %>
 
             <div class="form-group">
                 <button class="btn btn-primary" type="submit">Speichern</button>

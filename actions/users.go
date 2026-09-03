@@ -281,9 +281,16 @@ func (v UsersResource) Update(c buffalo.Context) error {
 		return c.Error(http.StatusNotFound, err)
 	}
 
+	// Capture privileged flags before binding: they must never be changed
+	// through mass assignment by a non-admin caller.
+	wasAdmin := user.Admin
+	wasActive := user.Active
+
 	if err := c.Bind(user); err != nil {
 		return errors.WithStack(err)
 	}
+
+	protectPrivilegedFlags(cu, user, wasAdmin, wasActive)
 
 	if len(user.Password) > 0 {
 		if err := user.SetPasswordHash(); err != nil {
@@ -312,6 +319,19 @@ func (v UsersResource) Update(c buffalo.Context) error {
 	}).Wants("json", func(c buffalo.Context) error {
 		return c.Render(http.StatusOK, r.JSON(user))
 	}).Respond(c)
+}
+
+// protectPrivilegedFlags restores privileged flags after a form bind unless
+// the caller is allowed to change them. Only admins may toggle privileged
+// flags; an admin editing their own account cannot remove their own admin
+// flag (self-lockout protection).
+func protectPrivilegedFlags(cu, user *models.User, wasAdmin, wasActive bool) {
+	if !cu.Admin {
+		user.Admin = wasAdmin
+		user.Active = wasActive
+	} else if cu.ID == user.ID && wasAdmin {
+		user.Admin = true
+	}
 }
 
 // Destroy deletes a User from the DB
