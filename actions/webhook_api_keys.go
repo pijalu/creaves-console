@@ -107,6 +107,7 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 	key.ID = uuid.Must(uuid.NewV4())
 	key.KeyHash = hash
 	key.KeyPrefix = prefix
+	key.KeyValue = rawKey
 	key.Active = true
 
 	verrs, err := tx.ValidateAndCreate(key)

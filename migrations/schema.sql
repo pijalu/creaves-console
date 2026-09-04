@@ -195,6 +195,7 @@ CREATE TABLE `webhook_api_keys` (
   `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `key_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `key_prefix` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `key_value` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `instance_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `last_used_at` datetime DEFAULT NULL,

@@ -1,0 +1,1 @@
+add_column("webhook_api_keys", "key_value", "string", {null: true})

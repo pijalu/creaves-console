@@ -1,0 +1,1 @@
+drop_column("webhook_api_keys", "key_value")

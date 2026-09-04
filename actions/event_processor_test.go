@@ -170,6 +170,7 @@ func createTables() {
 			name TEXT NOT NULL,
 			key_hash TEXT NOT NULL,
 			key_prefix TEXT NOT NULL,
+			key_value TEXT,
 			instance_id TEXT,
 			active BOOLEAN DEFAULT 1,
 			last_used_at TIMESTAMP,

@@ -145,6 +145,8 @@ func TestWebhookAPIKeys_Create(t *testing.T) {
 	assert.Equal(t, "center-brussels", key.InstanceID)
 	assert.NotEmpty(t, key.KeyHash, "hash should be generated")
 	assert.NotEmpty(t, key.KeyPrefix, "prefix should be generated")
+	assert.NotEmpty(t, key.KeyValue, "raw key should remain visible to administrators")
+	assert.True(t, key.Authenticate(key.KeyValue), "stored raw key must authenticate")
 	assert.True(t, key.Active, "new key should be active")
 
 	// The stored hash must authenticate the generated raw key (bcrypt).

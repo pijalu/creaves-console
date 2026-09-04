@@ -14,10 +14,13 @@ import (
 
 // WebhookAPIKey represents an API key for authenticating webhook requests
 type WebhookAPIKey struct {
-	ID         uuid.UUID  `json:"id" db:"id"`
-	Name       string     `json:"name" db:"name"`
-	KeyHash    string     `json:"-" db:"key_hash"`
-	KeyPrefix  string     `json:"key_prefix" db:"key_prefix"`
+	ID        uuid.UUID `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	KeyHash   string    `json:"-" db:"key_hash"`
+	KeyPrefix string    `json:"key_prefix" db:"key_prefix"`
+	// KeyValue is retained so administrators can retrieve the configured key.
+	// It is never serialized in API responses.
+	KeyValue   string     `json:"-" db:"key_value"`
 	InstanceID string     `json:"instance_id" db:"instance_id"`
 	Active     bool       `json:"active" db:"active"`
 	LastUsedAt *time.Time `json:"last_used_at" db:"last_used_at"`

@@ -48,6 +48,7 @@ func seedAPIKey(t *testing.T, tx *pop.Connection, instanceID string) (rawKey str
 		Name:       "test-key",
 		KeyHash:    hash,
 		KeyPrefix:  prefix,
+		KeyValue:   rawKey,
 		InstanceID: instanceID,
 		Active:     true,
 	}
