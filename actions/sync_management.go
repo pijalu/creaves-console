@@ -145,7 +145,17 @@ func SyncManagementDeleteAllAnimals(c buffalo.Context) error {
 		return c.Redirect(http.StatusSeeOther, "/sync_management")
 	}
 
-	c.Flash().Add("success", fmt.Sprintf("Deleted all %d animals from the database", count))
+	// Re-queue the kept events so the consolidation runner rebuilds the
+	// deleted rows. Without this reset the events stay "processed" forever:
+	// ProcessUnprocessedEvents skips them and webhook redelivery is deduped
+	// by event ID, so those animals would never reappear (the historic
+	// missing-year incident).
+	if err := tx.RawQuery("UPDATE event_streams SET processed_at = NULL").Exec(); err != nil {
+		c.Flash().Add("danger", fmt.Sprintf("Failed to re-queue events for rebuild: %v", err))
+		return c.Redirect(http.StatusSeeOther, "/sync_management")
+	}
+
+	c.Flash().Add("success", fmt.Sprintf("Deleted all %d animals from the database; events re-queued for consolidation", count))
 	return c.Redirect(http.StatusSeeOther, "/sync_management")
 }
 
@@ -179,6 +189,15 @@ func SyncManagementDeleteInstanceAnimals(c buffalo.Context) error {
 		return c.Redirect(http.StatusSeeOther, "/sync_management")
 	}
 
-	c.Flash().Add("success", fmt.Sprintf("Deleted %d animals of instance %s", count, instanceID))
+	// Re-queue this instance's kept events so the consolidation runner
+	// rebuilds the deleted rows (same rationale as delete-all: a processed
+	// event whose consolidated row is gone would otherwise never be
+	// reprocessed — redelivery is deduped by event ID).
+	if err := tx.RawQuery("UPDATE event_streams SET processed_at = NULL WHERE instance_id = ?", instanceID).Exec(); err != nil {
+		c.Flash().Add("danger", fmt.Sprintf("Failed to re-queue events for rebuild: %v", err))
+		return c.Redirect(http.StatusSeeOther, "/sync_management")
+	}
+
+	c.Flash().Add("success", fmt.Sprintf("Deleted %d animals of instance %s; events re-queued for consolidation", count, instanceID))
 	return c.Redirect(http.StatusSeeOther, "/sync_management")
 }

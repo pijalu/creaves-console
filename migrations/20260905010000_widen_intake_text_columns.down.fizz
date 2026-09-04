@@ -1,0 +1,4 @@
+change_column("consolidated_animals", "intake_general", "string", {null: true})
+change_column("consolidated_animals", "intake_wounds", "string", {null: true})
+change_column("consolidated_animals", "intake_parasites", "string", {null: true})
+change_column("consolidated_animals", "intake_remarks", "string", {null: true})

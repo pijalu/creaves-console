@@ -35,10 +35,10 @@ CREATE TABLE `consolidated_animals` (
   `discovery_date` datetime DEFAULT NULL,
   `current_status` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `intake_date` datetime DEFAULT NULL,
-  `intake_general` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `intake_wounds` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `intake_parasites` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `intake_remarks` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `intake_general` text COLLATE utf8mb4_general_ci,
+  `intake_wounds` text COLLATE utf8mb4_general_ci,
+  `intake_parasites` text COLLATE utf8mb4_general_ci,
+  `intake_remarks` text COLLATE utf8mb4_general_ci,
   `outtake_date` datetime DEFAULT NULL,
   `outtake_type` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `outtake_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -216,4 +216,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-04 19:27:40
+-- Dump completed on 2026-09-05  1:39:41
