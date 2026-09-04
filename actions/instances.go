@@ -34,26 +34,28 @@ type instanceAdminView struct {
 	AnimalCount int
 	EventCount  int
 	KeyCount    int
+	Keys        models.WebhookAPIKeys
 }
 
 func loadInstanceAdminView(tx *pop.Connection, instanceID string) (*instanceAdminView, error) {
 	instance := &models.CreavesInstance{}
-	if err := tx.Where("instance_id = ?", instanceID).First(instance); err != nil {
+	if err := tx.Where("LOWER(instance_id) = LOWER(?)", instanceID).First(instance); err != nil {
 		return nil, err
 	}
-	animals, err := tx.Where("instance_id = ?", instanceID).Count(&models.ConsolidatedAnimal{})
+	canonicalID := instance.InstanceID
+	animals, err := tx.Where("instance_id = ?", canonicalID).Count(&models.ConsolidatedAnimal{})
 	if err != nil {
 		return nil, err
 	}
-	events, err := tx.Where("instance_id = ?", instanceID).Count(&models.EventStream{})
+	events, err := tx.Where("instance_id = ?", canonicalID).Count(&models.EventStream{})
 	if err != nil {
 		return nil, err
 	}
-	keys, err := tx.Where("instance_id = ?", instanceID).Count(&models.WebhookAPIKey{})
-	if err != nil {
+	keys := &models.WebhookAPIKeys{}
+	if err := tx.Where("instance_id = ?", canonicalID).Order("name asc").All(keys); err != nil {
 		return nil, err
 	}
-	return &instanceAdminView{CreavesInstance: *instance, AnimalCount: animals, EventCount: events, KeyCount: keys}, nil
+	return &instanceAdminView{CreavesInstance: *instance, AnimalCount: animals, EventCount: events, KeyCount: len(*keys), Keys: *keys}, nil
 }
 
 func InstanceShow(c buffalo.Context) error {

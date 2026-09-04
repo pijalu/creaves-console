@@ -90,6 +90,15 @@ func TestInstanceShowLocaleTemplatesAreSelfContained(t *testing.T) {
 		require.NoError(t, err, "locale template %s must be embedded", locale)
 		assert.NotContains(t, string(body), `partial("instances/show.plush.html")`, "locale template %s must not depend on missing partial", locale)
 		assert.Contains(t, string(body), "instance.InstanceID", "locale template %s must render instance data", locale)
+		assert.Contains(t, string(body), "/webhook_api_keys/", "locale template %s must link restricted keys", locale)
+	}
+}
+
+func TestWebhookAPIKeyTemplatesLinkInstances(t *testing.T) {
+	for _, path := range []string{"webhook_api_keys/index.plush.html", "webhook_api_keys/index.plush.fr.html", "webhook_api_keys/index.plush.de.html", "webhook_api_keys/index.plush.nl.html", "webhook_api_keys/show.plush.html", "webhook_api_keys/show.plush.fr.html", "webhook_api_keys/show.plush.de.html", "webhook_api_keys/show.plush.nl.html"} {
+		body, err := fs.ReadFile(templates.FS(), path)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), "/instances/", "%s must link keys back to instances", path)
 	}
 }
 

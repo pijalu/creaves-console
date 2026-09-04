@@ -24,7 +24,7 @@
                         <td><strong>Instanz-ID:</strong></td>
                         <td>
                             <%= if (webhookAPIKey.InstanceID) { %>
-                                <%= webhookAPIKey.InstanceID %>
+                                <a href="/instances/<%= webhookAPIKey.InstanceID %>"><%= webhookAPIKey.InstanceID %></a>
                             <% } else { %>
                                 <em>Beliebige Instanz</em>
                             <% } %>
