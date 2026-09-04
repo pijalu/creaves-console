@@ -349,6 +349,22 @@ func TestWebhookEventsHandler_BatchAndLastUsedAt(t *testing.T) {
 	assert.True(t, (*keys)[0].LastUsedAt.After(past))
 }
 
+func TestWebhookEventsHandler_RestrictedKeyMatchesCaseInsensitively(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "lagrange")
+	event := WebhookEvent{ID: uuid.Must(uuid.NewV4()).String(), InstanceID: "LaGrange", AnimalID: 17, EventType: string(models.EventTypeAnimalDiscovered), Payload: []byte(`{"initial_status":"in_care"}`), CreatedAt: time.Now()}
+	payload, _ := json.Marshal(WebhookPayload{Instance: &InstanceInfo{ID: "LaGrange"}, Events: []WebhookEvent{event}})
+	rec := postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var response map[string]interface{}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+	assert.EqualValues(t, 1, response["processed"])
+	var stored models.EventStream
+	require.NoError(t, tx.Where("animal_id = ?", 17).First(&stored))
+	assert.Equal(t, "lagrange", stored.InstanceID)
+}
+
 // TestWebhookEventsHandler_PartialFailure verifies that when a batch contains
 // a mix of valid and invalid events, the receiver:
 //   - processes the valid events (persisted + consolidated),

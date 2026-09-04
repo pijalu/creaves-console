@@ -91,10 +91,18 @@ func WebhookEventsHandler(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": "invalid json"}))
 	}
 
-	// Register envelope instance before ingest; upsert errors are non-fatal.
+	// Register envelope instance before ingest; restricted keys define the
+	// canonical instance identifier, regardless of client casing.
 	if payload.Instance != nil && payload.Instance.ID != "" {
-		if err := models.UpsertByInstanceID(tx, payload.Instance.ID, payload.Instance.Name, payload.Instance.Description, now, nil); err != nil {
-			fmt.Printf("Failed to upsert instance %s: %v\n", payload.Instance.ID, err)
+		envelopeID := payload.Instance.ID
+		if key.InstanceID != "" {
+			if !strings.EqualFold(envelopeID, key.InstanceID) {
+				return c.Render(http.StatusForbidden, r.JSON(map[string]string{"error": "instance_id mismatch"}))
+			}
+			envelopeID = key.InstanceID
+		}
+		if err := models.UpsertByInstanceID(tx, envelopeID, payload.Instance.Name, payload.Instance.Description, now, nil); err != nil {
+			fmt.Printf("Failed to upsert instance %s: %v\n", envelopeID, err)
 		}
 	}
 
@@ -120,20 +128,24 @@ func WebhookEventsHandler(c buffalo.Context) error {
 	eventErrors := []string{}
 
 	for _, webhookEvent := range payload.Events {
-		// Validate instance_id if key is restricted
-		// Envelope instance, when present, must match event source.
-		if payload.Instance != nil && payload.Instance.ID != "" && webhookEvent.InstanceID != payload.Instance.ID {
+		// Restricted keys define authoritative routing; comparisons are
+		// case-insensitive while persisted identifiers remain canonical.
+		eventInstanceID := webhookEvent.InstanceID
+		if payload.Instance != nil && payload.Instance.ID != "" && !strings.EqualFold(eventInstanceID, payload.Instance.ID) {
 			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance block mismatch", webhookEvent.ID))
 			continue
 		}
+		if key.InstanceID != "" {
+			if !strings.EqualFold(eventInstanceID, key.InstanceID) {
+				eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance_id mismatch", webhookEvent.ID))
+				continue
+			}
+			eventInstanceID = key.InstanceID
+		}
 		// Lazily register v1 event sources and maintain latest event timestamp.
 		eventAt := webhookEvent.CreatedAt
-		if err := models.UpsertByInstanceID(tx, webhookEvent.InstanceID, "", "", now, &eventAt); err != nil {
+		if err := models.UpsertByInstanceID(tx, eventInstanceID, "", "", now, &eventAt); err != nil {
 			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance registration failed", webhookEvent.ID))
-			continue
-		}
-		if key.InstanceID != "" && webhookEvent.InstanceID != key.InstanceID {
-			eventErrors = append(eventErrors, fmt.Sprintf("event %s: instance_id mismatch", webhookEvent.ID))
 			continue
 		}
 
@@ -187,7 +199,7 @@ func WebhookEventsHandler(c buffalo.Context) error {
 		// Create event
 		event := &models.EventStream{
 			ID:         eventID,
-			InstanceID: webhookEvent.InstanceID,
+			InstanceID: eventInstanceID,
 			AnimalID:   webhookEvent.AnimalID,
 			EventType:  models.EventType(webhookEvent.EventType),
 			Payload:    webhookEvent.Payload,

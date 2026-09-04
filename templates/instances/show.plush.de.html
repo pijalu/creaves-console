@@ -1,1 +1,7 @@
-<%= partial("instances/show.plush.html") %>
+<div class="row"><div class="col-md-8">
+<h1><%= if (instance.Name != "") { %><%= instance.Name %><% } else { %><%= instance.InstanceID %><% } %></h1>
+<p>Instance ID: <code><%= instance.InstanceID %></code></p>
+<table class="table"><tr><th>Animals</th><td><%= instance.AnimalCount %></td></tr><tr><th>Events</th><td><%= instance.EventCount %></td></tr><tr><th>Restricted API keys</th><td><%= instance.KeyCount %></td></tr><tr><th>First seen</th><td><%= instance.FirstSeenAt.Format("2006-01-02 15:04") %></td></tr><tr><th>Last seen</th><td><%= instance.LastSeenAt.Format("2006-01-02 15:04") %></td></tr></table>
+<div class="card border-danger"><div class="card-body"><h3 class="text-danger">Cleanup instance data</h3><p>This permanently deletes events, animals, restricted API keys, and registry entry. Trigger a full resync from Creaves afterward.</p>
+<form method="POST" action="/instances/<%= instance.InstanceID %>/cleanup"><input type="hidden" name="authenticity_token" value="<%= csrf_token() %>"><div class="form-group"><label>Type <code><%= instance.InstanceID %></code> to confirm</label><input class="form-control" name="instance_id_confirmation" required></div><button class="btn btn-danger" type="submit">Delete instance data</button></form></div></div>
+<a class="btn btn-secondary mt-3" href="/instances">Back</a></div></div>
