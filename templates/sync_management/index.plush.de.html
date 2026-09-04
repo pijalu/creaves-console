@@ -13,13 +13,21 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Tiere ohne registrierte Instanz:</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Name</th><th>Instanz-ID</th><th>Tiere</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Instanz-ID</th><th>Gespeichert</th><th>Erwartet</th><th>Bestätigt</th><th>Unbestätigt</th><th>Prüfsumme</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= row.Status.ExpectedTotal %></td>
+          <td><%= row.Status.Confirmed %></td>
+          <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
+          <td class="text-break">
+            <code title="Prüfsumme des empfangenen animal_state-Ereignisprotokolls"><%= row.Status.EventLogChecksum %></code><br>
+            <code title="Prüfsumme der konsolidierten Tiere"><%= row.Status.ConsolidatedChecksum %></code><br>
+            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">Prüfsumme stimmt</span><% } else { %><span class="badge badge-warning">Prüfsumme weicht ab</span><% } %>
+          </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('ALLE <%= row.AnimalCount %> Tiere der Instanz <%= row.InstanceID %> löschen? Dies kann nicht rückgängig gemacht werden. Starten Sie anschließend eine vollständige Resynchronisation von Creaves, um die Daten wiederherzustellen.');" style="display:inline">
               <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
@@ -31,6 +39,32 @@
         <% } %>
       </tbody>
     </table>
+    <p class="text-muted small mb-0">
+      Erwartet = in empfangenen Ereignissen gesehene distincte Tiere. Bestätigt = zuletzt empfangener Status-Hash stimmt mit dem gespeicherten überein. Unbestätigt = veralteter oder fehlender Status.
+      Vergleichen Sie die erste Prüfsumme mit der „Prüfsumme des erwarteten Bestands“ auf der Webhook-Resync-Seite Ihrer Creaves-Instanz: identische Werte beweisen, dass die Übertragung vollständig ist.
+    </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Tiere pro Jahr</h5>
+    <p class="card-text text-muted">Gespeicherte Tiere pro Instanz und Aufnahmejahr. Ein fehlendes aktueller Jahr (z. B. keine 2026-Zeile) bedeutet, dass diese Datensätze nie konsolidiert wurden &mdash; vergleichen Sie die Prüfsummen oben und starten Sie eine vollständige Resynchronisation der Creaves-Instanz.</p>
+    <table class="table table-sm table-striped mb-0">
+      <thead><tr><th>Instanz</th><th>Jahr</th><th>Tiere</th></tr></thead>
+      <tbody>
+        <%= for (group) in yearRows { %>
+          <%= for (y) in group.Years { %>
+          <tr>
+            <td><%= if (group.Name != "") { %><%= group.Name %><% } else { %><code><%= group.InstanceID %></code><% } %></td>
+            <td><%= y.Year %></td>
+            <td><%= y.Count %></td>
+          </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+    <%= if (!hasYearRows) { %><p class="text-muted mb-0">Noch keine Tiere gespeichert.</p><% } %>
   </div>
 </div>
 

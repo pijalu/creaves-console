@@ -13,13 +13,21 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Animals without registered instance:</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Name</th><th>Instance ID</th><th>Animals</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Instance ID</th><th>Stored</th><th>Expected</th><th>Confirmed</th><th>Unconfirmed</th><th>Sync checksum</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= row.Status.ExpectedTotal %></td>
+          <td><%= row.Status.Confirmed %></td>
+          <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
+          <td class="text-break">
+            <code title="Checksum of the received animal_state event log"><%= row.Status.EventLogChecksum %></code><br>
+            <code title="Checksum of the consolidated animals"><%= row.Status.ConsolidatedChecksum %></code><br>
+            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">checksum match</span><% } else { %><span class="badge badge-warning">checksum mismatch</span><% } %>
+          </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('Delete ALL <%= row.AnimalCount %> animals of instance <%= row.InstanceID %>? This cannot be undone. Trigger a full resync from Creaves afterward to rebuild the data.');" style="display:inline">
               <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
@@ -31,6 +39,32 @@
         <% } %>
       </tbody>
     </table>
+    <p class="text-muted small mb-0">
+      Expected = distinct animals seen in received events. Confirmed = latest received state hash matches the stored animal. Unconfirmed = stale or missing state.
+      Compare the first checksum with the "expected set checksum" shown in your Creaves instance's webhook resync page: identical values prove the transfer is complete.
+    </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Animals per year</h5>
+    <p class="card-text text-muted">Stored animals per instance and intake year. A missing current year (e.g. no 2026 row) means those records were never consolidated &mdash; compare the checksums above and trigger a full resync on the Creaves instance.</p>
+    <table class="table table-sm table-striped mb-0">
+      <thead><tr><th>Instance</th><th>Year</th><th>Animals</th></tr></thead>
+      <tbody>
+        <%= for (group) in yearRows { %>
+          <%= for (y) in group.Years { %>
+          <tr>
+            <td><%= if (group.Name != "") { %><%= group.Name %><% } else { %><code><%= group.InstanceID %></code><% } %></td>
+            <td><%= y.Year %></td>
+            <td><%= y.Count %></td>
+          </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+    <%= if (!hasYearRows) { %><p class="text-muted mb-0">No animals stored yet.</p><% } %>
   </div>
 </div>
 

@@ -2,6 +2,7 @@ package actions
 
 import (
 	"creaves-console/models"
+	"strings"
 	"time"
 
 	"github.com/gobuffalo/pop/v6"
@@ -28,11 +29,26 @@ func (ep *EventProcessor) ProcessUnprocessedEvents() (int, error) {
 	}
 
 	processedCount := 0
+	var skipped []string
+	var firstErr error
 	for _, event := range *events {
 		if err := ep.processEvent(&event); err != nil {
-			return processedCount, errors.Wrapf(err, "failed to process event %s", event.ID)
+			// Poison event: do not abort — a single malformed event must not
+			// block the replay of newer events (it stays unprocessed and is
+			// reported in the returned error).
+			skipped = append(skipped, event.ID.String())
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
 		}
 		processedCount++
+	}
+
+	if firstErr != nil {
+		return processedCount, errors.Wrapf(firstErr,
+			"failed to process event %s (skipped %d unprocessable event(s): %s)",
+			skipped[0], len(skipped), strings.Join(skipped, ", "))
 	}
 
 	return processedCount, nil

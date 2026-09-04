@@ -13,13 +13,21 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Animaux sans instance enregistrée :</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Nom</th><th>ID d'instance</th><th>Animaux</th><th></th></tr></thead>
+      <thead><tr><th>Nom</th><th>ID d'instance</th><th>Stockés</th><th>Attendus</th><th>Confirmés</th><th>Non confirmés</th><th>Somme de contrôle</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= row.Status.ExpectedTotal %></td>
+          <td><%= row.Status.Confirmed %></td>
+          <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
+          <td class="text-break">
+            <code title="Somme de contrôle du journal des événements animal_state reçus"><%= row.Status.EventLogChecksum %></code><br>
+            <code title="Somme de contrôle des animaux consolidés"><%= row.Status.ConsolidatedChecksum %></code><br>
+            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">somme conforme</span><% } else { %><span class="badge badge-warning">somme divergente</span><% } %>
+          </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('Supprimer TOUS les <%= row.AnimalCount %> animaux de l\'instance <%= row.InstanceID %> ? Action irréversible. Lancez ensuite une resynchronisation complète depuis Creaves pour reconstruire les données.');" style="display:inline">
               <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
@@ -31,6 +39,32 @@
         <% } %>
       </tbody>
     </table>
+    <p class="text-muted small mb-0">
+      Attendus = animaux distincts vus dans les événements reçus. Confirmés = dernier hash d'état reçu identique à celui stocké. Non confirmés = état périmé ou manquant.
+      Comparez la première somme de contrôle avec la « somme de contrôle de l'ensemble attendu » affichée sur la page de resynchronisation de votre instance Creaves : des valeurs identiques prouvent que le transfert est complet.
+    </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Animaux par année</h5>
+    <p class="card-text text-muted">Animaux stockés par instance et année d'admission. Une année courante manquante (p. ex. aucune ligne 2026) signifie que ces enregistrements n'ont jamais été consolidés &mdash; comparez les sommes de contrôle ci-dessus et lancez une resynchronisation complète depuis l'instance Creaves.</p>
+    <table class="table table-sm table-striped mb-0">
+      <thead><tr><th>Instance</th><th>Année</th><th>Animaux</th></tr></thead>
+      <tbody>
+        <%= for (group) in yearRows { %>
+          <%= for (y) in group.Years { %>
+          <tr>
+            <td><%= if (group.Name != "") { %><%= group.Name %><% } else { %><code><%= group.InstanceID %></code><% } %></td>
+            <td><%= y.Year %></td>
+            <td><%= y.Count %></td>
+          </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+    <%= if (!hasYearRows) { %><p class="text-muted mb-0">Aucun animal stocké pour le moment.</p><% } %>
   </div>
 </div>
 

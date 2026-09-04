@@ -11,11 +11,26 @@ import (
 )
 
 // instanceAnimalsRow couples a registered instance with the number of
-// consolidated animals currently stored for it.
+// consolidated animals currently stored for it plus its sync status
+// (expected/confirmed/unconfirmed record counts + checksums).
 type instanceAnimalsRow struct {
 	InstanceID  string
 	Name        string
 	AnimalCount int
+	Status      *InstanceSyncStatus
+}
+
+// instanceYearRow groups the per-year stored-animal counts of one instance so
+// a missing current-year cohort ("no animals of 2026") is visible at a glance.
+type instanceYearRow struct {
+	InstanceID string
+	Name       string
+	Years      []yearCount
+}
+
+type yearCount struct {
+	Year  int
+	Count int
 }
 
 // SyncManagementIndex renders the admin screen to manage synchronized
@@ -44,10 +59,15 @@ func SyncManagementIndex(c buffalo.Context) error {
 		if err != nil {
 			return err
 		}
+		status, err := ComputeInstanceSyncStatus(tx, inst.InstanceID)
+		if err != nil {
+			return err
+		}
 		rows = append(rows, instanceAnimalsRow{
 			InstanceID:  inst.InstanceID,
 			Name:        inst.Name,
 			AnimalCount: count,
+			Status:      status,
 		})
 		total += count
 	}
@@ -63,6 +83,41 @@ func SyncManagementIndex(c buffalo.Context) error {
 	c.Set("instanceRows", rows)
 	c.Set("totalAnimals", total+orphanCount)
 	c.Set("orphanAnimals", orphanCount)
+
+	// Per-year stored counts per instance: a missing current-year cohort
+	// (the historic "no animals of 2026" incident) must be visible here.
+	type yearRow struct {
+		InstanceID string `db:"instance_id"`
+		Year       int    `db:"year"`
+		Count      int    `db:"count"`
+	}
+	yearRows := []yearRow{}
+	if err := tx.RawQuery(
+		"SELECT instance_id, year, COUNT(*) as count FROM consolidated_animals GROUP BY instance_id, year ORDER BY instance_id asc, year desc",
+	).All(&yearRows); err != nil {
+		return err
+	}
+	byInstance := map[string]*instanceYearRow{}
+	nameByID := map[string]string{}
+	for _, r := range rows {
+		nameByID[r.InstanceID] = r.Name
+	}
+	ordered := make([]*instanceYearRow, 0, len(rows))
+	for _, y := range yearRows {
+		group, ok := byInstance[y.InstanceID]
+		if !ok {
+			group = &instanceYearRow{InstanceID: y.InstanceID, Name: nameByID[y.InstanceID]}
+			byInstance[y.InstanceID] = group
+			ordered = append(ordered, group)
+		}
+		group.Years = append(group.Years, yearCount{Year: y.Year, Count: y.Count})
+	}
+	flat := make([]instanceYearRow, 0, len(ordered))
+	for _, g := range ordered {
+		flat = append(flat, *g)
+	}
+	c.Set("yearRows", flat)
+	c.Set("hasYearRows", len(flat) > 0)
 	return c.Render(http.StatusOK, r.HTML("sync_management/index.plush.html"))
 }
 

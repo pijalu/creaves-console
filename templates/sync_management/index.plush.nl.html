@@ -13,13 +13,21 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Dieren zonder geregistreerde instantie:</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Naam</th><th>Instantie-ID</th><th>Dieren</th><th></th></tr></thead>
+      <thead><tr><th>Naam</th><th>Instantie-ID</th><th>Opgeslagen</th><th>Verwacht</th><th>Bevestigd</th><th>Niet bevestigd</th><th>Controlesom</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= row.Status.ExpectedTotal %></td>
+          <td><%= row.Status.Confirmed %></td>
+          <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
+          <td class="text-break">
+            <code title="Controlesom van het ontvangen animal_state-gebeurtenissenlogboek"><%= row.Status.EventLogChecksum %></code><br>
+            <code title="Controlesom van de geconsolideerde dieren"><%= row.Status.ConsolidatedChecksum %></code><br>
+            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">controlesom klopt</span><% } else { %><span class="badge badge-warning">controlesom wijkt af</span><% } %>
+          </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('ALLE <%= row.AnimalCount %> dieren van instantie <%= row.InstanceID %> verwijderen? Dit kan niet ongedaan worden gemaakt. Start daarna een volledige hersynchronisatie vanuit Creaves om de gegevens opnieuw op te bouwen.');" style="display:inline">
               <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
@@ -31,6 +39,32 @@
         <% } %>
       </tbody>
     </table>
+    <p class="text-muted small mb-0">
+      Verwacht = unieke dieren gezien in ontvangen gebeurtenissen. Bevestigd = laatst ontvangen status-hash komt overeen met de opgeslagen. Niet bevestigd = verouderde of ontbrekende status.
+      Vergelijk de eerste controlesom met de „controlesom van de verwachte verzameling” op de webhook-hersynchronisatiepagina van uw Creaves-instantie: identieke waarden bewijzen dat de overdracht compleet is.
+    </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Dieren per jaar</h5>
+    <p class="card-text text-muted">Opgeslagen dieren per instantie en opnamejaar. Een ontbrekend huidig jaar (bijv. geen 2026-rij) betekent dat die gegevens nooit geconsolideerd zijn &mdash; vergelijk de controlesommen hierboven en start een volledige hersynchronisatie vanuit de Creaves-instantie.</p>
+    <table class="table table-sm table-striped mb-0">
+      <thead><tr><th>Instantie</th><th>Jaar</th><th>Dieren</th></tr></thead>
+      <tbody>
+        <%= for (group) in yearRows { %>
+          <%= for (y) in group.Years { %>
+          <tr>
+            <td><%= if (group.Name != "") { %><%= group.Name %><% } else { %><code><%= group.InstanceID %></code><% } %></td>
+            <td><%= y.Year %></td>
+            <td><%= y.Count %></td>
+          </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+    <%= if (!hasYearRows) { %><p class="text-muted mb-0">Nog geen dieren opgeslagen.</p><% } %>
   </div>
 </div>
 

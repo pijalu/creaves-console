@@ -127,6 +127,7 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | `actions/webhook_api_keys.go` | CRUD for webhook API keys (admin UI) |
 | `actions/event_processor.go` | Processes events into `consolidated_animals` |
 | `actions/consolidation_runner.go` | Orchestrates processing workflow |
+| `actions/sync_checksum.go` | Per-instance sync status (expected/confirmed/unconfirmed + shared state-set checksums) for the sync-management view |
 | `actions/dashboard.go` | Dashboard, consolidated animal list, drill-down, reports |
 | `actions/users.go` | Auth (session), user CRUD |
 | `actions/render.go` | Render engine, helpers |
@@ -429,6 +430,10 @@ Without `-tags sqlite`, tests will fail with:
 | File | Covers |
 |------|--------|
 | `actions/event_processor_test.go` | Event processing, idempotency, multi-instance, status transitions, stats, run history |
+| `actions/event_processor_poison_test.go` | Regression: a poison event must not block newer events during replay |
+| `actions/sync_checksum_test.go` | Shared checksum golden vectors + per-instance counts math |
+| `actions/webhook_e2e_test.go` | Full push→receive→process flow over the real handler (contract E2E) |
+| `actions/webhook_e2e_second_extract_test.go` | E2E: second full extract keeps all years incl. current year, with a poison event present |
 | `models/models_test.go` | Model validation tests |
 
 ### Test Database
@@ -502,8 +507,11 @@ docker-compose run --rm consolidation-cli process
   - Pusher worker on Creaves side is not started at boot (only starts lazily when
     first event is published — see Creaves `webhook_pusher.go`)
   - Console tests require SQLite build tag (documented above)
-  - No integration test covering the full push→receive→process flow yet
 - **Deprecated fields**: `source_db` in event_streams is leftover from the old pull
   model; always empty now.
+- **Sync visibility (phase 8, done)**: `/sync_management` shows per-instance
+  expected/confirmed/unconfirmed counts + event-log vs consolidated checksums;
+  replay (`ProcessUnprocessedEvents`) skips-and-continues on poison events
+  (see `docs/archive/2026-09-05-phase-8-sync-visibility.md`).
 
 See `TODO.md` for the implementation plan and status.
