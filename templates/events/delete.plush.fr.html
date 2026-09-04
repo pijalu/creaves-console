@@ -1,0 +1,55 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Supprimer les événements webhook</h1>
+        <p class="lead">Supprime définitivement les événements reçus des instances Creaves. Chaque événement supprimé est d'abord archivé dans un fichier JSONL.</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h3 class="text-danger">Zone de danger</h3>
+                <p>Cette action est irréversible depuis la console. Les événements archivés restent sur ce serveur sous forme de fichiers JSONL dans <code>archives/event-deletions/</code>.</p>
+                <form method="POST" action="/events/delete">
+                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                    <div class="form-group">
+                        <label for="scope">Portée</label>
+                        <select name="scope" id="scope" class="form-control" required>
+                            <option value="">Choisir une portée&hellip;</option>
+                            <option value="instance">Tous les événements d'une instance</option>
+                            <option value="all">Tous les événements (toutes instances)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="instance_id">ID d'instance (requis pour la portée instance)</label>
+                        <input class="form-control" name="instance_id" id="instance_id" placeholder="ex. center-a">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmation">Confirmation</label>
+                        <p class="text-muted">Saisissez <code>DELETE ALL</code> pour tous les événements, ou l'ID d'instance exact pour une seule instance.</p>
+                        <input class="form-control" name="confirmation" id="confirmation" required>
+                    </div>
+                    <button class="btn btn-danger" type="submit">Supprimer les événements</button>
+                    <a class="btn btn-secondary" href="/events">Annuler</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5>Instances connues</h5>
+                <%= if (instances) { %>
+                    <ul>
+                        <%= for (inst) in instances { %>
+                            <li><code><%= inst.InstanceID %></code></li>
+                        <% } %>
+                    </ul>
+                <% } else { %>
+                    <p class="text-muted">Aucun événement reçu pour le moment.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>

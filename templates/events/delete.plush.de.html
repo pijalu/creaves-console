@@ -1,0 +1,55 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Webhook-Ereignisse löschen</h1>
+        <p class="lead">Löscht die von den Creaves-Instanzen empfangenen Ereignisse endgültig. Jedes gelöschte Ereignis wird zuerst in einer JSONL-Datei archiviert.</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h3 class="text-danger">Gefahrenbereich</h3>
+                <p>Dies lässt sich in der Konsole nicht rückgängig machen. Archivierte Ereignisse bleiben als JSONL-Dateien unter <code>archives/event-deletions/</code> auf diesem Server.</p>
+                <form method="POST" action="/events/delete">
+                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                    <div class="form-group">
+                        <label for="scope">Umfang</label>
+                        <select name="scope" id="scope" class="form-control" required>
+                            <option value="">Umfang wählen&hellip;</option>
+                            <option value="instance">Alle Ereignisse einer Instanz</option>
+                            <option value="all">Alle Ereignisse (jede Instanz)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="instance_id">Instanz-ID (Pflicht beim Instanz-Umfang)</label>
+                        <input class="form-control" name="instance_id" id="instance_id" placeholder="z. B. center-a">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmation">Bestätigung</label>
+                        <p class="text-muted">Tippen Sie <code>DELETE ALL</code> für alle Ereignisse oder die exakte Instanz-ID für eine einzelne Instanz.</p>
+                        <input class="form-control" name="confirmation" id="confirmation" required>
+                    </div>
+                    <button class="btn btn-danger" type="submit">Ereignisse löschen</button>
+                    <a class="btn btn-secondary" href="/events">Abbrechen</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5>Bekannte Instanzen</h5>
+                <%= if (instances) { %>
+                    <ul>
+                        <%= for (inst) in instances { %>
+                            <li><code><%= inst.InstanceID %></code></li>
+                        <% } %>
+                    </ul>
+                <% } else { %>
+                    <p class="text-muted">Noch keine Ereignisse empfangen.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>

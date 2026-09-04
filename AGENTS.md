@@ -131,6 +131,8 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | `actions/users.go` | Auth (session), user CRUD |
 | `actions/render.go` | Render engine, helpers |
 | `models/event_stream.go` | Event model + payload structs |
+| `actions/events.go` | Admin event stream browser (index/show) |
+| `actions/events_delete.go` | Admin deletion of received events (all / per instance) with JSONL archive |
 | `models/consolidated_animal.go` | Consolidated view model + `ApplyEvent()` logic |
 | `models/webhook_api_key.go` | API key model + `GenerateKey()` / `Authenticate()` |
 | `models/import_run.go` | Import/processing run tracking |
@@ -160,6 +162,10 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | POST | `/webhook/events` | `WebhookEventsHandler` | **Bearer token** (API key) |
 | GET | `/instances` | `InstancesIndex` | Session |
 | POST | `/instances/:instance_id/cleanup` | `InstanceCleanup` | Admin |
+| GET | `/events` | `EventsIndex` | Admin |
+| GET | `/events/delete` | `EventsDeleteNew` | Admin |
+| POST | `/events/delete` | `EventsDeleteCreate` | Admin |
+| GET | `/events/:event_id` | `EventShow` | Admin |
 | GET/POST | `/webhook_resync`, `/webhook_resync/start` | Resync handlers | Admin |
 | GET | `/webhook_resync/status.json` | `WebhookResyncStatus` | Session |
 | GET | `/` | `DashboardIndex` | Session |

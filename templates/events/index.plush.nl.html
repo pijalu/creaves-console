@@ -78,5 +78,12 @@
             </div>
         </div>
         <%= if (pagination) { %><%= paginator(pagination) %><% } %>
+
+        <div class="card border-danger mt-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <span><strong>Gevarenzone:</strong> ontvangen gebeurtenissen definitief verwijderen (eerst als JSONL gearchiveerd).</span>
+                <a href="/events/delete" class="btn btn-outline-danger btn-sm">Gebeurtenissen verwijderen&hellip;</a>
+            </div>
+        </div>
     </div>
 </div>

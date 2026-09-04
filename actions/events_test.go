@@ -34,6 +34,8 @@ func newEventsTestApp(tx *pop.Connection, admin bool) *buffalo.App {
 		}
 	})
 	app.GET("/events", EventsIndex)
+	app.GET("/events/delete", EventsDeleteNew)
+	app.POST("/events/delete", EventsDeleteCreate)
 	app.GET("/events/{event_id}", EventShow)
 	return app
 }

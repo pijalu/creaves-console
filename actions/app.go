@@ -69,8 +69,13 @@ func App() *buffalo.App {
 		app.GET("/instances/{instance_id}", InstanceShow)
 		app.POST("/instances/{instance_id}/cleanup", InstanceCleanup)
 
-		// Received webhook events (admin diagnostics).
+		// Received webhook events (admin diagnostics). Static /events/delete
+		// routes must be registered before /events/{event_id}: the router
+		// matches in registration order and {event_id} would otherwise
+		// capture the "delete" segment.
 		app.GET("/events", EventsIndex)
+		app.GET("/events/delete", EventsDeleteNew)
+		app.POST("/events/delete", EventsDeleteCreate)
 		app.GET("/events/{event_id}", EventShow)
 
 		// Animals sync management (admin): delete all animals / per instance.

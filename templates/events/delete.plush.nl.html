@@ -1,0 +1,55 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Webhook-gebeurtenissen verwijderen</h1>
+        <p class="lead">Verwijdert de van de Creaves-instanties ontvangen gebeurtenissen definitief. Elke verwijderde gebeurtenis wordt eerst naar een JSONL-bestand gearchiveerd.</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h3 class="text-danger">Gevarenzone</h3>
+                <p>Dit kan vanuit de console niet ongedaan worden gemaakt. Gearchiveerde gebeurtenissen blijven als JSONL-bestanden onder <code>archives/event-deletions/</code> op deze server staan.</p>
+                <form method="POST" action="/events/delete">
+                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                    <div class="form-group">
+                        <label for="scope">Bereik</label>
+                        <select name="scope" id="scope" class="form-control" required>
+                            <option value="">Kies een bereik&hellip;</option>
+                            <option value="instance">Alle gebeurtenissen van één instantie</option>
+                            <option value="all">Alle gebeurtenissen (elke instantie)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="instance_id">Instantie-ID (verplicht bij instantiebereik)</label>
+                        <input class="form-control" name="instance_id" id="instance_id" placeholder="bijv. center-a">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmation">Bevestiging</label>
+                        <p class="text-muted">Typ <code>DELETE ALL</code> voor alle gebeurtenissen, of de exacte instantie-ID voor één instantie.</p>
+                        <input class="form-control" name="confirmation" id="confirmation" required>
+                    </div>
+                    <button class="btn btn-danger" type="submit">Gebeurtenissen verwijderen</button>
+                    <a class="btn btn-secondary" href="/events">Annuleren</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5>Bekende instanties</h5>
+                <%= if (instances) { %>
+                    <ul>
+                        <%= for (inst) in instances { %>
+                            <li><code><%= inst.InstanceID %></code></li>
+                        <% } %>
+                    </ul>
+                <% } else { %>
+                    <p class="text-muted">Nog geen gebeurtenissen ontvangen.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
