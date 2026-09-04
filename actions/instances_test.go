@@ -4,6 +4,7 @@
 package actions
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"creaves-console/models"
+	"creaves-console/templates"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/nulls"
@@ -78,6 +80,16 @@ func seedInstanceCleanupFixtures(t *testing.T, tx *pop.Connection) {
 			InstanceID: instanceID, Active: true,
 		}
 		require.NoError(t, tx.Create(k))
+	}
+}
+
+func TestInstanceShowLocaleTemplatesAreSelfContained(t *testing.T) {
+	for _, locale := range []string{"", ".fr", ".de", ".nl"} {
+		path := "instances/show.plush" + locale + ".html"
+		body, err := fs.ReadFile(templates.FS(), path)
+		require.NoError(t, err, "locale template %s must be embedded", locale)
+		assert.NotContains(t, string(body), `partial("instances/show.plush.html")`, "locale template %s must not depend on missing partial", locale)
+		assert.Contains(t, string(body), "instance.InstanceID", "locale template %s must render instance data", locale)
 	}
 }
 
