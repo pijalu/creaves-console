@@ -113,6 +113,25 @@ func (c ConsolidatedAnimal) LocalizedField(lang, field string) string {
 	return canonical
 }
 
+// OutcomeStatus classifies the stored outtake outcome as "positive",
+// "neutral" or "negative" (empty when no rating information is stored).
+// A dead flag always forces negative; otherwise the rating sign decides;
+// rating 0 is neutral. Without any rating/dead value the outcome is unknown.
+func (c ConsolidatedAnimal) OutcomeStatus() string {
+	switch {
+	case c.OuttakeDead.Valid && c.OuttakeDead.Bool:
+		return "negative"
+	case c.OuttakeRating.Valid && c.OuttakeRating.Int < 0:
+		return "negative"
+	case c.OuttakeRating.Valid && c.OuttakeRating.Int > 0:
+		return "positive"
+	case c.OuttakeRating.Valid && c.OuttakeRating.Int == 0:
+		return "neutral"
+	default:
+		return ""
+	}
+}
+
 type ConsolidatedAnimals []ConsolidatedAnimal
 
 func (c ConsolidatedAnimals) String() string {

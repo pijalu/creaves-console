@@ -129,7 +129,7 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	viewMode := animalsViewMode(c, scope)
 	q = applyConsolidatedAnimalFilters(q, c, viewMode, scope)
 
-	if err := q.Order("year desc, year_number asc").All(animals); err != nil {
+	if err := applyConsolidatedSort(q, c).All(animals); err != nil {
 		return err
 	}
 
@@ -330,7 +330,7 @@ func ConsolidatedAnimalsExportCSV(c buffalo.Context) error {
 	q = applyConsolidatedAnimalFilters(q, c, viewMode, scope)
 
 	animals := &models.ConsolidatedAnimals{}
-	if err := q.Order("year desc, year_number asc").All(animals); err != nil {
+	if err := applyConsolidatedSort(q, c).All(animals); err != nil {
 		return err
 	}
 

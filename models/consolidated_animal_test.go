@@ -356,3 +356,36 @@ func TestConsolidatedAnimalLocalizedField(t *testing.T) {
 		t.Fatalf("fallback = %q", got)
 	}
 }
+
+// TestApplyEvent_AllLocalesRoundTrip pins the multilingual export/import
+// contract: a producer pushing translations for every supported locale
+// (en-US, fr, de, nl) must have each language stored and readable via
+// LocalizedField, with the canonical value intact.
+func TestApplyEvent_AllLocalesRoundTrip(t *testing.T) {
+	want := map[string]string{
+		"en-US": "Hedgehog",
+		"fr":    "Hérisson",
+		"de":    "Igel",
+		"nl":    "Egel",
+	}
+	translations := map[string]map[string]string{}
+	for lang, value := range want {
+		translations[lang] = map[string]string{"species": value}
+	}
+
+	c := newConsolidatedAnimal()
+	payload := EventPayload{Translations: translations}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.ApplyEvent(EventStream{EventType: EventTypeAnimalState, Payload: raw, CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+
+	for lang, value := range want {
+		if got := c.LocalizedField(lang, "species"); got != value {
+			t.Errorf("%s species = %q, want %q", lang, got, value)
+		}
+	}
+}

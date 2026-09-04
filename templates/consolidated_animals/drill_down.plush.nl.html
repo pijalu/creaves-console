@@ -105,11 +105,11 @@
                         <td><%= if (animal.IntakeRemarks.Valid) { %><%= animal.IntakeRemarks.String %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Datum van uitzetting:</strong></td>
+                        <td><strong>Datum van afloop:</strong></td>
                         <td><%= if (animal.OuttakeDate.Valid) { %><%= animal.OuttakeDate.Time.Format("2006-01-02 15:04") %><% } else { %>-<% } %></td>
                     </tr>
                     <tr>
-                        <td><strong>Plaats van uitzetting:</strong></td>
+                        <td><strong>Plaats van afloop:</strong></td>
                         <td><%= if (animal.OuttakeLocation.Valid) { %><%= animal.OuttakeLocation.String %><% } else { %>-<% } %></td>
                     </tr>
                 </table>

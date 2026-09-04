@@ -92,7 +92,7 @@
                 <input type="text" name="ring" id="ring" class="form-control" value="<%= params["ring"] %>" placeholder="Rechercher...">
             </div>
             <div class="form-group mr-2">
-                <label for="outtake_type" class="mr-2">Type de sortie :</label>
+                <label for="outtake_type" class="mr-2">Type d'issue :</label>
                 <select name="outtake_type" id="outtake_type" class="form-control">
                     <option value="">Tous</option>
                     <%= for (ot) in outtakeTypesList { %>
@@ -119,20 +119,20 @@
             <table class="table table-striped table-hover table-sm">
                 <thead class="thead-dark">
                     <tr>
-                        <th>Instance</th>
-                        <th>Année</th>
-                        <th>N°</th>
-                        <th>Espèce</th>
-                        <th>Identification</th>
-                        <th>Date d'entrée</th>
+                        <th><a class="text-light" href="<%= sortLink("instance") %>">Instance <%= sortIcon("instance") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("year") %>">Année <%= sortIcon("year") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("number") %>">N° <%= sortIcon("number") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("species") %>">Espèce <%= sortIcon("species") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("identification") %>">Identification <%= sortIcon("identification") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("intake_date") %>">Date d'entrée <%= sortIcon("intake_date") %></a></th>
                         <th>Heure</th>
-                        <th>Lieu de découverte</th>
-                        <th>CP</th>
-                        <th>Ville</th>
-                        <th>Cause</th>
-                        <th>Sortie</th>
-                        <th>Date de sortie</th>
-                        <th>Lieu de sortie</th>
+                        <th><a class="text-light" href="<%= sortLink("discovery_location") %>">Lieu de découverte <%= sortIcon("discovery_location") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("postal_code") %>">CP <%= sortIcon("postal_code") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("city") %>">Ville <%= sortIcon("city") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("entry_cause") %>">Cause <%= sortIcon("entry_cause") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("outcome") %>">Issue <%= sortIcon("outcome") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("outcome_date") %>">Date d'issue <%= sortIcon("outcome_date") %></a></th>
+                        <th><a class="text-light" href="<%= sortLink("outcome_location") %>">Lieu d'issue <%= sortIcon("outcome_location") %></a></th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -165,9 +165,9 @@
                             <td>
                                 <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
                                     <%= tstatus_localized(animal.CurrentStatus) %>
-                                </span>
+                                </span><%= if (animal.OutcomeStatus() != "") { %><span class="badge badge-<%= outcomeClass(animal) %>"><%= outcomeLabel(animal) %></span><% } %>
                                 <%= if (animal.OuttakeType.Valid) { %>
-                                    <small><%= animal.OuttakeType.String %></small>
+                                    <small><%= tfield_localized(animal, "outtake_type") %></small>
                                 <% } %>
                             </td>
                             <td>

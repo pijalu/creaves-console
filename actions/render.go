@@ -187,11 +187,15 @@ func init() {
 				}
 				return "✗"
 			},
-			"langLinks":        langLinks,
+			"langLinks":         langLinks,
 			"tfield_localized":  localizedField,
 			"tlabel_localized":  localizedLabel,
 			"tstatus_localized": localizedStatus,
-			"csrf_token":       csrfToken,
+			"csrf_token":        csrfToken,
+			"sortLink":          sortLink,
+			"sortIcon":          sortIcon,
+			"outcomeClass":      outcomeClass,
+			"outcomeLabel":      outcomeLabel,
 		},
 	})
 }

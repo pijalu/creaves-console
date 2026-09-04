@@ -95,6 +95,27 @@
                         <td><strong>Bemerkungen:</strong></td>
                         <td><%= if (animal.IntakeRemarks.Valid) { %><%= animal.IntakeRemarks.String %><% } else { %>-<% } %></td>
                     </tr>
+                    <%= if (animal.OutcomeStatus() != "") { %>
+                    <tr>
+                        <td><strong>Ausgang:</strong></td>
+                        <td>
+                            <span class="badge badge-<%= outcomeClass(animal) %>"><%= outcomeLabel(animal) %></span>
+                            <%= if (animal.OuttakeType.Valid) { %><%= tfield_localized(animal, "outtake_type") %><% } %>
+                        </td>
+                    </tr>
+                    <% } %>
+                    <%= if (animal.OuttakeDate.Valid) { %>
+                    <tr>
+                        <td><strong>Ausgangsdatum:</strong></td>
+                        <td><%= animal.OuttakeDate.Time.Format("2006-01-02 15:04") %></td>
+                    </tr>
+                    <% } %>
+                    <%= if (animal.OuttakeLocation.Valid) { %>
+                    <tr>
+                        <td><strong>Ausgangsort:</strong></td>
+                        <td><%= animal.OuttakeLocation.String %></td>
+                    </tr>
+                    <% } %>
                 </table>
             </div>
         </div>

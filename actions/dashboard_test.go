@@ -157,11 +157,13 @@ func TestConsolidatedAnimalsRegisterShowsInstance(t *testing.T) {
 	res := getAnimalsPage(t, app, "/consolidated_animals")
 	require.Equal(t, http.StatusOK, res.Code, "body: %s", res.Body.String())
 	body := res.Body.String()
-	assert.Contains(t, body, "<th>Instance</th>", "register table must have an Instance column")
+	// Sortable headers wrap the label in a link: sort=instance / sort=year.
+	assert.Contains(t, body, `sort=instance`, "register table must have a sortable Instance column")
+	assert.Contains(t, body, ">Instance ", "register table must have an Instance column")
 	assert.Contains(t, body, "<td>center-a</td>", "rows must show the source instance")
 	assert.Contains(t, body, "<td>center-b</td>", "rows must show the source instance")
 	// Column order matches the CSV export: Instance first.
-	assert.Less(t, strings.Index(body, "<th>Instance</th>"), strings.Index(body, "<th>Year</th>"),
+	assert.Less(t, strings.Index(body, "sort=instance"), strings.Index(body, "sort=year"),
 		"Instance column must precede Year, matching the CSV header order")
 }
 
