@@ -36,6 +36,7 @@ func newInstancesTestApp(tx *pop.Connection, admin bool) *buffalo.App {
 		}
 	})
 	app.GET("/instances", InstancesIndex)
+	app.GET("/instances/{instance_id}", InstanceShow)
 	app.POST("/instances/{instance_id}/cleanup", InstanceCleanup)
 	return app
 }
@@ -91,7 +92,35 @@ func TestInstanceShowLocaleTemplatesAreSelfContained(t *testing.T) {
 		assert.NotContains(t, string(body), `partial("instances/show.plush.html")`, "locale template %s must not depend on missing partial", locale)
 		assert.Contains(t, string(body), "instance.InstanceID", "locale template %s must render instance data", locale)
 		assert.Contains(t, string(body), "/webhook_api_keys/", "locale template %s must link restricted keys", locale)
+		assert.Contains(t, string(body), "key.KeyValue", "locale template %s must render the raw key value", locale)
 	}
+}
+
+func TestInstanceShowRendersAPIKeyValues(t *testing.T) {
+	seedInstanceCleanupFixtures(t, testDB)
+	// center-a gets a modern key with a retained value; center-b keeps a
+	// legacy key without one and must fall back to the prefix + note.
+	require.NoError(t, testDB.RawQuery(
+		"UPDATE webhook_api_keys SET key_value = ? WHERE instance_id = ?",
+		"creaves_full-value-a", "center-a").Exec())
+	app := newInstancesTestApp(testDB, true)
+
+	req := httptest.NewRequest(http.MethodGet, "/instances/center-a", nil)
+	res := httptest.NewRecorder()
+	app.ServeHTTP(res, req)
+
+	require.Equal(t, http.StatusOK, res.Code, "body: %s", res.Body.String())
+	body := res.Body.String()
+	assert.Contains(t, body, "creaves_full-value-a", "show page must render the full key value")
+	assert.NotContains(t, body, "ck_ce&hellip;</code>", "stored value must replace the masked prefix")
+
+	legacy := httptest.NewRequest(http.MethodGet, "/instances/center-b", nil)
+	legacyRes := httptest.NewRecorder()
+	app.ServeHTTP(legacyRes, legacy)
+	require.Equal(t, http.StatusOK, legacyRes.Code, "body: %s", legacyRes.Body.String())
+	legacyBody := legacyRes.Body.String()
+	assert.Contains(t, legacyBody, "creaves_ck_ce&hellip;</code>", "legacy key must fall back to its prefix")
+	assert.Contains(t, legacyBody, "(value unavailable)", "legacy key must be flagged as value unavailable")
 }
 
 func TestWebhookAPIKeyTemplatesLinkInstances(t *testing.T) {
