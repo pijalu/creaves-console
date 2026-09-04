@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"log"
 	stdlog "log"
 	"os"
 
@@ -21,7 +20,7 @@ func init() {
 	env := envy.Get("GO_ENV", "development")
 	DB, err = pop.Connect(env)
 	if err != nil {
-		log.Fatal(err)
+		stdlog.Fatal(err)
 	}
 	pop.Debug = env == "development"
 	installSafePopTxLogger()

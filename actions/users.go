@@ -143,7 +143,7 @@ type UsersResource struct {
 func (v UsersResource) List(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -171,7 +171,7 @@ func (v UsersResource) List(c buffalo.Context) error {
 func (v UsersResource) Show(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || (!cu.Admin && cu.ID.String() != c.Param("user_id")) {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -196,7 +196,7 @@ func (v UsersResource) Show(c buffalo.Context) error {
 func (v UsersResource) New(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	c.Set("user", &models.User{})
@@ -207,7 +207,7 @@ func (v UsersResource) New(c buffalo.Context) error {
 func (v UsersResource) Create(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	user := &models.User{}
@@ -247,7 +247,7 @@ func (v UsersResource) Create(c buffalo.Context) error {
 func (v UsersResource) Edit(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || (!cu.Admin && cu.ID.String() != c.Param("user_id")) {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -268,7 +268,7 @@ func (v UsersResource) Edit(c buffalo.Context) error {
 func (v UsersResource) Update(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || (!cu.Admin && cu.ID.String() != c.Param("user_id")) {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -338,7 +338,7 @@ func protectPrivilegedFlags(cu, user *models.User, wasAdmin, wasActive bool) {
 func (v UsersResource) Destroy(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)

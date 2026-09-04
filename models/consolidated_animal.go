@@ -153,13 +153,6 @@ func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Tim
 	c.LastEventAt = eventTime
 }
 
-func nullableString(value string) nulls.String {
-	if value == "" {
-		return nulls.String{}
-	}
-	return nulls.NewString(value)
-}
-
 // applyOuttake updates outtake fields from the payload. The outtake block is
 // present when any outtake field is set; within a present block, rating and
 // dead are applied unconditionally so explicit neutral (0) / dead=false

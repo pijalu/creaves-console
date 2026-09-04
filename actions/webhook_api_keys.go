@@ -22,7 +22,7 @@ type WebhookAPIKeysResource struct {
 func (v WebhookAPIKeysResource) List(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -50,7 +50,7 @@ func (v WebhookAPIKeysResource) List(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) Show(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -75,7 +75,7 @@ func (v WebhookAPIKeysResource) Show(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) New(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	c.Set("webhookAPIKey", &models.WebhookAPIKey{})
@@ -86,7 +86,7 @@ func (v WebhookAPIKeysResource) New(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	key := &models.WebhookAPIKey{}
@@ -157,7 +157,7 @@ func rawKeySessionKey(id uuid.UUID) string {
 func (v WebhookAPIKeysResource) Created(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -193,7 +193,7 @@ func (v WebhookAPIKeysResource) Created(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) Edit(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -214,7 +214,7 @@ func (v WebhookAPIKeysResource) Edit(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)
@@ -258,7 +258,7 @@ func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 func (v WebhookAPIKeysResource) Destroy(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 
 	tx, ok := c.Value("tx").(*pop.Connection)

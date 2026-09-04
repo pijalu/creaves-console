@@ -61,7 +61,7 @@ func loadInstanceAdminView(tx *pop.Connection, instanceID string) (*instanceAdmi
 func InstanceShow(c buffalo.Context) error {
 	user := GetCurrentUser(c)
 	if user == nil || !user.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
@@ -78,7 +78,7 @@ func InstanceShow(c buffalo.Context) error {
 func InstancesIndex(c buffalo.Context) error {
 	user := GetCurrentUser(c)
 	if user == nil || !user.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
@@ -103,7 +103,7 @@ func InstancesIndex(c buffalo.Context) error {
 func InstanceCleanup(c buffalo.Context) error {
 	user := GetCurrentUser(c)
 	if user == nil || !user.Admin {
-		return c.Error(http.StatusForbidden, fmt.Errorf("Admin rights required"))
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {

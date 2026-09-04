@@ -37,19 +37,6 @@ func ScopedWhere(scope ReportScope, base string) (string, []interface{}) {
 	return base + " AND instance_id = ?", []interface{}{scope.InstanceID}
 }
 
-func scopedWhere(scope ReportScope, base string) (string, []interface{}) {
-	if scope.IsGlobal() {
-		return base, nil
-	}
-	if base == "" {
-		return "WHERE instance_id = ?", []interface{}{scope.InstanceID}
-	}
-	if len(base) >= 5 && base[:5] == "WHERE" {
-		return base + " AND instance_id = ?", []interface{}{scope.InstanceID}
-	}
-	return "WHERE " + base + " AND instance_id = ?", []interface{}{scope.InstanceID}
-}
-
 // yearOption is one entry of a year dropdown.
 type yearOption struct {
 	Year     int
