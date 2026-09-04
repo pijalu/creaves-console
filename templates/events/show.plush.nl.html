@@ -1,0 +1,20 @@
+<div class="row"><div class="col-md-10">
+<h1>Webhook-gebeurtenis</h1>
+<table class="table">
+    <tr><th>Gebeurtenis-ID</th><td><code><%= event.ID %></code></td></tr>
+    <tr><th>Instantie</th><td><a href="/instances/<%= event.InstanceID %>"><code><%= event.InstanceID %></code></a></td></tr>
+    <tr><th>Dier-ID (bron)</th><td><%= event.AnimalID %></td></tr>
+    <tr><th>Type</th><td><code><%= event.EventType.String() %></code></td></tr>
+    <tr><th>Aangemaakt in bron</th><td><%= event.CreatedAt.Format("2006-01-02 15:04:05") %></td></tr>
+    <tr><th>Geïmporteerd op</th><td><%= event.ImportedAt.Format("2006-01-02 15:04:05") %></td></tr>
+    <tr><th>Verwerkt op</th><td><%= if (event.ProcessedAt) { %><%= event.ProcessedAt.Format("2006-01-02 15:04:05") %><% } else { %><span class="badge badge-warning">In behandeling</span><% } %></td></tr>
+</table>
+<%= if (consolidatedPath) { %>
+    <p><a class="btn btn-info" href="<%= consolidatedPath %>">Geconsolideerd dier bekijken</a></p>
+<% } else { %>
+    <p><em>Geen geconsolideerd dier voor deze gebeurtenis.</em></p>
+<% } %>
+<h2>Payload</h2>
+<pre class="border bg-light p-3"><code><%= payload %></code></pre>
+<a class="btn btn-secondary mt-3" href="/events">Terug</a>
+</div></div>

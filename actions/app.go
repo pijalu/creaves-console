@@ -69,6 +69,10 @@ func App() *buffalo.App {
 		app.GET("/instances/{instance_id}", InstanceShow)
 		app.POST("/instances/{instance_id}/cleanup", InstanceCleanup)
 
+		// Received webhook events (admin diagnostics).
+		app.GET("/events", EventsIndex)
+		app.GET("/events/{event_id}", EventShow)
+
 		// Animals sync management (admin): delete all animals / per instance.
 		app.GET("/sync_management", SyncManagementIndex)
 		app.POST("/sync_management/delete-all-animals", SyncManagementDeleteAllAnimals)

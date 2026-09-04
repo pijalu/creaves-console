@@ -1,0 +1,20 @@
+<div class="row"><div class="col-md-10">
+<h1>Webhook event</h1>
+<table class="table">
+    <tr><th>Event ID</th><td><code><%= event.ID %></code></td></tr>
+    <tr><th>Instance</th><td><a href="/instances/<%= event.InstanceID %>"><code><%= event.InstanceID %></code></a></td></tr>
+    <tr><th>Animal ID (source)</th><td><%= event.AnimalID %></td></tr>
+    <tr><th>Type</th><td><code><%= event.EventType.String() %></code></td></tr>
+    <tr><th>Source created at</th><td><%= event.CreatedAt.Format("2006-01-02 15:04:05") %></td></tr>
+    <tr><th>Imported at</th><td><%= event.ImportedAt.Format("2006-01-02 15:04:05") %></td></tr>
+    <tr><th>Processed at</th><td><%= if (event.ProcessedAt) { %><%= event.ProcessedAt.Format("2006-01-02 15:04:05") %><% } else { %><span class="badge badge-warning">Pending</span><% } %></td></tr>
+</table>
+<%= if (consolidatedPath) { %>
+    <p><a class="btn btn-info" href="<%= consolidatedPath %>">View consolidated animal</a></p>
+<% } else { %>
+    <p><em>No consolidated animal for this event.</em></p>
+<% } %>
+<h2>Payload</h2>
+<pre class="border bg-light p-3"><code><%= payload %></code></pre>
+<a class="btn btn-secondary mt-3" href="/events">Back</a>
+</div></div>

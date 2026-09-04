@@ -12,6 +12,15 @@ import (
 // EventType represents the type of event in the event stream
 type EventType string
 
+// EventTypes lists all known event types, for filter dropdowns and labels.
+var EventTypes = []EventType{
+	EventTypeAnimalDiscovered,
+	EventTypeAnimalStatusChanged,
+	EventTypeAnimalReleased,
+	EventTypeAnimalDied,
+	EventTypeAnimalState,
+}
+
 // String returns the string representation of the event type
 func (e EventType) String() string { return string(e) }
 
