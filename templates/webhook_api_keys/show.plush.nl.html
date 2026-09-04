@@ -17,6 +17,10 @@
                         <td><code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></td>
                     </tr>
                     <tr>
+                        <td><strong>API-sleutelwaarde:</strong></td>
+                        <td><em>Wordt eenmalig direct na aanmaak op de speciale pagina getoond (opgeslagen als bcrypt-hash, daarna niet opvraagbaar). Kenmerk: <code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></em></td>
+                    </tr>
+                    <tr>
                         <td><strong>Instantie-ID:</strong></td>
                         <td>
                             <%= if (webhookAPIKey.InstanceID) { %>
@@ -59,7 +63,11 @@
             <div class="card-footer">
                 <a href="/webhook_api_keys" class="btn btn-secondary">Terug</a>
                 <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>/edit" class="btn btn-warning">Bewerken</a>
-                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" data-method="DELETE" data-confirm="Weet u het zeker?" class="btn btn-danger">Verwijderen</a>
+                <form method="POST" action="/webhook_api_keys/<%= webhookAPIKey.ID %>" style="display:inline" onsubmit="return confirm('Weet u het zeker?')">
+                                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="btn btn-danger">Verwijderen</button>
+                                </form>
             </div>
         </div>
     </div>

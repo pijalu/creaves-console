@@ -17,6 +17,10 @@
                         <td><code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></td>
                     </tr>
                     <tr>
+                        <td><strong>API-Schlüsselwert:</strong></td>
+                        <td><em>Wird einmalig direkt nach der Erstellung auf der eigenen Seite angezeigt (als bcrypt-Hash gespeichert, danach nicht abrufbar). Kennung: <code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></em></td>
+                    </tr>
+                    <tr>
                         <td><strong>Instanz-ID:</strong></td>
                         <td>
                             <%= if (webhookAPIKey.InstanceID) { %>
@@ -59,7 +63,11 @@
             <div class="card-footer">
                 <a href="/webhook_api_keys" class="btn btn-secondary">Zurück</a>
                 <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>/edit" class="btn btn-warning">Bearbeiten</a>
-                <a href="/webhook_api_keys/<%= webhookAPIKey.ID %>" data-method="DELETE" data-confirm="Sind Sie sicher?" class="btn btn-danger">Löschen</a>
+                <form method="POST" action="/webhook_api_keys/<%= webhookAPIKey.ID %>" style="display:inline" onsubmit="return confirm('Sind Sie sicher?')">
+                                    <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="btn btn-danger">Löschen</button>
+                                </form>
             </div>
         </div>
     </div>

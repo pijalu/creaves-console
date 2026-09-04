@@ -55,9 +55,13 @@
                                     <a href="/webhook_api_keys/<%= key.ID %>/edit" class="btn btn-sm btn-warning">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="/webhook_api_keys/<%= key.ID %>" data-method="DELETE" data-confirm="Weet u het zeker?" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    <form method="POST" action="/webhook_api_keys/<%= key.ID %>" style="display:inline" onsubmit="return confirm('Weet u het zeker?')">
+                                        <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
+                                        <input type="hidden" name="_method" value="DELETE">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Verwijderen">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         <% } %>

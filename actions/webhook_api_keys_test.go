@@ -380,7 +380,48 @@ func TestWebhookAPIKeys_ShowHTML(t *testing.T) {
 
 	rec := perform(app, "GET", "/webhook_api_keys/"+stored.ID.String())
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), stored.Name)
+	body := rec.Body.String()
+	assert.Contains(t, body, stored.Name)
+	// Documented key identifier must be visible; raw key is one-time only.
+	assert.Contains(t, body, stored.KeyPrefix)
+	assert.Contains(t, body, "API key value")
+	// Delete goes through a CSRF-protected inline form with confirm dialog.
+	assert.Contains(t, body, `name="_method" value="DELETE"`)
+	assert.Contains(t, body, "authenticity_token")
+	assert.Contains(t, body, "confirm(")
+}
+
+// TestWebhookAPIKeys_ListHTMLDeleteForm covers the index delete UI: each row
+// carries an inline DELETE form with CSRF token + confirm dialog.
+func TestWebhookAPIKeys_ListHTMLDeleteForm(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+	seedAPIKey(t, tx, "")
+
+	rec := perform(app, "GET", "/webhook_api_keys")
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, `name="_method" value="DELETE"`)
+	assert.Contains(t, body, "authenticity_token")
+	assert.Contains(t, body, "confirm(")
+}
+
+// TestWebhookAPIKeys_DestroyViaMethodOverride covers the browser delete path:
+// HTML form POST with _method=DELETE (no JS) must remove the key.
+func TestWebhookAPIKeys_DestroyViaMethodOverride(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+	_, stored := seedAPIKey(t, tx, "")
+
+	req := httptest.NewRequest("POST", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("_method=DELETE"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	count, err := tx.Count(&models.WebhookAPIKey{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, count, "key should be deleted via method-override form")
 }
 
 // TestWebhookAPIKeys_UpdateValidationFail covers the validation-error branch of
