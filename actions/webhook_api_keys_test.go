@@ -367,25 +367,28 @@ func TestWebhookAPIKeys_NewRendersForm(t *testing.T) {
 func TestWebhookAPIKeys_ListHTML(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	seedAPIKey(t, tx, "")
+	rawKey, _ := seedAPIKey(t, tx, "")
 
 	rec := perform(app, "GET", "/webhook_api_keys")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "Webhook API Keys")
+	body := rec.Body.String()
+	assert.Contains(t, body, "Webhook API Keys")
+	// The full raw key value must be visible on the index page.
+	assert.Contains(t, body, rawKey, "full API key value must be shown in the index row")
 }
 
 // TestWebhookAPIKeys_ShowHTML covers the HTML render path of Show.
 func TestWebhookAPIKeys_ShowHTML(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "inst-1")
+	rawKey, stored := seedAPIKey(t, tx, "inst-1")
 
 	rec := perform(app, "GET", "/webhook_api_keys/"+stored.ID.String())
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, stored.Name)
-	// Documented key identifier must be visible; raw key is one-time only.
-	assert.Contains(t, body, stored.KeyPrefix)
+	// The full raw key value must be retrievable from the show page.
+	assert.Contains(t, body, rawKey, "full API key value must be shown on the show page")
 	assert.Contains(t, body, "API key value")
 	// Delete goes through a CSRF-protected inline form with confirm dialog.
 	assert.Contains(t, body, `name="_method" value="DELETE"`)
@@ -519,7 +522,7 @@ func TestWebhookAPIKeys_ValidationFailXML(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Created (one-time raw key display page)
+// Created (raw key display page)
 // ---------------------------------------------------------------------------
 
 // createKeyWithSession runs a real Create POST and returns the recorder, whose
@@ -554,14 +557,14 @@ func TestWebhookAPIKeys_CreatedShowsRawKeyOnce(t *testing.T) {
 	createdURL := createRec.Header().Get("Location")
 
 	// Follow the redirect with the session cookie: the raw key must be shown
-	// on the dedicated page with the one-time warning and a copy affordance.
+	// on the dedicated page with the retrieval tip and a copy affordance.
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, replayWithCookies(createRec, "GET", createdURL))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	body := rec.Body.String()
 	assert.Contains(t, body, "creaves_", "raw key must be visible on the created page")
-	assert.Contains(t, body, "only time", "one-time warning must be present")
+	assert.Contains(t, body, "retrievable", "retrieval tip must be present")
 	assert.Contains(t, body, "copy-api-key-btn", "copy affordance must be present")
 
 	// The displayed raw key must authenticate against the stored hash.

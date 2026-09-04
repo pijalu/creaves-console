@@ -13,12 +13,8 @@
                         <td><code><%= webhookAPIKey.ID %></code></td>
                     </tr>
                     <tr>
-                        <td><strong>Key Prefix:</strong></td>
-                        <td><code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></td>
-                    </tr>
-                    <tr>
                         <td><strong>API key value:</strong></td>
-                                                    <td><%= if (webhookAPIKey.KeyValue.Valid) { %><code><%= webhookAPIKey.KeyValue.String %></code><% } else { %><em>Unavailable for keys created before visibility was enabled</em><% } %></td>
+                        <td><%= if (webhookAPIKey.KeyValue.Valid) { %><code><%= webhookAPIKey.KeyValue.String %></code><% } else { %><em>Unavailable for keys created before visibility was enabled (prefix <code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code>)</em><% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Instance ID:</strong></td>

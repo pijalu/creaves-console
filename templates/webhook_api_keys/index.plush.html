@@ -19,7 +19,7 @@
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Prefix</th>
+                            <th>API Key</th>
                             <th>Instance ID</th>
                             <th>Active</th>
                             <th>Last Used</th>
@@ -31,7 +31,7 @@
                         <%= for (key) in webhookAPIKeys { %>
                             <tr>
                                 <td><%= key.Name %></td>
-                                <td><code>creaves_<%= key.KeyPrefix %>&hellip;</code></td>
+                                <td><%= if (key.KeyValue.Valid) { %><code class="text-monospace"><%= key.KeyValue.String %></code><% } else { %><code>creaves_<%= key.KeyPrefix %>&hellip;</code><em> (value unavailable)</em><% } %></td>
                                 <td><%= if (key.InstanceID) { %><a href="/instances/<%= key.InstanceID %>"><%= key.InstanceID %></a><% } else { %><em>Any</em><% } %></td>
                                 <td>
                                     <%= if (key.Active) { %>
