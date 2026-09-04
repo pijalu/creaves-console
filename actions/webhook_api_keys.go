@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/x/responder"
 	"github.com/gofrs/uuid"
@@ -107,7 +108,7 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 	key.ID = uuid.Must(uuid.NewV4())
 	key.KeyHash = hash
 	key.KeyPrefix = prefix
-	key.KeyValue = rawKey
+	key.KeyValue = nulls.NewString(rawKey)
 	key.Active = true
 
 	verrs, err := tx.ValidateAndCreate(key)

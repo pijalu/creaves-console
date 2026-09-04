@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/validate/v3"
 	"github.com/gobuffalo/validate/v3/validators"
@@ -20,12 +21,12 @@ type WebhookAPIKey struct {
 	KeyPrefix string    `json:"key_prefix" db:"key_prefix"`
 	// KeyValue is retained so administrators can retrieve the configured key.
 	// It is never serialized in API responses.
-	KeyValue   string     `json:"-" db:"key_value"`
-	InstanceID string     `json:"instance_id" db:"instance_id"`
-	Active     bool       `json:"active" db:"active"`
-	LastUsedAt *time.Time `json:"last_used_at" db:"last_used_at"`
-	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
+	KeyValue   nulls.String `json:"-" db:"key_value"`
+	InstanceID string       `json:"instance_id" db:"instance_id"`
+	Active     bool         `json:"active" db:"active"`
+	LastUsedAt *time.Time   `json:"last_used_at" db:"last_used_at"`
+	CreatedAt  time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time    `json:"updated_at" db:"updated_at"`
 }
 
 // WebhookAPIKeys is a slice of WebhookAPIKey

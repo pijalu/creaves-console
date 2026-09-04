@@ -14,6 +14,7 @@ import (
 	"creaves-console/models"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,7 @@ func seedAPIKey(t *testing.T, tx *pop.Connection, instanceID string) (rawKey str
 		Name:       "test-key",
 		KeyHash:    hash,
 		KeyPrefix:  prefix,
-		KeyValue:   rawKey,
+		KeyValue:   nulls.NewString(rawKey),
 		InstanceID: instanceID,
 		Active:     true,
 	}
