@@ -287,6 +287,41 @@ func TestEventProcessor_AnimalStateSameHashIsIdempotent(t *testing.T) {
 	assert.Equal(t, 0, animal.EventCount)
 }
 
+// TestEventProcessor_StateEventCageChangeUpdatesSnapshot proves an
+// update-path animal_state event (new state_hash) replaces the stored
+// snapshot fields — the console end of "cage edit appears on console".
+func TestEventProcessor_StateEventCageChangeUpdatesSnapshot(t *testing.T) {
+	tx := setupTest(t)
+
+	first := &models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "test-instance-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalState,
+		Payload:    []byte(`{"animal":{"species":"Fox","cage":"VE12"},"current_status":"in_care","state_hash":"hash-ve12"}`),
+		CreatedAt:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	second := &models.EventStream{
+		ID:         uuid.Must(uuid.NewV4()),
+		InstanceID: "test-instance-1",
+		AnimalID:   1,
+		EventType:  models.EventTypeAnimalState,
+		Payload:    []byte(`{"animal":{"species":"Fox","cage":"VE99"},"current_status":"in_care","state_hash":"hash-ve99"}`),
+		CreatedAt:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+	require.NoError(t, tx.Create(first))
+	require.NoError(t, tx.Create(second))
+
+	count, err := NewEventProcessor(tx).ProcessUnprocessedEvents()
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+	var animal models.ConsolidatedAnimal
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", "test-instance-1", 1).First(&animal))
+	assert.Equal(t, "VE99", animal.Cage.String, "edited cage must be visible on the console")
+	assert.Equal(t, "hash-ve99", animal.StateHash.String, "snapshot must track the latest state hash")
+}
+
 func TestEventProcessor_IdempotentProcessing(t *testing.T) {
 	tx := setupTest(t)
 
