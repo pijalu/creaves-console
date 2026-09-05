@@ -234,12 +234,15 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
       "instance_id": "center-north",
       "animal_id": 42,
       "event_type": "animal_discovered",
+      "resync_run_id": "550e8400-e29b-41d4-a716-446655440001",
       "payload": { ... },
       "created_at": "2024-01-15T10:30:00Z"
     }
   ]
 }
 ```
+
+- `resync_run_id` — **optional**, present only on events delivered as part of a resync run; live events omit the field. The console stores it on `event_streams` and shows it in the animal detail event history Source column ("Resync <short id>") vs "Live update".
 
 - `instance` — identifies the producing installation (registered on first receipt).
 - `sync` — **optional**, present only on batches belonging to a resync run:
@@ -357,6 +360,7 @@ The Creaves pusher marks the batch as delivered when it receives HTTP 200.
 | `event_type` | varchar(255) | See event types above |
 | `payload` | json | Full structured payload |
 | `source_db` | varchar(255) | Deprecated (legacy from pull model) |
+| `resync_run_id` | char(36) NULL | Producing resync run when the event was delivered by a resync; NULL for live events (contract v2, bugs.md #9) |
 | `imported_at` | datetime | When received via webhook |
 | `processed_at` | datetime NULL | When processed into consolidated view |
 | `created_at` | datetime | Event creation time from source |
