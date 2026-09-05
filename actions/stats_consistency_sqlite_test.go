@@ -122,8 +122,10 @@ func TestAnimalTotalsConsistentAcrossScreens(t *testing.T) {
 
 	// Per-instance counts must agree between the dashboard by-instance
 	// table, the instances admin view and the sync management rows.
-	dashA := rowNumbers(t, dash, ">center-a<")
-	dashB := rowNumbers(t, dash, ">center-b<")
+	// Scope to the by-instance table rows: the instance filter dropdown also
+	// lists ">center-a<"-style option labels outside any <tr>.
+	dashA := rowNumbers(t, dash, "<td>center-a</td>")
+	dashB := rowNumbers(t, dash, "<td>center-b</td>")
 	syncA := rowNumbers(t, sync, ">center-a<")
 	syncB := rowNumbers(t, sync, ">center-b<")
 	instA := rowNumbers(t, instances, "center-a")

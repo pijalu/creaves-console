@@ -2,7 +2,12 @@
     <div class="col-md-12">
         <form method="GET" action="/dashboard" class="form-inline mb-3">
             <label for="instance_id" class="mr-2">Instance:</label>
-            <input name="instance_id" id="instance_id" class="form-control mr-2" value="<%= params["instance_id"] %>" placeholder="All instances">
+            <select name="instance_id" id="instance_id" class="form-control mr-2">
+                <option value="">All instances</option>
+                <%= for (inst) in instances { %>
+                    <option value="<%= inst.InstanceID %>" <%= if (params["instance_id"] == inst.InstanceID) { %>selected<% } %>><%= inst.InstanceID %></option>
+                <% } %>
+            </select>
             <button class="btn btn-primary">Apply</button>
         </form>
         <h1>Dashboard</h1>

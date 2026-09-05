@@ -1,5 +1,15 @@
 <div class="row">
     <div class="col-md-12">
+        <form method="GET" action="/dashboard" class="form-inline mb-3">
+            <label for="instance_id" class="mr-2">Instanz:</label>
+            <select name="instance_id" id="instance_id" class="form-control mr-2">
+                <option value="">Alle Instanzen</option>
+                <%= for (inst) in instances { %>
+                    <option value="<%= inst.InstanceID %>" <%= if (params["instance_id"] == inst.InstanceID) { %>selected<% } %>><%= inst.InstanceID %></option>
+                <% } %>
+            </select>
+            <button class="btn btn-primary">Anwenden</button>
+        </form>
         <h1>Übersicht</h1>
         <p class="lead">Konsolidierte Ansicht der Tierpflegedaten über alle Instanzen</p>
     </div>

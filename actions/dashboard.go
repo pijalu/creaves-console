@@ -54,17 +54,38 @@ func DashboardIndex(c buffalo.Context) error {
 	}
 	stats["by_instance"] = instanceMap
 	eventCount, err := CountEventStreams(tx, scope.InstanceID)
-	stats["total_events"] = eventCount
 	if err != nil {
 		return err
 	}
+	stats["total_events"] = eventCount
+	if err := dashboardEventStats(tx, scope, stats); err != nil {
+		return err
+	}
+	if err := dashboardKeyStats(tx, scope, stats); err != nil {
+		return err
+	}
+	// Dropdown options: always list ALL instances so the user can switch scope.
+	instances, err := consolidatedInstanceOptions(tx)
+	if err != nil {
+		return err
+	}
+	c.Set("instances", instances)
+	c.Set("stats", stats)
+	c.Set("instanceID", scope.InstanceID)
+	return c.Render(http.StatusOK, r.HTML("dashboard/index.plush.html"))
+}
+
+// dashboardEventStats fills unprocessed/total event counts and unique instance count.
+func dashboardEventStats(tx *pop.Connection, scope ReportScope, stats map[string]interface{}) error {
 	unprocessedQuery := tx.Where("processed_at IS NULL")
 	if !scope.IsGlobal() {
 		unprocessedQuery = unprocessedQuery.Where("instance_id = ?", scope.InstanceID)
 	}
-	if stats["unprocessed_events"], err = unprocessedQuery.Count(&models.EventStream{}); err != nil {
+	unprocessed, err := unprocessedQuery.Count(&models.EventStream{})
+	if err != nil {
 		return err
 	}
+	stats["unprocessed_events"] = unprocessed
 	uniqueQuery := "SELECT COUNT(DISTINCT instance_id) FROM event_streams"
 	var uniqueArgs []interface{}
 	if !scope.IsGlobal() {
@@ -72,30 +93,48 @@ func DashboardIndex(c buffalo.Context) error {
 		uniqueArgs = append(uniqueArgs, scope.InstanceID)
 	}
 	var uniqueInstances int
-	if err = tx.RawQuery(uniqueQuery, uniqueArgs...).First(&uniqueInstances); err != nil {
+	if err := tx.RawQuery(uniqueQuery, uniqueArgs...).First(&uniqueInstances); err != nil {
 		return err
 	}
 	stats["unique_instances"] = uniqueInstances
+	return nil
+}
+
+// dashboardKeyStats fills total/active webhook API key counts.
+func dashboardKeyStats(tx *pop.Connection, scope ReportScope, stats map[string]interface{}) error {
 	var keyCount int
+	var err error
 	if scope.IsGlobal() {
 		keyCount, err = tx.Count(&models.WebhookAPIKey{})
 	} else {
 		keyCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.WebhookAPIKey{})
 	}
-	stats["total_webhook_keys"] = keyCount
 	if err != nil {
 		return err
 	}
+	stats["total_webhook_keys"] = keyCount
 	activeKeyQuery := tx.Where("active = ?", true)
 	if !scope.IsGlobal() {
 		activeKeyQuery = activeKeyQuery.Where("instance_id = ?", scope.InstanceID)
 	}
-	if stats["active_webhook_keys"], err = activeKeyQuery.Count(&models.WebhookAPIKey{}); err != nil {
+	active, err := activeKeyQuery.Count(&models.WebhookAPIKey{})
+	if err != nil {
 		return err
 	}
-	c.Set("stats", stats)
-	c.Set("instanceID", scope.InstanceID)
-	return c.Render(http.StatusOK, r.HTML("dashboard/index.plush.html"))
+	stats["active_webhook_keys"] = active
+	return nil
+}
+
+// consolidatedInstanceOptions lists all distinct instance IDs for filter dropdowns.
+func consolidatedInstanceOptions(tx *pop.Connection) ([]struct {
+	InstanceID string `db:"instance_id"`
+}, error,
+) {
+	var instances []struct {
+		InstanceID string `db:"instance_id"`
+	}
+	err := tx.RawQuery("SELECT DISTINCT instance_id FROM consolidated_animals ORDER BY instance_id").All(&instances)
+	return instances, err
 }
 
 // ConsolidatedAnimalsIndex displays the consolidated animal list (Register view)
@@ -124,10 +163,10 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	}
 
 	// Get filter options
-	var instances []struct {
-		InstanceID string `db:"instance_id"`
+	instances, err := consolidatedInstanceOptions(tx)
+	if err != nil {
+		return err
 	}
-	tx.RawQuery("SELECT DISTINCT instance_id FROM consolidated_animals ORDER BY instance_id").All(&instances)
 
 	var speciesList []struct {
 		Species string `db:"species"`

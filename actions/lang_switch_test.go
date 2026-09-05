@@ -35,6 +35,9 @@ func newLangTestApp() *buffalo.App {
 	lang.GET("/", SwitchLanguage)
 	lang.POST("/", SwitchLanguagePost)
 	app.GET("/dashboard", func(c buffalo.Context) error {
+		c.Set("instances", []struct {
+			InstanceID string `db:"instance_id"`
+		}{})
 		c.Set("stats", map[string]interface{}{
 			"total_animals":       1,
 			"total_events":        1,
