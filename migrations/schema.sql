@@ -115,11 +115,11 @@ CREATE TABLE `event_streams` (
   `event_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `payload` json DEFAULT NULL,
   `source_db` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `resync_run_id` char(36) DEFAULT NULL,
   `imported_at` datetime NOT NULL,
   `processed_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
+  `resync_run_id` char(36) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `event_streams_instance_id_animal_id_created_at_idx` (`instance_id`,`animal_id`,`created_at`),
   KEY `event_streams_processed_at_idx` (`processed_at`),
@@ -220,4 +220,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-05  2:33:40
+-- Dump completed on 2026-09-05  4:40:53

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"unicode"
 
 	"github.com/gobuffalo/plush/v4"
 )
@@ -176,41 +177,35 @@ type timelineEntry struct {
 	Change []fieldChange
 }
 
-// payloadField extracts the display value of one tracked field from a
-// payload; empty when unset.
-func payloadField(p models.EventPayload, field string) string {
-	switch field {
-	case "species":
-		return p.Animal.Species
-	case "gender":
-		return p.Animal.Gender
-	case "cage":
-		return p.Animal.Cage
-	case "zone":
-		return p.Animal.Zone
-	case "ring":
-		return p.Animal.Ring
-	case "animal_type":
-		return p.Animal.AnimalType
-	case "animal_age":
-		return p.Animal.AnimalAge
-	case "discovery_city":
-		return p.Discovery.City
-	case "entry_cause":
-		return p.Discovery.EntryCause
-	case "intake_date":
-		return p.Intake.Date
-	case "outtake_type":
-		return p.Outtake.Type
-	case "outtake_date":
-		return p.Outtake.Date
-	case "outtake_location":
-		return p.Outtake.Location
-	case "status":
+// payloadFieldExtractors maps each tracked timeline field to the display
+// value it reads from a payload.
+var payloadFieldExtractors = map[string]func(p models.EventPayload) string{
+	"species":         func(p models.EventPayload) string { return p.Animal.Species },
+	"gender":          func(p models.EventPayload) string { return p.Animal.Gender },
+	"cage":            func(p models.EventPayload) string { return p.Animal.Cage },
+	"zone":            func(p models.EventPayload) string { return p.Animal.Zone },
+	"ring":            func(p models.EventPayload) string { return p.Animal.Ring },
+	"animal_type":     func(p models.EventPayload) string { return p.Animal.AnimalType },
+	"animal_age":      func(p models.EventPayload) string { return p.Animal.AnimalAge },
+	"discovery_city":  func(p models.EventPayload) string { return p.Discovery.City },
+	"entry_cause":     func(p models.EventPayload) string { return p.Discovery.EntryCause },
+	"intake_date":     func(p models.EventPayload) string { return p.Intake.Date },
+	"outtake_type":    func(p models.EventPayload) string { return p.Outtake.Type },
+	"outtake_date":    func(p models.EventPayload) string { return p.Outtake.Date },
+	"outtake_location": func(p models.EventPayload) string { return p.Outtake.Location },
+	"status": func(p models.EventPayload) string {
 		if p.CurrentStatus != "" {
 			return p.CurrentStatus
 		}
 		return p.InitialStatus
+	},
+}
+
+// payloadField extracts the display value of one tracked field from a
+// payload; empty when unset.
+func payloadField(p models.EventPayload, field string) string {
+	if get, ok := payloadFieldExtractors[field]; ok {
+		return get(p)
 	}
 	return ""
 }
@@ -232,7 +227,21 @@ func localizedTimelineField(field, lang string) string {
 			return label
 		}
 	}
-	return strings.Title(strings.ReplaceAll(field, "_", " "))
+	return titleizeField(field)
+}
+
+// titleizeField turns a raw snake_case payload key into a readable label
+// without relying on the deprecated strings.Title.
+func titleizeField(field string) string {
+	words := strings.Split(strings.ReplaceAll(field, "_", " "), " ")
+	for i, w := range words {
+		if w == "" {
+			continue
+		}
+		r := []rune(w)
+		words[i] = string(unicode.ToUpper(r[0])) + string(r[1:])
+	}
+	return strings.Join(words, " ")
 }
 
 // buildEventTimeline turns the animal's event history into a timeline where

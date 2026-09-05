@@ -218,14 +218,8 @@ func (w *webhookIngest) existing(eventID uuid.UUID, webhookEvent *WebhookEvent) 
 	// A resync redelivery backfills the resync run id onto events that
 	// were originally delivered live, so the Source column of the
 	// event history can attribute them to the run (bugs.md #9).
-	if existing.ResyncRunID == nil && webhookEvent.ResyncRunID != "" {
-		if runID, err := uuid.FromString(webhookEvent.ResyncRunID); err == nil {
-			existing.ResyncRunID = &runID
-			if err := w.tx.Update(existing); err != nil {
-				w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to backfill resync run id for event %s: %v", webhookEvent.ID, err))
-				return
-			}
-		}
+	if !w.backfillResyncRunID(existing, webhookEvent) {
+		return
 	}
 	if !needsProcessing {
 		// Disaster-recovery path: if the consolidated row was lost
@@ -262,6 +256,25 @@ func (w *webhookIngest) existing(eventID uuid.UUID, webhookEvent *WebhookEvent) 
 	w.confirmStateHash(existing, webhookEvent.ID)
 	w.processedIDs = append(w.processedIDs, webhookEvent.ID)
 	w.processedCount++
+}
+
+// backfillResyncRunID adopts the wire resync run id onto a stored event that
+// was originally delivered live. Reports false when the row could not be
+// updated so the caller can abort re-ingest of this event.
+func (w *webhookIngest) backfillResyncRunID(existing *models.EventStream, webhookEvent *WebhookEvent) bool {
+	if existing.ResyncRunID != nil || webhookEvent.ResyncRunID == "" {
+		return true
+	}
+	runID, err := uuid.FromString(webhookEvent.ResyncRunID)
+	if err != nil {
+		return true
+	}
+	existing.ResyncRunID = &runID
+	if err := w.tx.Update(existing); err != nil {
+		w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to backfill resync run id for event %s: %v", webhookEvent.ID, err))
+		return false
+	}
+	return true
 }
 
 // fresh creates and synchronously processes a first-time event.
