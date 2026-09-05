@@ -13,20 +13,26 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Animals without registered instance:</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Name</th><th>Instance ID</th><th>Stored</th><th>Expected</th><th>Confirmed</th><th>Unconfirmed</th><th>Sync checksum</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Instance ID</th><th>Stored</th><th>Expected (producer)</th><th>Received</th><th>Confirmed</th><th>Unconfirmed</th><th>Sync checksum</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= if (row.Status.HasAnnouncement()) { %><strong><%= row.Status.AnnouncedExpectedTotal %></strong><% } else { %><span class="text-muted">&ndash;</span><% } %></td>
           <td><%= row.Status.ExpectedTotal %></td>
           <td><%= row.Status.Confirmed %></td>
           <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
           <td class="text-break">
-            <code title="Checksum of the received animal_state event log"><%= row.Status.EventLogChecksum %></code><br>
-            <code title="Checksum of the consolidated animals"><%= row.Status.ConsolidatedChecksum %></code><br>
-            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">checksum match</span><% } else { %><span class="badge badge-warning">checksum mismatch</span><% } %>
+            <%= if (row.Status.NoData) { %>
+              <span class="badge badge-secondary">no data yet</span>
+            <% } else { %>
+              <code title="Checksum of the received animal_state event log"><%= row.Status.EventLogChecksum %></code><br>
+              <code title="Checksum of the consolidated animals"><%= row.Status.ConsolidatedChecksum %></code><br>
+              <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">checksum match</span><% } else { %><span class="badge badge-warning">checksum mismatch</span><% } %>
+              <%= if (row.Status.HasAnnouncement()) { %><%= if (row.Status.ChecksumMatchesAnnounced()) { %><span class="badge badge-success">matches producer</span><% } else { %><span class="badge badge-danger">MISMATCH vs producer expected &mdash; run a full resync</span><% } %><% } %>
+            <% } %>
           </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('Delete ALL <%= row.AnimalCount %> animals of instance <%= row.InstanceID %>? This cannot be undone. Trigger a full resync from Creaves afterward to rebuild the data.');" style="display:inline">
@@ -40,8 +46,8 @@
       </tbody>
     </table>
     <p class="text-muted small mb-0">
-      Expected = distinct animals seen in received events. Confirmed = latest received state hash matches the stored animal. Unconfirmed = stale or missing state.
-      Compare the first checksum with the "expected set checksum" shown in your Creaves instance's webhook resync page: identical values prove the transfer is complete.
+      Expected (producer) = the total announced by the Creaves instance at its last full resync (stored on this console). Received = distinct animals seen in received events. Confirmed = latest received state hash matches the stored animal. Unconfirmed = stale or missing state.
+      The "matches producer" badge appears only when the stored-animal checksum is non-empty AND equals the producer's announced expected checksum &mdash; that is the completeness proof. An empty database shows "no data" and can never count as a match.
     </p>
   </div>
 </div>

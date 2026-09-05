@@ -13,20 +13,26 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Dieren zonder geregistreerde instantie:</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Naam</th><th>Instantie-ID</th><th>Opgeslagen</th><th>Verwacht</th><th>Bevestigd</th><th>Niet bevestigd</th><th>Controlesom</th><th></th></tr></thead>
+      <thead><tr><th>Naam</th><th>Instantie-ID</th><th>Opgeslagen</th><th>Verwacht (producent)</th><th>Ontvangen</th><th>Bevestigd</th><th>Niet bevestigd</th><th>Controlesom</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= if (row.Status.HasAnnouncement()) { %><strong><%= row.Status.AnnouncedExpectedTotal %></strong><% } else { %><span class="text-muted">&ndash;</span><% } %></td>
           <td><%= row.Status.ExpectedTotal %></td>
           <td><%= row.Status.Confirmed %></td>
           <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
           <td class="text-break">
-            <code title="Controlesom van het ontvangen animal_state-gebeurtenissenlogboek"><%= row.Status.EventLogChecksum %></code><br>
-            <code title="Controlesom van de geconsolideerde dieren"><%= row.Status.ConsolidatedChecksum %></code><br>
-            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">controlesom klopt</span><% } else { %><span class="badge badge-warning">controlesom wijkt af</span><% } %>
+            <%= if (row.Status.NoData) { %>
+              <span class="badge badge-secondary">geen gegevens</span>
+            <% } else { %>
+              <code title="Controlesom van het ontvangen animal_state-gebeurtenissenlogboek"><%= row.Status.EventLogChecksum %></code><br>
+              <code title="Controlesom van de geconsolideerde dieren"><%= row.Status.ConsolidatedChecksum %></code><br>
+              <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">controlesom klopt</span><% } else { %><span class="badge badge-warning">controlesom wijkt af</span><% } %>
+              <%= if (row.Status.HasAnnouncement()) { %><%= if (row.Status.ChecksumMatchesAnnounced()) { %><span class="badge badge-success">komt overeen met producent</span><% } else { %><span class="badge badge-danger">VERSCHIL met producent-verwachting &mdash; start een volledige hersynchronisatie</span><% } %><% } %>
+            <% } %>
           </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('ALLE <%= row.AnimalCount %> dieren van instantie <%= row.InstanceID %> verwijderen? Dit kan niet ongedaan worden gemaakt. Start daarna een volledige hersynchronisatie vanuit Creaves om de gegevens opnieuw op te bouwen.');" style="display:inline">
@@ -40,8 +46,8 @@
       </tbody>
     </table>
     <p class="text-muted small mb-0">
-      Verwacht = unieke dieren gezien in ontvangen gebeurtenissen. Bevestigd = laatst ontvangen status-hash komt overeen met de opgeslagen. Niet bevestigd = verouderde of ontbrekende status.
-      Vergelijk de eerste controlesom met de „controlesom van de verwachte verzameling” op de webhook-hersynchronisatiepagina van uw Creaves-instantie: identieke waarden bewijzen dat de overdracht compleet is.
+      Verwacht (producent) = het totaal aangekondigd door de Creaves-instantie bij zijn laatste volledige hersynchronisatie (opgeslagen op deze console). Ontvangen = unieke dieren gezien in ontvangen gebeurtenissen. Bevestigd = laatst ontvangen status-hash komt overeen met de opgeslagen. Niet bevestigd = verouderde of ontbrekende status.
+      Het badge „komt overeen met producent” verschijnt alleen als de controlesom van de opgeslagen dieren niet leeg is EN gelijk is aan de aangekondigde verwachte controlesom van de producent &mdash; dat is het bewijs van volledigheid. Een lege database toont „geen gegevens” en telt nooit als overeenkomst.
     </p>
   </div>
 </div>

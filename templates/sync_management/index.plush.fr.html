@@ -13,20 +13,26 @@
       <%= if (orphanAnimals > 0) { %><strong class="text-warning">Animaux sans instance enregistrée :</strong> <%= orphanAnimals %><br><% } %>
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Nom</th><th>ID d'instance</th><th>Stockés</th><th>Attendus</th><th>Confirmés</th><th>Non confirmés</th><th>Somme de contrôle</th><th></th></tr></thead>
+      <thead><tr><th>Nom</th><th>ID d'instance</th><th>Stockés</th><th>Attendus (producteur)</th><th>Reçus</th><th>Confirmés</th><th>Non confirmés</th><th>Somme de contrôle</th><th></th></tr></thead>
       <tbody>
         <%= for (row) in instanceRows { %>
         <tr>
           <td><%= if (row.Name != "") { %><%= row.Name %><% } else { %><%= row.InstanceID %><% } %></td>
           <td><code><%= row.InstanceID %></code></td>
           <td><%= row.AnimalCount %></td>
+          <td><%= if (row.Status.HasAnnouncement()) { %><strong><%= row.Status.AnnouncedExpectedTotal %></strong><% } else { %><span class="text-muted">&ndash;</span><% } %></td>
           <td><%= row.Status.ExpectedTotal %></td>
           <td><%= row.Status.Confirmed %></td>
           <td><%= if (row.Status.Unconfirmed > 0) { %><span class="text-danger font-weight-bold"><%= row.Status.Unconfirmed %></span><% } else { %>0<% } %></td>
           <td class="text-break">
-            <code title="Somme de contrôle du journal des événements animal_state reçus"><%= row.Status.EventLogChecksum %></code><br>
-            <code title="Somme de contrôle des animaux consolidés"><%= row.Status.ConsolidatedChecksum %></code><br>
-            <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">somme conforme</span><% } else { %><span class="badge badge-warning">somme divergente</span><% } %>
+            <%= if (row.Status.NoData) { %>
+              <span class="badge badge-secondary">aucune donnée</span>
+            <% } else { %>
+              <code title="Somme de contrôle du journal des événements animal_state reçus"><%= row.Status.EventLogChecksum %></code><br>
+              <code title="Somme de contrôle des animaux consolidés"><%= row.Status.ConsolidatedChecksum %></code><br>
+              <%= if (row.Status.ChecksumsMatch()) { %><span class="badge badge-success">somme conforme</span><% } else { %><span class="badge badge-warning">somme divergente</span><% } %>
+              <%= if (row.Status.HasAnnouncement()) { %><%= if (row.Status.ChecksumMatchesAnnounced()) { %><span class="badge badge-success">conforme au producteur</span><% } else { %><span class="badge badge-danger">DIVERGENCE avec l'attendu du producteur &mdash; lancez une resynchronisation complète</span><% } %><% } %>
+            <% } %>
           </td>
           <td>
             <form method="POST" action="/sync_management/delete-instance-animals" onsubmit="return confirm('Supprimer TOUS les <%= row.AnimalCount %> animaux de l\'instance <%= row.InstanceID %> ? Action irréversible. Lancez ensuite une resynchronisation complète depuis Creaves pour reconstruire les données.');" style="display:inline">
@@ -40,8 +46,8 @@
       </tbody>
     </table>
     <p class="text-muted small mb-0">
-      Attendus = animaux distincts vus dans les événements reçus. Confirmés = dernier hash d'état reçu identique à celui stocké. Non confirmés = état périmé ou manquant.
-      Comparez la première somme de contrôle avec la « somme de contrôle de l'ensemble attendu » affichée sur la page de resynchronisation de votre instance Creaves : des valeurs identiques prouvent que le transfert est complet.
+      Attendus (producteur) = total annoncé par l'instance Creaves lors de sa dernière resynchronisation complète (stocké sur cette console). Reçus = animaux distincts vus dans les événements reçus. Confirmés = dernier hash d'état reçu identique à celui stocké. Non confirmés = état périmé ou manquant.
+      Le badge « conforme au producteur » n'apparaît que si la somme de contrôle des animaux stockés est non vide ET égale à la somme attendue annoncée par le producteur &mdash; c'est la preuve de complétude. Une base vide affiche « aucune donnée » et ne peut jamais compter comme une conformité.
     </p>
   </div>
 </div>

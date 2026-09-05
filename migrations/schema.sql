@@ -92,6 +92,9 @@ CREATE TABLE `creaves_instances` (
   `last_event_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
+  `announced_expected_total` int DEFAULT NULL,
+  `announced_expected_checksum` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `announced_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `creaves_instances_instance_id_idx` (`instance_id`),
   KEY `creaves_instances_last_seen_at_idx` (`last_seen_at`)
@@ -216,4 +219,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-05  1:39:41
+-- Dump completed on 2026-09-05  2:33:40

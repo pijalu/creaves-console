@@ -4,6 +4,7 @@
 package actions
 
 import (
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -31,6 +32,7 @@ func stateHashPayload(t *testing.T, hash string) []byte {
 //   - animal 3: only a discovered event (no state event, no row) → unconfirmed (missing)
 //   - animal 4: consolidated row with NO state hash → ignored for confirmation
 //   - animal 5: state event with an OLDER created_at + newer hash (latest wins)
+//
 // center-b gets one unrelated event (scoping check).
 func seedSyncChecksumFixtures(t *testing.T) {
 	t.Helper()
@@ -77,10 +79,10 @@ func seedSyncChecksumFixtures(t *testing.T) {
 		}
 		require.NoError(t, testDB.Create(a))
 	}
-	row(1, 2025, "h1")        // confirmed
-	row(2, 2026, "h2-stale")  // mismatch
-	row(4, 2024, "")          // no state hash
-	row(5, 2026, "h5-new")    // confirmed via latest event
+	row(1, 2025, "h1")       // confirmed
+	row(2, 2026, "h2-stale") // mismatch
+	row(4, 2024, "")         // no state hash
+	row(5, 2026, "h5-new")   // confirmed via latest event
 }
 
 func TestStateSetChecksum_GoldenAndDeterminism(t *testing.T) {
@@ -130,8 +132,205 @@ func TestInstanceSyncStatus_EmptyInstance(t *testing.T) {
 	assert.Equal(t, 0, status.ExpectedTotal)
 	assert.Equal(t, 0, status.Confirmed)
 	assert.Equal(t, 0, status.Unconfirmed)
-	assert.Equal(t, StateSetChecksum(nil), status.EventLogChecksum)
-	assert.Equal(t, StateSetChecksum(nil), status.ConsolidatedChecksum)
+	// No data: checksums stay EMPTY (never the sha256 of an empty string,
+	// the historic false "checksum match") and NoData is flagged so the UI
+	// shows a no-data state that can never count as a match.
+	assert.Empty(t, status.EventLogChecksum)
+	assert.Empty(t, status.ConsolidatedChecksum)
+	assert.True(t, status.NoData)
+	assert.False(t, status.ChecksumsMatch())
+}
+
+// TestInstanceSyncStatus_AnnouncedStatusLoaded proves the console loads the
+// producer-announced expected sync state (stored on the instance row) and
+// compares its stored-animal checksum against it: only non-empty equality
+// counts as a match.
+func TestInstanceSyncStatus_AnnouncedStatusLoaded(t *testing.T) {
+	seedSyncChecksumFixtures(t)
+
+	// No announcement yet: not stored, nothing matches, nothing claimed.
+	status, err := ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+	assert.False(t, status.HasAnnouncement())
+	assert.Nil(t, status.AnnouncedExpectedTotal)
+	assert.Empty(t, status.AnnouncedExpectedChecksum)
+	assert.False(t, status.ChecksumMatchesAnnounced())
+
+	// Announce a DIFFERENT expected state: loaded, but no match.
+	now := time.Now().UTC()
+	require.NoError(t, models.StoreAnnouncedSyncStatus(testDB, "center-a", 10, "sha256:producer10", now))
+	status, err = ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+	require.NotNil(t, status.AnnouncedExpectedTotal)
+	assert.Equal(t, 10, *status.AnnouncedExpectedTotal)
+	assert.Equal(t, "sha256:producer10", status.AnnouncedExpectedChecksum)
+	require.NotNil(t, status.AnnouncedAt)
+	assert.True(t, status.HasAnnouncement())
+	assert.False(t, status.ChecksumMatchesAnnounced(), "different announced checksum must warn, never pass")
+
+	// Announce the actual stored checksum: match.
+	require.NoError(t, models.StoreAnnouncedSyncStatus(testDB, "center-a", 4, status.ConsolidatedChecksum, now))
+	status, err = ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+	assert.True(t, status.ChecksumMatchesAnnounced(), "equal non-empty checksums must match")
+}
+
+// TestWebhookEventsHandler_ConfirmsStateHashesAndStoresAnnouncement is the
+// console half of the ack round-trip: the webhook response confirms, per
+// processed animal_state event, the state hash it stored; and a "sync"
+// envelope block is persisted on the instance row as the announced expected
+// total/checksum.
+func TestWebhookEventsHandler_ConfirmsStateHashesAndStoresAnnouncement(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+
+	announcedAt := time.Now().UTC().Add(-time.Hour)
+	event := WebhookEvent{
+		ID:         uuid.Must(uuid.NewV4()).String(),
+		InstanceID: "inst-1",
+		AnimalID:   77,
+		EventType:  string(models.EventTypeAnimalState),
+		Payload:    []byte(`{"animal":{"id":77,"species":"Hedgehog","year":2025,"year_number":3},"current_status":"in_care","state_hash":"hash-77"}`),
+		CreatedAt:  time.Now(),
+	}
+	payload, _ := json.Marshal(WebhookPayload{
+		ContractVersion: 2,
+		Instance:        &InstanceInfo{ID: "inst-1", Name: "Center One"},
+		Sync:            &SyncAnnouncement{ExpectedTotal: 42, ExpectedChecksum: "sha256:announced42", AnnouncedAt: &announcedAt},
+		Events:          []WebhookEvent{event},
+	})
+	rec := postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Processed     int `json:"processed"`
+		ConfirmedList []struct {
+			ID        string `json:"id"`
+			StateHash string `json:"state_hash"`
+		} `json:"confirmed"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.EqualValues(t, 1, resp.Processed)
+	require.Len(t, resp.ConfirmedList, 1, "processed animal_state event must be confirmed")
+	assert.Equal(t, event.ID, resp.ConfirmedList[0].ID)
+	assert.Equal(t, "hash-77", resp.ConfirmedList[0].StateHash)
+
+	// The announcement is stored on the instance row.
+	inst := &models.CreavesInstance{}
+	require.NoError(t, tx.Where("instance_id = ?", "inst-1").First(inst))
+	assert.True(t, inst.AnnouncedExpectedTotal.Valid)
+	assert.Equal(t, 42, inst.AnnouncedExpectedTotal.Int)
+	assert.True(t, inst.AnnouncedExpectedChecksum.Valid)
+	assert.Equal(t, "sha256:announced42", inst.AnnouncedExpectedChecksum.String)
+	assert.True(t, inst.AnnouncedAt.Valid)
+
+	// Non-state events are never confirmed: only the animal_state event is.
+	discovered := WebhookEvent{
+		ID: uuid.Must(uuid.NewV4()).String(), InstanceID: "inst-1", AnimalID: 78,
+		EventType: string(models.EventTypeAnimalDiscovered), Payload: []byte(`{"animal":{"id":78}}`),
+		CreatedAt: time.Now(),
+	}
+	payload, _ = json.Marshal(WebhookPayload{Events: []WebhookEvent{discovered}})
+	rec = postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+	resp = struct {
+		Processed     int `json:"processed"`
+		ConfirmedList []struct {
+			ID        string `json:"id"`
+			StateHash string `json:"state_hash"`
+		} `json:"confirmed"`
+	}{}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Empty(t, resp.ConfirmedList, "non animal_state events must not be confirmed")
+}
+
+// TestWebhookEventsHandler_RefreshesLegacyPayloadOnRedelivery pins the
+// legacy backfill path: a force resync re-sends a legacy event (whose stored
+// payload predates state_hash) with the state_hash added. The console must
+// adopt the refreshed payload, re-apply it and acknowledge the delivery —
+// otherwise the producer can never confirm legacy animals.
+func TestWebhookEventsHandler_RefreshesLegacyPayloadOnRedelivery(t *testing.T) {
+	tx := setupTest(t)
+	app := newWebhookTestApp(tx)
+	rawKey, _ := seedAPIKey(t, tx, "")
+
+	eventID := uuid.Must(uuid.NewV4()).String()
+	legacy := WebhookEvent{
+		ID: eventID, InstanceID: "inst-1", AnimalID: 79,
+		EventType: string(models.EventTypeAnimalState),
+		Payload:   []byte(`{"animal":{"id":79,"species":"Hedgehog","year":2025,"year_number":3},"current_status":"in_care"}`),
+		CreatedAt: time.Now(),
+	}
+	payload, _ := json.Marshal(WebhookPayload{Events: []WebhookEvent{legacy}})
+	rec := postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var first struct {
+		ConfirmedList []struct {
+			ID string `json:"id"`
+		} `json:"confirmed"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &first))
+	assert.Empty(t, first.ConfirmedList, "a legacy payload without state_hash cannot be confirmed")
+
+	// Redelivery of the SAME deterministic event with state_hash backfilled.
+	refreshed := legacy
+	refreshed.Payload = []byte(`{"animal":{"id":79,"species":"Hedgehog","year":2025,"year_number":3},"current_status":"in_care","state_hash":"hash-79"}`)
+	payload, _ = json.Marshal(WebhookPayload{Events: []WebhookEvent{refreshed}})
+	rec = postWebhook(app, "Bearer "+rawKey, payload)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var second struct {
+		Processed     int `json:"processed"`
+		ConfirmedList []struct {
+			ID        string `json:"id"`
+			StateHash string `json:"state_hash"`
+		} `json:"confirmed"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &second))
+	assert.EqualValues(t, 1, second.Processed)
+	require.Len(t, second.ConfirmedList, 1, "the refreshed event must be acknowledged")
+	assert.Equal(t, eventID, second.ConfirmedList[0].ID)
+	assert.Equal(t, "hash-79", second.ConfirmedList[0].StateHash)
+
+	// The stored event and the consolidated snapshot carry the state hash.
+	stored := &models.EventStream{}
+	require.NoError(t, tx.Find(stored, eventID))
+	p, err := stored.GetPayload()
+	require.NoError(t, err)
+	assert.Equal(t, "hash-79", p.StateHash)
+	row := &models.ConsolidatedAnimal{}
+	require.NoError(t, tx.Where("instance_id = ? AND animal_id = ?", "inst-1", 79).First(row))
+	require.True(t, row.StateHash.Valid)
+	assert.Equal(t, "hash-79", row.StateHash.String)
+}
+
+// TestSyncManagementIndex_ShowsProducerBadges validates the admin UI: the
+// announced expected total renders, a matching producer checksum earns the
+// "matches producer" badge, an unannounced/empty instance shows "no data".
+func TestSyncManagementIndex_ShowsProducerBadges(t *testing.T) {
+	seedSyncChecksumFixtures(t)
+
+	status, err := ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+	require.NoError(t, models.StoreAnnouncedSyncStatus(testDB, "center-a", 99, status.ConsolidatedChecksum, time.Now().UTC()))
+
+	// center-b is registered but has no state events and no consolidated
+	// rows: its checksum cell must show the no-data state.
+	require.NoError(t, testDB.Create(&models.CreavesInstance{
+		ID: uuid.Must(uuid.NewV4()), InstanceID: "center-b", Name: "center-b",
+		FirstSeenAt: time.Now().UTC(), LastSeenAt: time.Now().UTC(),
+	}))
+
+	app := newSyncManagementTestApp(testDB, true)
+	rec := perform(app, http.MethodGet, "/sync_management")
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+
+	assert.Contains(t, body, ">99<", "announced expected total must render")
+	assert.Contains(t, body, "matches producer", "equal non-empty checksums must earn the producer badge")
+	assert.Contains(t, body, "no data yet", "an instance without any state data must show the no-data state")
 }
 
 func TestSyncManagementIndex_ShowsSyncColumns(t *testing.T) {
@@ -172,6 +371,10 @@ func TestSyncManagementLocaleVariantsShowSyncColumns(t *testing.T) {
 		require.NoError(t, err, "locale template %s must be embedded", path)
 		assert.Contains(t, string(body), "row.Status.ExpectedTotal", "%s must render expected count", path)
 		assert.Contains(t, string(body), "row.Status.ChecksumsMatch()", "%s must render checksum badge", path)
+		assert.Contains(t, string(body), "row.Status.ChecksumMatchesAnnounced()", "%s must render the producer-comparison badge", path)
+		assert.Contains(t, string(body), "row.Status.HasAnnouncement()", "%s must gate the announced expected total", path)
+		assert.Contains(t, string(body), "row.Status.AnnouncedExpectedTotal", "%s must render the announced expected total", path)
+		assert.Contains(t, string(body), "row.Status.NoData", "%s must render the no-data state", path)
 		assert.Contains(t, string(body), "yearRows", "%s must render per-year breakdown", path)
 	}
 }

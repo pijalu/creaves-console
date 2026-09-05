@@ -1,0 +1,3 @@
+add_column("creaves_instances", "announced_expected_total", "integer", {null: true})
+add_column("creaves_instances", "announced_expected_checksum", "string", {null: true})
+add_column("creaves_instances", "announced_at", "timestamp", {null: true})

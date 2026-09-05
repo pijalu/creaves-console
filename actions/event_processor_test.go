@@ -80,6 +80,9 @@ func createTables() {
 			first_seen_at TIMESTAMP NOT NULL,
 			last_seen_at TIMESTAMP NOT NULL,
 			last_event_at TIMESTAMP,
+			announced_expected_total INTEGER,
+			announced_expected_checksum TEXT,
+			announced_at TIMESTAMP,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)

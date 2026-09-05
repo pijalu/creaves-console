@@ -221,6 +221,13 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
 
 ```json
 {
+  "contract_version": 2,
+  "instance": { "id": "center-north", "name": "Center North", "description": "..." },
+  "sync": {
+    "expected_total": 5327,
+    "expected_checksum": "sha256:81aedb89...",
+    "announced_at": "2026-09-05T10:30:00Z"
+  },
   "events": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -233,6 +240,14 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
   ]
 }
 ```
+
+- `instance` — identifies the producing installation (registered on first receipt).
+- `sync` — **optional**, present only on batches belonging to a resync run:
+  the producer's announced expected sync state (total animals + `"<animal_id>|<state_hash>"`
+  set checksum, computed with the same builder as its `/webhook_resync` page).
+  The console stores it on the instance row and `/sync_management` displays
+  `stored / expected(announced)` plus a checksum comparison — the expected set
+  is NEVER derived from the events the console happens to have received.
 
 ### Event Types
 
@@ -291,7 +306,9 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
 ```json
 {
   "processed": 5,
-  "total": 5
+  "total": 5,
+  "processed_ids": ["550e8400-...", "..."],
+  "confirmed": [{ "id": "550e8400-...", "state_hash": "<hash stored on the consolidated row>" }]
 }
 ```
 
@@ -301,9 +318,22 @@ On partial failure (some events errored):
 {
   "processed": 3,
   "total": 5,
+  "processed_ids": ["..."],
+  "confirmed": ["..."],
   "errors": ["failed to process event ...: ..."]
 }
 ```
+
+- `processed_ids` — events actually processed; absent events stay undelivered and are retried.
+- `confirmed` — **console→creaves acknowledgement** (ack path): per processed
+  `animal_state` event, the state hash the console actually stored. The Creaves
+  pusher marks those events `acknowledged_at` (only when the echoed hash matches
+  the event's `content_hash`), which feeds the "Delivered & current" count on
+  `/webhook_resync`. Bare HTTP acceptance alone is NOT treated as confirmation.
+- Redelivery of a known event ID whose payload differs from the stored one
+  (e.g. the producer's force resync backfilling `state_hash` onto legacy
+  events) replaces the stored payload and the event is re-applied —
+  processing stays idempotent for unchanged state.
 
 The Creaves pusher marks the batch as delivered when it receives HTTP 200.
 
