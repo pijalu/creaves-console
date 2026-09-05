@@ -14,7 +14,7 @@
                     </tr>
                     <tr>
                         <td><strong>API-Schlüsselwert:</strong></td>
-                        <td><%= if (webhookAPIKey.KeyValue.Valid) { %><code><%= webhookAPIKey.KeyValue.String %></code><% } else { %><em>Nicht verfügbar für Schlüssel, die vor Aktivierung der Sichtbarkeit erstellt wurden</em><% } %></td>
+                        <td><%= if (webhookAPIKey.KeyValue.Valid) { %><code><%= webhookAPIKey.KeyValue.String %></code><% } else { %><em>Nicht verfügbar für Schlüssel, die vor Aktivierung der Sichtbarkeit erstellt wurden (Präfix <code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code>)</em><% } %></td>
                     </tr>
                     <tr>
                         <td><strong>Instanz-ID:</strong></td>
