@@ -159,6 +159,25 @@ func outcomeClass(v interface{}, help plush.HelperContext) (template.HTML, error
 	return template.HTML("secondary"), nil
 }
 
+// statusClass is a template helper: Bootstrap badge class for the animal's
+// *effective* status (a negative outtake outcome forces "died", bugs.md #7).
+// Accepts both the value and pointer form of the model.
+func statusClass(v interface{}, help plush.HelperContext) (template.HTML, error) {
+	a, ok := asConsolidatedAnimal(v)
+	if !ok {
+		return template.HTML(""), fmt.Errorf("statusClass: expected models.ConsolidatedAnimal, got %T", v)
+	}
+	switch a.EffectiveStatus() {
+	case "in_care":
+		return template.HTML("success"), nil
+	case "released":
+		return template.HTML("primary"), nil
+	case "died":
+		return template.HTML("danger"), nil
+	}
+	return template.HTML("secondary"), nil
+}
+
 // outcomeLabel is a template helper: localized Positive/Neutral/Negative label
 // for the stored outcome (empty string when unknown). Accepts both the value
 // and pointer form of the model.

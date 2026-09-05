@@ -201,11 +201,11 @@
                                 <% } %>
                             </td>
                             <td>
-                                <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
-                                    <%= tstatus_localized(animal.CurrentStatus) %>
-                                </span><%= if (animal.OutcomeStatus() != "") { %><span class="badge badge-<%= outcomeClass(animal) %>"><%= outcomeLabel(animal) %></span><% } %>
+                                <span class="badge badge-<%= statusClass(animal) %> mr-1">
+                                    <%= tstatus_localized(animal.EffectiveStatus()) %>
+                                </span><%= if (animal.OutcomeStatus() != "") { %> <span class="badge badge-<%= outcomeClass(animal) %> mr-1"><%= outcomeLabel(animal) %></span><% } %>
                                 <%= if (animal.OuttakeType.Valid) { %>
-                                    <small><%= tfield_localized(animal, "outtake_type") %></small>
+                                    <small class="d-block text-muted"><%= tfield_localized(animal, "outtake_type") %></small>
                                 <% } %>
                             </td>
                             <td>

@@ -132,6 +132,17 @@ func (c ConsolidatedAnimal) OutcomeStatus() string {
 	}
 }
 
+// EffectiveStatus returns the display status for badges and groupings: a
+// negative outtake outcome (rating < 0 or dead flag) forces "died" — legacy
+// rows processed before outcome-aware processing can still carry
+// current_status='released' for a deceased animal (bugs.md #7).
+func (c ConsolidatedAnimal) EffectiveStatus() string {
+	if c.OutcomeStatus() == "negative" {
+		return "died"
+	}
+	return c.CurrentStatus
+}
+
 type ConsolidatedAnimals []ConsolidatedAnimal
 
 func (c ConsolidatedAnimals) String() string {

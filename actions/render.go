@@ -196,6 +196,7 @@ func init() {
 			"sortIcon":          sortIcon,
 			"outcomeClass":      outcomeClass,
 			"outcomeLabel":      outcomeLabel,
+			"statusClass":       statusClass,
 		},
 	})
 }

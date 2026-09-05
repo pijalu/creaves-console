@@ -39,8 +39,8 @@
                     <tr>
                         <td><strong>Statut :</strong></td>
                         <td>
-                            <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
-                                <%= tstatus_localized(animal.CurrentStatus) %>
+                            <span class="badge badge-<%= statusClass(animal) %> mr-1">
+                                <%= tstatus_localized(animal.EffectiveStatus()) %>
                             </span>
                         </td>
                     </tr>
