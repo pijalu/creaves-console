@@ -8,13 +8,6 @@
 <div class="row mb-3">
     <div class="col-md-12">
         <form method="GET" action="/consolidated_animals" class="form-inline">
-            <div class="form-group mr-2">
-                <label for="view_mode" class="mr-2">Ansicht:</label>
-                <select name="view_mode" id="view_mode" class="form-control">
-                    <option value="global" <%= if (viewMode == "global") { %>selected<% } %>>Global (alle Instanzen)</option>
-                    <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>Nach Instanz</option>
-                </select>
-            </div>
             <%= if (viewMode == "instance") { %>
             <div class="form-group mr-2">
                 <label for="instance_id" class="mr-2">Instanz:</label>
@@ -35,7 +28,27 @@
                     <% } %>
                 </select>
             </div>
-            <div class="form-group mr-2">
+            <button type="button" class="btn btn-outline-secondary mr-2" data-toggle="collapse" data-target="#moreFilters" aria-expanded="<%= if (viewMode == "instance" || params["status"] || params["species"] || params["animal_type"] || params["city"] || params["entry_cause"] || params["animal_age"] || params["ring"] || params["outtake_type"]) { %>true<% } else { %>false<% } %>" aria-controls="moreFilters">
+                <i class="fas fa-sliders-h"></i> Mehr Filter
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-filter"></i> Filtern
+            </button>
+            <a href="/consolidated_animals" class="btn btn-secondary ml-2">
+                <i class="fas fa-times"></i> Zurücksetzen
+            </a>
+            <button type="submit" name="export" value="csv" formaction="/consolidated_animals/export.csv" class="btn btn-success ml-2">
+                <i class="fas fa-file-csv"></i> CSV exportieren
+            </button>
+            <div class="collapse w-100 mt-2 <%= if (viewMode == "instance" || params["status"] || params["species"] || params["animal_type"] || params["city"] || params["entry_cause"] || params["animal_age"] || params["ring"] || params["outtake_type"]) { %>show<% } %>" id="moreFilters">
+            <div class="form-group mr-2 mt-2">
+                <label for="view_mode" class="mr-2">Ansicht:</label>
+                <select name="view_mode" id="view_mode" class="form-control">
+                    <option value="global" <%= if (viewMode == "global") { %>selected<% } %>>Global (alle Instanzen)</option>
+                    <option value="instance" <%= if (viewMode == "instance") { %>selected<% } %>>Nach Instanz</option>
+                </select>
+            </div>
+            <div class="form-group mr-2 mt-2">
                 <label for="status" class="mr-2">Status:</label>
                 <select name="status" id="status" class="form-control">
                     <option value="">Alle</option>
@@ -102,15 +115,7 @@
                     <% } %>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-filter"></i> Filtern
-            </button>
-            <a href="/consolidated_animals" class="btn btn-secondary ml-2">
-                <i class="fas fa-times"></i> Zurücksetzen
-            </a>
-            <button type="submit" name="export" value="csv" formaction="/consolidated_animals/export.csv" class="btn btn-success ml-2">
-                <i class="fas fa-file-csv"></i> CSV exportieren
-            </button>
+            </div>
         </form>
     </div>
 </div>
