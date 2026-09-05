@@ -653,7 +653,17 @@ func localizedGroupLabels(tx *pop.Connection, scope ReportScope, field, lang, ba
 	var animals []models.ConsolidatedAnimal
 	where, scopeArgs := ScopedWhere(scope, baseWhere)
 	args := append(baseArgs, scopeArgs...)
-	if err := tx.RawQuery("SELECT "+field+", translations FROM consolidated_animals "+where, args...).All(&animals); err != nil {
+	// One row per distinct field value (GROUP BY), not a full-table scan:
+	// the old "SELECT field, translations" read EVERY consolidated_animal
+	// row — translations JSON included — five times per page render
+	// (bugs.md: "Multiple queries"). All animals sharing a canonical value
+	// share its translation set (translations are keyed by the creaves
+	// reference record), so any one row's translations represent the group;
+	// MIN() is the portable (MySQL/MariaDB/SQLite) way to pick one.
+	if err := tx.RawQuery(
+		"SELECT "+field+", MIN(translations) AS translations FROM consolidated_animals "+where+" GROUP BY "+field,
+		args...,
+	).All(&animals); err != nil {
 		return nil, err
 	}
 	labels := make(map[string]string)
