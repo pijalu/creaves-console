@@ -13,7 +13,8 @@
 
         <%= form_for(webhookAPIKey, {action: "/webhook_api_keys", method: "POST"}) { %>
             <%= f.InputTag("Name", {label: "Key Name", placeholder: "e.g., Center Brussels"}) %>
-            <%= f.InputTag("InstanceID", {label: "Instance ID (optional)", placeholder: "e.g., center-brussels"}) %>
+            <%= f.InputTag("InstanceID", {label: "Instance ID (required)", placeholder: "e.g., center-brussels", required: true}) %>
+            <p class="text-muted">The key belongs to this instance; the instance is created automatically if it does not exist yet.</p>
             
             <div class="form-group">
                 <button class="btn btn-primary" type="submit">Generate API Key</button>

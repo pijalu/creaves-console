@@ -13,7 +13,8 @@
 
         <%= form_for(webhookAPIKey, {action: "/webhook_api_keys", method: "POST"}) { %>
             <%= f.InputTag("Name", {label: "Sleutelnaam", placeholder: "bijv. Centrum Brussel"}) %>
-            <%= f.InputTag("InstanceID", {label: "Instantie-ID (optioneel)", placeholder: "bijv. center-brussels"}) %>
+            <%= f.InputTag("InstanceID", {label: "Instantie-ID (verplicht)", placeholder: "bijv. center-brussels", required: true}) %>
+            <p class="text-muted">De sleutel hoort bij deze instantie; de instantie wordt automatisch aangemaakt als ze nog niet bestaat.</p>
             
             <div class="form-group">
                 <button class="btn btn-primary" type="submit">API-sleutel genereren</button>

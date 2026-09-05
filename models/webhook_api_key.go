@@ -49,6 +49,10 @@ func (w *WebhookAPIKey) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: w.Name, Name: "Name"},
 		&validators.StringIsPresent{Field: w.KeyHash, Name: "KeyHash"},
+		// An API key always belongs to exactly one instance; keys without an
+		// instance must not exist (the instance row is upserted by the
+		// resource handler on create/update).
+		&validators.StringIsPresent{Field: w.InstanceID, Name: "InstanceID"},
 	), nil
 }
 

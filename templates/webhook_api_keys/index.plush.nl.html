@@ -32,7 +32,7 @@
                             <tr>
                                 <td><%= key.Name %></td>
                                 <td><code>creaves_<%= key.KeyPrefix %>&hellip;</code></td>
-                                <td><%= if (key.InstanceID) { %><a href="/instances/<%= key.InstanceID %>"><%= key.InstanceID %></a><% } else { %><em>Elke</em><% } %></td>
+                                <td><a href="/instances/<%= key.InstanceID %>"><%= key.InstanceID %></a></td>
                                 <td>
                                     <%= if (key.Active) { %>
                                         <span class="badge badge-success">Actief</span>

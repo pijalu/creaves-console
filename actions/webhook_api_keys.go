@@ -4,6 +4,7 @@ import (
 	"creaves-console/models"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/nulls"
@@ -111,7 +112,9 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 	key.KeyValue = nulls.NewString(rawKey)
 	key.Active = true
 
-	verrs, err := tx.ValidateAndCreate(key)
+	// Validate first: only when the key is valid do we upsert the instance
+	// row and create the key — atomically, in one transaction.
+	verrs, err := key.Validate(tx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -124,6 +127,19 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 		}).Wants("json", func(c buffalo.Context) error {
 			return c.Render(http.StatusUnprocessableEntity, r.JSON(verrs))
 		}).Respond(c)
+	}
+
+	// An API key always belongs to an instance: register the instance (if it
+	// does not exist yet) and store the key in the same transaction, so the
+	// instance page works immediately after key creation.
+	err = tx.Transaction(func(t *pop.Connection) error {
+		if err := models.UpsertByInstanceID(t, key.InstanceID, key.Name, "", time.Now().UTC()); err != nil {
+			return err
+		}
+		return t.Create(key)
+	})
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	// Hand the raw key over to the dedicated one-time display page through the
@@ -227,11 +243,18 @@ func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 		return c.Error(http.StatusNotFound, err)
 	}
 
+	// Bind overwrites InstanceID with the (possibly absent) form value;
+	// keep the stored association when the field is omitted.
+	keptInstanceID := key.InstanceID
 	if err := c.Bind(key); err != nil {
 		return errors.WithStack(err)
 	}
+	if key.InstanceID == "" {
+		key.InstanceID = keptInstanceID
+	}
 
-	verrs, err := tx.ValidateAndUpdate(key)
+	// Validate first: only a valid key triggers the instance upsert + update.
+	verrs, err := key.Validate(tx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -244,6 +267,18 @@ func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 		}).Wants("json", func(c buffalo.Context) error {
 			return c.Render(http.StatusUnprocessableEntity, r.JSON(verrs))
 		}).Respond(c)
+	}
+
+	// Reassigning a key registers the target instance if it is missing — a
+	// key must never point to a non-existent instance.
+	err = tx.Transaction(func(t *pop.Connection) error {
+		if err := models.UpsertByInstanceID(t, key.InstanceID, "", "", time.Now().UTC()); err != nil {
+			return err
+		}
+		return t.Update(key)
+	})
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	return responder.Wants("html", func(c buffalo.Context) error {

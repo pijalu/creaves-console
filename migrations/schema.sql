@@ -219,7 +219,7 @@ CREATE TABLE `webhook_api_keys` (
   `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `key_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `key_prefix` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `instance_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `instance_id` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `last_used_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
@@ -227,7 +227,8 @@ CREATE TABLE `webhook_api_keys` (
   `key_value` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `webhook_api_keys_key_hash_idx` (`key_hash`),
-  KEY `webhook_api_keys_instance_id_idx` (`instance_id`)
+  KEY `webhook_api_keys_instance_id_idx` (`instance_id`),
+  CONSTRAINT `fk_webhook_api_keys_instance` FOREIGN KEY (`instance_id`) REFERENCES `creaves_instances` (`instance_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -240,4 +241,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-05 11:00:21
+-- Dump completed on 2026-09-05 11:17:24

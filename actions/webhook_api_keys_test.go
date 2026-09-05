@@ -121,7 +121,7 @@ func TestWebhookAPIKeys_List(t *testing.T) {
 
 func TestWebhookAPIKeys_ListJSON(t *testing.T) {
 	tx := setupTest(t)
-	seedAPIKey(t, tx, "")
+ seedAPIKey(t, tx, "inst-seed")
 
 	app := newAdminTestApp(tx, true)
 	req := httptest.NewRequest("GET", "/webhook_api_keys", nil)
@@ -160,7 +160,7 @@ func TestWebhookAPIKeys_CreateJSONReturnsRawKey(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name=JSONKey"))
+	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name=JSONKey&InstanceID=inst-json"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	rec := httptest.NewRecorder()
@@ -188,7 +188,7 @@ func TestWebhookAPIKeys_Show(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("GET", "/webhook_api_keys/"+stored.ID.String(), nil)
 	req.Header.Set("Accept", "application/json")
@@ -272,7 +272,7 @@ func TestWebhookAPIKeys_Destroy(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("DELETE", "/webhook_api_keys/"+stored.ID.String(), nil)
 	rec := httptest.NewRecorder()
@@ -308,11 +308,95 @@ func TestWebhookAPIKeys_CreateValidationFail(t *testing.T) {
 	assert.Equal(t, 0, count, "no key should be persisted on validation failure")
 }
 
+// TestWebhookAPIKeys_CreateRequiresInstance: a key without an instance_id
+// must be rejected (422) and must not create a key nor an instance row.
+func TestWebhookAPIKeys_CreateRequiresInstance(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+
+	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name=NoInstance&InstanceID="))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+
+	keyCount, err := tx.Count(&models.WebhookAPIKey{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, keyCount, "no key without instance")
+
+	instCount, err := tx.Count(&models.CreavesInstance{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, instCount, "failed create must not register an instance")
+}
+
+// TestWebhookAPIKeys_CreateUpsertsInstance: creating a key must register the
+// instance row atomically, so /instances/<id> works right after creation.
+func TestWebhookAPIKeys_CreateUpsertsInstance(t *testing.T) {
+	tx := setupTest(t)
+
+	key := createKeyViaUI(t, tx, "LaGrange", "LaGrange")
+	assert.Equal(t, "LaGrange", key.InstanceID)
+
+	instance := &models.CreavesInstance{}
+	require.NoError(t, tx.Where("instance_id = ?", "LaGrange").First(instance),
+		"instance row must exist immediately after key creation")
+
+	// The instance admin view (data behind /instances/LaGrange) must load.
+	view, err := loadInstanceAdminView(tx, "LaGrange")
+	require.NoError(t, err)
+	assert.Equal(t, "LaGrange", view.InstanceID)
+	assert.Equal(t, 1, view.KeyCount)
+}
+
+// TestWebhookAPIKeys_MultipleKeysPerInstance: a second key for the same
+// instance must succeed; the instance keeps both keys.
+func TestWebhookAPIKeys_MultipleKeysPerInstance(t *testing.T) {
+	tx := setupTest(t)
+
+	createKeyViaUI(t, tx, "KeyOne", "center-multi")
+
+	// Second key for the same instance via the real Create handler.
+	app := newAdminTestApp(tx, true)
+	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name=KeyTwo&InstanceID=center-multi"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	keyCount, err := tx.Where("instance_id = ?", "center-multi").Count(&models.WebhookAPIKey{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, keyCount, "multiple keys per instance must be possible")
+
+	instCount, err := tx.Count(&models.CreavesInstance{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, instCount, "the instance must not be duplicated")
+}
+
+// TestWebhookAPIKeys_UpdateUpsertsNewInstance: reassigning a key to a new
+// instance registers that instance.
+func TestWebhookAPIKeys_UpdateUpsertsNewInstance(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+
+	_, stored := seedAPIKey(t, tx, "inst-old")
+
+	body := "Name=Renamed&InstanceID=inst-brand-new&Active=true"
+	req := httptest.NewRequest("PUT", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	instance := &models.CreavesInstance{}
+	require.NoError(t, tx.Where("instance_id = ?", "inst-brand-new").First(instance),
+		"update must register the new instance")
+}
+
 func TestWebhookAPIKeys_UpdateJSON(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("PUT", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("Name=ViaJSON&Active=true"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -331,7 +415,7 @@ func TestWebhookAPIKeys_DestroyJSON(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("DELETE", "/webhook_api_keys/"+stored.ID.String(), nil)
 	req.Header.Set("Accept", "application/json")
@@ -367,7 +451,7 @@ func TestWebhookAPIKeys_NewRendersForm(t *testing.T) {
 func TestWebhookAPIKeys_ListHTML(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	rawKey, _ := seedAPIKey(t, tx, "")
+	rawKey, _ := seedAPIKey(t, tx, "inst-seed")
 
 	rec := perform(app, "GET", "/webhook_api_keys")
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -401,7 +485,7 @@ func TestWebhookAPIKeys_ShowHTML(t *testing.T) {
 func TestWebhookAPIKeys_ListHTMLDeleteForm(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	seedAPIKey(t, tx, "")
+	seedAPIKey(t, tx, "inst-seed")
 
 	rec := perform(app, "GET", "/webhook_api_keys")
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -416,7 +500,7 @@ func TestWebhookAPIKeys_ListHTMLDeleteForm(t *testing.T) {
 func TestWebhookAPIKeys_DestroyViaMethodOverride(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("POST", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("_method=DELETE"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -434,7 +518,7 @@ func TestWebhookAPIKeys_DestroyViaMethodOverride(t *testing.T) {
 func TestWebhookAPIKeys_UpdateValidationFail(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	// Empty name → 422.
 	req := httptest.NewRequest("PUT", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("Name=&Active=true"))
@@ -448,7 +532,7 @@ func TestWebhookAPIKeys_UpdateValidationFail(t *testing.T) {
 // a non-admin user must receive 403 Forbidden.
 func TestWebhookAPIKeys_UpdateNonAdmin(t *testing.T) {
 	tx := setupTest(t)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 	app := newAdminTestApp(tx, false)
 
 	body := "Name=Renamed"
@@ -464,7 +548,7 @@ func TestWebhookAPIKeys_UpdateNonAdmin(t *testing.T) {
 func TestWebhookAPIKeys_UpdateValidationFailJSON(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	req := httptest.NewRequest("PUT", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("Name="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -480,7 +564,7 @@ func TestWebhookAPIKeys_UpdateValidationFailJSON(t *testing.T) {
 func TestWebhookAPIKeys_XMLResponders(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	// List with XML accept — should succeed (200).
 	req := httptest.NewRequest("GET", "/webhook_api_keys", nil)
@@ -502,7 +586,7 @@ func TestWebhookAPIKeys_XMLResponders(t *testing.T) {
 func TestWebhookAPIKeys_ValidationFailXML(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	// Create with empty name + XML accept → 422 via XML responder.
 	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name="))
@@ -531,7 +615,7 @@ func createKeyWithSession(t *testing.T, tx *pop.Connection, name string) *httpte
 	t.Helper()
 	app := newAdminTestApp(tx, true)
 
-	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name="+name))
+	req := httptest.NewRequest("POST", "/webhook_api_keys", strings.NewReader("Name="+name+"&InstanceID=inst-"+name))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
@@ -588,7 +672,7 @@ func TestWebhookAPIKeys_CreatedWithoutSessionRedirectsToShow(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)
 
-	_, stored := seedAPIKey(t, tx, "")
+	_, stored := seedAPIKey(t, tx, "inst-seed")
 
 	rec := perform(app, "GET", "/webhook_api_keys/"+stored.ID.String()+"/created")
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
