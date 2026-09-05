@@ -162,21 +162,22 @@ func RegisterExportCSV(c buffalo.Context) error {
 		return err
 	}
 
-	header := append([]string{"Instance"}, registerCSVHeader(requestUILang(c))...)
+	lang := requestUILang(c)
+	header := append([]string{"Instance"}, registerCSVHeader(lang)...)
 	rows := make([][]string, 0, len(*animals))
 	for _, a := range *animals {
 		rows = append(rows, []string{
 			a.InstanceID,
 			strconv.Itoa(a.YearNumber),
-			registerString(a.AnimalType),
-			registerString(a.Species),
+			a.LocalizedField(lang, "animal_type"),
+			a.LocalizedField(lang, "species"),
 			registerString(a.Ring),
 			registerFmtDate(a.IntakeDate),
 			registerString(a.DiscoveryLocation),
-			registerString(a.AnimalAge),
-			registerString(a.EntryCause),
+			a.LocalizedField(lang, "animal_age"),
+			a.LocalizedField(lang, "entry_cause"),
 			registerFmtDate(a.OuttakeDate),
-			registerString(a.OuttakeType),
+			a.LocalizedField(lang, "outtake_type"),
 			registerString(a.OuttakeLocation),
 		})
 	}
@@ -312,21 +313,22 @@ func SnapshotExportCSV(c buffalo.Context) error {
 		return err
 	}
 
-	header := append([]string{"Instance"}, snapshotCSVHeader(requestUILang(c))...)
+	lang := requestUILang(c)
+	header := append([]string{"Instance"}, snapshotCSVHeader(lang)...)
 	rows := make([][]string, 0, len(*animals))
 	for _, a := range *animals {
 		rows = append(rows, []string{
 			a.InstanceID,
 			strconv.Itoa(a.YearNumber),
-			registerString(a.AnimalType),
-			registerString(a.Species),
+			a.LocalizedField(lang, "animal_type"),
+			a.LocalizedField(lang, "species"),
 			registerString(a.Ring),
 			registerString(a.Zone),
 			registerString(a.Cage),
 			registerFmtDate(a.IntakeDate),
 			registerString(a.DiscoveryLocation),
-			registerString(a.AnimalAge),
-			registerString(a.EntryCause),
+			a.LocalizedField(lang, "animal_age"),
+			a.LocalizedField(lang, "entry_cause"),
 		})
 	}
 

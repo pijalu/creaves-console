@@ -47,7 +47,7 @@
                 <select name="species" id="species" class="form-control">
                     <option value="">All</option>
                     <%= for (sp) in speciesList { %>
-                        <option value="<%= sp.Species %>" <%= if (params["species"] == sp.Species) { %>selected<% } %>><%= sp.Species %></option>
+                        <option value="<%= sp.Species %>" <%= if (params["species"] == sp.Species) { %>selected<% } %>><%= tlabel_localized(sp.Species, speciesLabels) %></option>
                     <% } %>
                 </select>
             </div>
@@ -56,7 +56,7 @@
                 <select name="animal_type" id="animal_type" class="form-control">
                     <option value="">All</option>
                     <%= for (t) in typesList { %>
-                        <option value="<%= t.AnimalType %>" <%= if (params["animal_type"] == t.AnimalType) { %>selected<% } %>><%= t.AnimalType %></option>
+                        <option value="<%= t.AnimalType %>" <%= if (params["animal_type"] == t.AnimalType) { %>selected<% } %>><%= tlabel_localized(t.AnimalType, animalTypeLabels) %></option>
                     <% } %>
                 </select>
             </div>

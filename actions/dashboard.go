@@ -194,6 +194,14 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	speciesLabels, err := localizedGroupLabels(tx, scope, "species", uiLang, "WHERE species IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
+	animalTypeLabels, err := localizedGroupLabels(tx, scope, "animal_type", uiLang, "WHERE animal_type IS NOT NULL", nil)
+	if err != nil {
+		return err
+	}
 
 	return responder.Wants("html", func(c buffalo.Context) error {
 		c.Set("pagination", q.Paginator)
@@ -209,6 +217,8 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 		c.Set("entryCauseLabels", entryCauseLabels)
 		c.Set("animalAgeLabels", animalAgeLabels)
 		c.Set("outtakeTypeLabels", outtakeTypeLabels)
+		c.Set("speciesLabels", speciesLabels)
+		c.Set("animalTypeLabels", animalTypeLabels)
 		c.Set("viewMode", viewMode)
 		return c.Render(http.StatusOK, r.HTML("consolidated_animals/index.plush.html"))
 	}).Wants("json", func(c buffalo.Context) error {
@@ -667,6 +677,12 @@ func localizedGroupLabels(tx *pop.Connection, scope ReportScope, field, lang, ba
 			canonical = animal.AnimalType.String
 		case "species":
 			canonical = animal.Species.String
+		case "animal_age":
+			canonical = animal.AnimalAge.String
+		case "entry_cause":
+			canonical = animal.EntryCause.String
+		case "outtake_type":
+			canonical = animal.OuttakeType.String
 		}
 		if canonical != "" {
 			if _, exists := labels[canonical]; !exists {

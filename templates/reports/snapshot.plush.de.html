@@ -59,15 +59,15 @@
           <a class="btn btn-primary btn-sm" href="/consolidated_animals/<%= animal.ID %>"><%= animal.YearNumber %></a>
         </td>
         <%= if (instanceID == "") { %><td class="align-middle"><%= animal.InstanceID %></td><% } %>
-        <td class="align-middle"><%= if (animal.AnimalType.Valid) { %><%= animal.AnimalType.String %><% } else { %>-<% } %></td>
-        <td class="align-middle"><%= if (animal.Species.Valid) { %><%= animal.Species.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.AnimalType.Valid) { %><%= tfield_localized(animal, "animal_type") %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.Species.Valid) { %><%= tfield_localized(animal, "species") %><% } else { %>-<% } %></td>
         <td class="align-middle"><%= if (animal.Ring.Valid) { %><%= animal.Ring.String %><% } else { %>-<% } %></td>
         <td class="align-middle"><%= if (animal.Zone.Valid) { %><%= animal.Zone.String %><% } else { %>-<% } %></td>
         <td class="align-middle"><%= if (animal.Cage.Valid) { %><%= animal.Cage.String %><% } else { %>-<% } %></td>
         <td class="align-middle"><%= if (animal.IntakeDate.Valid) { %><%= animal.IntakeDate.Time.Format("02/01/2006") %><% } else { %>-<% } %></td>
         <td class="align-middle"><%= if (animal.DiscoveryLocation.Valid) { %><%= animal.DiscoveryLocation.String %><% } else { %>-<% } %></td>
-        <td class="align-middle"><%= if (animal.AnimalAge.Valid) { %><%= animal.AnimalAge.String %><% } else { %>-<% } %></td>
-        <td class="align-middle"><%= if (animal.EntryCause.Valid) { %><%= animal.EntryCause.String %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.AnimalAge.Valid) { %><%= tfield_localized(animal, "animal_age") %><% } else { %>-<% } %></td>
+        <td class="align-middle"><%= if (animal.EntryCause.Valid) { %><%= tfield_localized(animal, "entry_cause") %><% } else { %>-<% } %></td>
       </tr>
     <% } %>
   </tbody>
