@@ -115,6 +115,7 @@ CREATE TABLE `event_streams` (
   `event_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `payload` json DEFAULT NULL,
   `source_db` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `resync_run_id` char(36) DEFAULT NULL,
   `imported_at` datetime NOT NULL,
   `processed_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,

@@ -140,13 +140,13 @@
                     <tbody>
                         <%= for (event) in events { %>
                             <tr>
-                                <td><%= event.CreatedAt.Format("2006-01-02 15:04:05") %></td>
+                                <td><%= event.CreatedAt.Format("02/01/2006 15:04") %></td>
                                 <td>
-                                    <span class="badge badge-<%= if (event.EventType.String() == "animal_discovered") { %>info<% } else if (event.EventType.String() == "animal_released") { %>success<% } else if (event.EventType.String() == "animal_died") { %>danger<% } else { %>warning<% } %>">
-                                        <%= event.EventType %>
+                                    <span class="badge badge-<%= eventTypeClass(event) %>">
+                                        <%= eventTypeLabel(event) %>
                                     </span>
                                 </td>
-                                <td><%= event.SourceDB %></td>
+                                <td><%= eventSource(event) %></td>
                             </tr>
                         <% } %>
                     </tbody>

@@ -197,6 +197,9 @@ func init() {
 			"outcomeClass":      outcomeClass,
 			"outcomeLabel":      outcomeLabel,
 			"statusClass":       statusClass,
+			"eventTypeLabel":    eventTypeLabel,
+			"eventTypeClass":    eventTypeClass,
+			"eventSource":       eventSource,
 		},
 	})
 }

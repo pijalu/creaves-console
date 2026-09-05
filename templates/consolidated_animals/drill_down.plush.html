@@ -122,31 +122,25 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5>Event History (<%= len(events) %> events)</h5>
+                <h5>Event Timeline (<%= len(timeline) %> events)</h5>
             </div>
             <div class="card-body">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Event Type</th>
-                            <th>Source</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <%= for (event) in events { %>
-                            <tr>
-                                <td><%= event.CreatedAt.Format("2006-01-02 15:04:05") %></td>
-                                <td>
-                                    <span class="badge badge-<%= if (event.EventType.String() == "animal_discovered") { %>info<% } else if (event.EventType.String() == "animal_released") { %>success<% } else if (event.EventType.String() == "animal_died") { %>danger<% } else { %>warning<% } %>">
-                                        <%= event.EventType %>
-                                    </span>
-                                </td>
-                                <td><%= event.SourceDB %></td>
-                            </tr>
+                <%= for (entry) in timeline { %>
+                    <div class="pb-3 mb-3 border-bottom">
+                        <div>
+                            <span class="badge badge-<%= eventTypeClass(entry.Event) %> mr-1"><%= eventTypeLabel(entry.Event) %></span>
+                            <span class="text-muted mr-1"><%= entry.Event.CreatedAt.Format("02/01/2006 15:04") %></span>
+                            <span class="text-muted"><%= eventSource(entry.Event) %></span>
+                        </div>
+                        <%= if (len(entry.Change) > 0) { %>
+                            <ul class="mb-0 mt-1">
+                                <%= for (change) in entry.Change { %>
+                                    <li><%= change.Field %>: <%= if (change.Old == "") { %><em>(empty)</em><% } else { %><%= change.Old %><% } %> &rarr; <%= if (change.New == "") { %><em>(empty)</em><% } else { %><%= change.New %><% } %></li>
+                                <% } %>
+                            </ul>
                         <% } %>
-                    </tbody>
-                </table>
+                    </div>
+                <% } %>
             </div>
         </div>
     </div>

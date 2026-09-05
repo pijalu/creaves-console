@@ -18,12 +18,13 @@ import (
 
 // WebhookEvent represents a single event in the webhook payload
 type WebhookEvent struct {
-	ID         string          `json:"id"`
-	InstanceID string          `json:"instance_id"`
-	AnimalID   int             `json:"animal_id"`
-	EventType  string          `json:"event_type"`
-	Payload    json.RawMessage `json:"payload"`
-	CreatedAt  time.Time       `json:"created_at"`
+	ID          string          `json:"id"`
+	InstanceID  string          `json:"instance_id"`
+	AnimalID    int             `json:"animal_id"`
+	EventType   string          `json:"event_type"`
+	Payload     json.RawMessage `json:"payload"`
+	ResyncRunID string          `json:"resync_run_id,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 // InstanceInfo identifies the producing Creaves installation.
@@ -214,6 +215,18 @@ func (w *webhookIngest) existing(eventID uuid.UUID, webhookEvent *WebhookEvent) 
 		return
 	}
 	needsProcessing := existing.ProcessedAt == nil
+	// A resync redelivery backfills the resync run id onto events that
+	// were originally delivered live, so the Source column of the
+	// event history can attribute them to the run (bugs.md #9).
+	if existing.ResyncRunID == nil && webhookEvent.ResyncRunID != "" {
+		if runID, err := uuid.FromString(webhookEvent.ResyncRunID); err == nil {
+			existing.ResyncRunID = &runID
+			if err := w.tx.Update(existing); err != nil {
+				w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to backfill resync run id for event %s: %v", webhookEvent.ID, err))
+				return
+			}
+		}
+	}
 	if !needsProcessing {
 		// Disaster-recovery path: if the consolidated row was lost
 		// (e.g. console DB partially wiped) but the event log
@@ -262,6 +275,11 @@ func (w *webhookIngest) fresh(eventID uuid.UUID, eventInstanceID string, webhook
 		SourceDB:   "", // Deprecated, no longer used
 		ImportedAt: time.Now(),
 		CreatedAt:  webhookEvent.CreatedAt,
+	}
+	if webhookEvent.ResyncRunID != "" {
+		if runID, err := uuid.FromString(webhookEvent.ResyncRunID); err == nil {
+			event.ResyncRunID = &runID
+		}
 	}
 
 	if err := w.tx.Create(event); err != nil {

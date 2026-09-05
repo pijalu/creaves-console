@@ -398,7 +398,9 @@ func ConsolidatedAnimalShow(c buffalo.Context) error {
 	}).Respond(c)
 }
 
-// ConsolidatedAnimalDrillDown shows detailed view with instance info
+// ConsolidatedAnimalDrillDown renders the animal's event timeline: every
+// event with the field changes it applied relative to the previous one
+// (bugs.md #9 — the page used to be a 1:1 duplicate of the show page).
 func ConsolidatedAnimalDrillDown(c buffalo.Context) error {
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
@@ -417,7 +419,7 @@ func ConsolidatedAnimalDrillDown(c buffalo.Context) error {
 	}
 
 	c.Set("animal", animal)
-	c.Set("events", events)
+	c.Set("timeline", buildEventTimeline(events, requestUILang(c)))
 
 	return c.Render(http.StatusOK, r.HTML("consolidated_animals/drill_down.plush.html"))
 }

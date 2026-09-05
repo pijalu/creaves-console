@@ -40,6 +40,7 @@ type EventStream struct {
 	EventType   EventType       `json:"event_type" db:"event_type"`
 	Payload     json.RawMessage `json:"payload" db:"payload"`
 	SourceDB    string          `json:"source_db" db:"source_db"`
+	ResyncRunID *uuid.UUID      `json:"resync_run_id" db:"resync_run_id"`
 	ImportedAt  time.Time       `json:"imported_at" db:"imported_at"`
 	ProcessedAt *time.Time      `json:"processed_at" db:"processed_at"`
 	CreatedAt   time.Time       `json:"created_at" db:"created_at"`

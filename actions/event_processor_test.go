@@ -97,6 +97,7 @@ func createTables() {
 			event_type TEXT NOT NULL,
 			payload TEXT,
 			source_db TEXT NOT NULL DEFAULT '',
+			resync_run_id TEXT,
 			imported_at TIMESTAMP NOT NULL,
 			processed_at TIMESTAMP,
 			created_at TIMESTAMP NOT NULL,
