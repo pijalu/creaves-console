@@ -43,11 +43,11 @@ func loadInstanceAdminView(tx *pop.Connection, instanceID string) (*instanceAdmi
 		return nil, err
 	}
 	canonicalID := instance.InstanceID
-	animals, err := tx.Where("instance_id = ?", canonicalID).Count(&models.ConsolidatedAnimal{})
+	animals, err := CountConsolidatedAnimals(tx, canonicalID)
 	if err != nil {
 		return nil, err
 	}
-	events, err := tx.Where("instance_id = ?", canonicalID).Count(&models.EventStream{})
+	events, err := CountEventStreams(tx, canonicalID)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func SyncManagementIndex(c buffalo.Context) error {
 	rows := make([]instanceAnimalsRow, 0, len(*instances))
 	total := 0
 	for _, inst := range *instances {
-		count, err := tx.Where("instance_id = ?", inst.InstanceID).Count(&models.ConsolidatedAnimal{})
+		count, err := CountConsolidatedAnimals(tx, inst.InstanceID)
 		if err != nil {
 			return err
 		}

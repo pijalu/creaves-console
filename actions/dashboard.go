@@ -23,16 +23,11 @@ func DashboardIndex(c buffalo.Context) error {
 		return err
 	}
 	stats := make(map[string]interface{})
-	var animalCount int
-	if scope.IsGlobal() {
-		animalCount, err = tx.Count(&models.ConsolidatedAnimal{})
-	} else {
-		animalCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.ConsolidatedAnimal{})
-	}
-	stats["total_animals"] = animalCount
+	animalCount, err := CountConsolidatedAnimals(tx, scope.InstanceID)
 	if err != nil {
 		return err
 	}
+	stats["total_animals"] = animalCount
 	statusCounts := []struct {
 		Status string `db:"current_status"`
 		Count  int    `db:"count"`
@@ -58,12 +53,7 @@ func DashboardIndex(c buffalo.Context) error {
 		instanceMap[x.InstanceID] = x.Count
 	}
 	stats["by_instance"] = instanceMap
-	var eventCount int
-	if scope.IsGlobal() {
-		eventCount, err = tx.Count(&models.EventStream{})
-	} else {
-		eventCount, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.EventStream{})
-	}
+	eventCount, err := CountEventStreams(tx, scope.InstanceID)
 	stats["total_events"] = eventCount
 	if err != nil {
 		return err
@@ -504,12 +494,7 @@ func ReportsIndex(c buffalo.Context) error {
 	}
 	where, args := ScopedWhere(scope, "")
 	stats := make(map[string]interface{})
-	var totalAnimals int
-	if scope.IsGlobal() {
-		totalAnimals, err = tx.Count(&models.ConsolidatedAnimal{})
-	} else {
-		totalAnimals, err = tx.Where("instance_id = ?", scope.InstanceID).Count(&models.ConsolidatedAnimal{})
-	}
+	totalAnimals, err := CountConsolidatedAnimals(tx, scope.InstanceID)
 	if err != nil {
 		return err
 	}
