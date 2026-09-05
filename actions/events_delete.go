@@ -1,42 +1,16 @@
 package actions
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
-	"time"
 
 	"creaves-console/models"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
 )
-
-// archiveRootDir returns the directory under which event-deletion archives
-// are written. Override with EVENT_ARCHIVE_DIR (tests, or deployments that
-// want the archives outside the working directory).
-func archiveRootDir() string {
-	if dir := os.Getenv("EVENT_ARCHIVE_DIR"); dir != "" {
-		return dir
-	}
-	return "archives"
-}
-
-// unsafe archive-name characters (path separators, traversal, control chars).
-var archiveUnsafeChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
-
-// sanitizeArchiveToken makes an instance_id safe to embed in an archive file
-// name: it can never escape the archive directory.
-func sanitizeArchiveToken(s string) string {
-	token := archiveUnsafeChars.ReplaceAllString(strings.TrimSpace(s), "_")
-	if token == "" {
-		return "unknown"
-	}
-	return token
-}
 
 // EventsDeleteNew renders the confirmation form for deleting received events
 // (all of them, or only those from one instance).
@@ -66,8 +40,9 @@ func EventsDeleteNew(c buffalo.Context) error {
 //   - scope=instance   → only the events of the given instance_id
 //
 // Both scopes require a typed confirmation ("DELETE ALL" resp. the exact
-// instance_id). The events are serialized to a JSONL archive file before any
-// DELETE runs; if archiving fails, nothing is removed.
+// instance_id). The events are archived in the event_stream_archives table
+// (JSONL content) inside the same transaction as the DELETE; if archiving
+// fails, nothing is removed. No files are written outside the database.
 func EventsDeleteCreate(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
@@ -104,7 +79,7 @@ func EventsDeleteCreate(c buffalo.Context) error {
 		return c.Error(http.StatusUnprocessableEntity, fmt.Errorf("scope must be all or instance"))
 	}
 
-	deleted, archivePath, err := archiveAndDeleteEvents(tx, scope, instanceID)
+	deleted, archiveID, err := archiveAndDeleteEvents(tx, scope, instanceID)
 	if err != nil {
 		return err
 	}
@@ -112,15 +87,16 @@ func EventsDeleteCreate(c buffalo.Context) error {
 	if deleted == 0 {
 		c.Flash().Add("warning", "No events matched; nothing was deleted or archived")
 	} else {
-		c.Flash().Add("success", fmt.Sprintf("Deleted %d event(s); archive written to %s", deleted, archivePath))
+		c.Flash().Add("success", fmt.Sprintf("Deleted %d event(s); archive %s stored in the database", deleted, archiveID))
 	}
 	return c.Redirect(http.StatusSeeOther, "/events")
 }
 
-// archiveAndDeleteEvents writes every event matched by the scope to a JSONL
-// archive and then deletes exactly those rows. The archive is created first:
-// a failure there leaves the database untouched.
-func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (deleted int, archivePath string, err error) {
+// archiveAndDeleteEvents archives every event matched by the scope into the
+// event_stream_archives table (JSONL content) and then deletes exactly those
+// rows — both inside one database transaction. A failure to archive rolls
+// the deletion back and vice versa.
+func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (deleted int, archiveID string, err error) {
 	events := &models.EventStreams{}
 	if scope == "instance" {
 		err = tx.Where("instance_id = ?", instanceID).Order("imported_at asc").All(events)
@@ -131,64 +107,98 @@ func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (delet
 		return 0, "", err
 	}
 
-	archivePath, err = writeEventArchive(*events, scope, instanceID)
+	if len(*events) == 0 {
+		return 0, "", nil
+	}
+
+	content, err := marshalEventsJSONL(*events)
 	if err != nil {
 		return 0, "", err
 	}
 
-	if len(*events) == 0 {
-		return 0, archivePath, nil
-	}
+	// Archive and delete atomically, in one transaction.
+	err = tx.Transaction(func(t *pop.Connection) error {
+		archive := &models.EventStreamArchive{
+			Scope:      scope,
+			InstanceID: instanceID,
+			EventCount: len(*events),
+			Content:    content,
+		}
+		if err := t.Create(archive); err != nil {
+			return fmt.Errorf("could not store event archive: %w", err)
+		}
+		archiveID = archive.ID.String()
 
-	// Delete exactly the archived rows, by ID, in one transaction.
-	ids := make([]string, 0, len(*events))
-	for _, e := range *events {
-		ids = append(ids, e.ID.String())
-	}
-	if err := tx.Transaction(func(t *pop.Connection) error {
+		ids := make([]string, 0, len(*events))
+		for _, e := range *events {
+			ids = append(ids, e.ID.String())
+		}
 		return t.RawQuery("DELETE FROM event_streams WHERE id IN (?)", ids).Exec()
-	}); err != nil {
+	})
+	if err != nil {
 		return 0, "", err
 	}
-	return len(*events), archivePath, nil
+	return len(*events), archiveID, nil
 }
 
-// writeEventArchive serializes events to <archiveRootDir>/event-deletions/
-// events-<utcstamp>-<scope>[-instance-<id>].jsonl, one full event JSON per
-// line. An empty event set produces no file.
-func writeEventArchive(events models.EventStreams, scope, instanceID string) (string, error) {
-	if len(events) == 0 {
-		return "", nil
-	}
-	name := fmt.Sprintf("events-%s-%s", time.Now().UTC().Format("20060102-150405"), scope)
-	if scope == "instance" {
-		name += "-instance-" + sanitizeArchiveToken(instanceID)
-	}
-	name += ".jsonl"
-
-	dir := filepath.Join(archiveRootDir(), "event-deletions")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("could not create archive directory: %w", err)
-	}
-	path := filepath.Join(dir, name)
-
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-	if err != nil {
-		return "", fmt.Errorf("could not create archive file: %w", err)
-	}
-	defer f.Close()
-
+// marshalEventsJSONL serializes events to the same JSONL payload the old file
+// archive contained: one full event JSON per line.
+func marshalEventsJSONL(events models.EventStreams) (string, error) {
+	var buf bytes.Buffer
 	for _, e := range events {
 		line, err := json.Marshal(e)
 		if err != nil {
 			return "", fmt.Errorf("could not serialize event %s: %w", e.ID, err)
 		}
-		if _, err := f.Write(append(line, '\n')); err != nil {
-			return "", fmt.Errorf("could not write event %s to archive: %w", e.ID, err)
-		}
+		buf.Write(line)
+		buf.WriteByte('\n')
 	}
-	if err := f.Sync(); err != nil {
-		return "", fmt.Errorf("could not flush archive file: %w", err)
+	return buf.String(), nil
+}
+
+// EventsArchivesIndex lists the event deletion archives stored in the
+// database (admin only).
+func EventsArchivesIndex(c buffalo.Context) error {
+	cu := GetCurrentUser(c)
+	if cu == nil || !cu.Admin {
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
 	}
-	return path, nil
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return fmt.Errorf("no transaction found")
+	}
+
+	archives := &models.EventStreamArchives{}
+	if err := tx.Order("created_at desc").All(archives); err != nil {
+		return err
+	}
+	c.Set("archives", archives)
+	return c.Render(http.StatusOK, r.HTML("events/archives.plush.html"))
+}
+
+// EventsArchiveDownload returns the JSONL content of one stored archive as an
+// attachment (admin only).
+func EventsArchiveDownload(c buffalo.Context) error {
+	cu := GetCurrentUser(c)
+	if cu == nil || !cu.Admin {
+		return c.Error(http.StatusForbidden, fmt.Errorf("admin rights required"))
+	}
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return fmt.Errorf("no transaction found")
+	}
+
+	archive := &models.EventStreamArchive{}
+	if err := tx.Find(archive, c.Param("archive_id")); err != nil {
+		return c.Error(http.StatusNotFound, err)
+	}
+
+	name := fmt.Sprintf("events-%s-%s", archive.CreatedAt.UTC().Format("20060102-150405"), archive.Scope)
+	if archive.Scope == "instance" {
+		name += "-instance-" + archive.InstanceID
+	}
+	name += ".jsonl"
+
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+	return c.Render(http.StatusOK, r.String(archive.Content))
 }

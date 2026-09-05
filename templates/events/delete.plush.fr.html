@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
         <h1>Supprimer les événements webhook</h1>
-        <p class="lead">Supprime définitivement les événements reçus des instances Creaves. Chaque événement supprimé est d'abord archivé dans un fichier JSONL.</p>
+        <p class="lead">Supprime définitivement les événements reçus des instances Creaves. Chaque événement supprimé est d'abord archivé dans la base de données.</p>
     </div>
 </div>
 
@@ -10,7 +10,7 @@
         <div class="card border-danger">
             <div class="card-body">
                 <h3 class="text-danger">Zone de danger</h3>
-                <p>Cette action est irréversible depuis la console. Les événements archivés restent sur ce serveur sous forme de fichiers JSONL dans <code>archives/event-deletions/</code>.</p>
+                <p>Cette action est irréversible depuis la console. Les événements archivés sont conservés dans la base de données et téléchargeables en JSONL via <a href="/events/archives">Archives d'événements</a>.</p>
                 <form method="POST" action="/events/delete">
                     <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
                     <div class="form-group">

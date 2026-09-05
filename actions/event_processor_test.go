@@ -105,6 +105,19 @@ func createTables() {
 		)
 	`).Exec()
 
+	// Create event_stream_archives table
+	testDB.RawQuery(`
+		CREATE TABLE IF NOT EXISTS event_stream_archives (
+			id TEXT PRIMARY KEY,
+			scope TEXT NOT NULL,
+			instance_id TEXT,
+			event_count INTEGER NOT NULL,
+			content TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Exec()
+
 	// Create consolidated_animals table with all fields
 	testDB.RawQuery(`
 		CREATE TABLE IF NOT EXISTS consolidated_animals (

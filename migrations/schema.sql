@@ -102,6 +102,26 @@ CREATE TABLE `creaves_instances` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `event_stream_archives`
+--
+
+DROP TABLE IF EXISTS `event_stream_archives`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_stream_archives` (
+  `id` char(36) COLLATE utf8mb4_general_ci NOT NULL,
+  `scope` varchar(16) COLLATE utf8mb4_general_ci NOT NULL,
+  `instance_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `event_count` int NOT NULL,
+  `content` longtext COLLATE utf8mb4_general_ci NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `event_stream_archives_created_at_idx` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `event_streams`
 --
 
@@ -220,4 +240,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-05  4:40:53
+-- Dump completed on 2026-09-05 11:00:21

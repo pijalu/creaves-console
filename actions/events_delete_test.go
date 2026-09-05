@@ -9,10 +9,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"creaves-console/models"
 	"github.com/gobuffalo/pop/v6"
@@ -47,23 +46,34 @@ func countEvents(t *testing.T, tx *pop.Connection, instance string) int {
 	return count
 }
 
-// listArchiveFiles returns every *.jsonl file under the test archive dir.
-func listArchiveFiles(t *testing.T, dir string) []string {
+// listArchives returns every event_stream_archives row, newest first.
+func listArchives(t *testing.T, tx *pop.Connection) models.EventStreamArchives {
 	t.Helper()
-	matches, err := filepath.Glob(filepath.Join(dir, "event-deletions", "*.jsonl"))
-	require.NoError(t, err)
-	return matches
+	archives := models.EventStreamArchives{}
+	require.NoError(t, tx.Order("created_at desc").All(&archives))
+	return archives
 }
 
-// readArchiveLines parses one JSONL archive file into event maps.
-func readArchiveLines(t *testing.T, path string) []map[string]interface{} {
+// countArchives returns the number of event_stream_archives rows.
+func countArchives(t *testing.T, tx *pop.Connection) int {
 	t.Helper()
-	f, err := os.Open(path)
+	count, err := tx.Count(&models.EventStreamArchive{})
 	require.NoError(t, err)
-	defer f.Close()
+	return count
+}
 
+// resetArchives empties the archive table.
+func resetArchives(t *testing.T, tx *pop.Connection) {
+	t.Helper()
+	require.NoError(t, tx.RawQuery("DELETE FROM event_stream_archives").Exec())
+}
+
+// parseArchiveJSONL parses the JSONL content of one stored archive into
+// event maps; every line must be valid JSON.
+func parseArchiveJSONL(t *testing.T, content string) []map[string]interface{} {
+	t.Helper()
 	var lines []map[string]interface{}
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(content))
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -85,7 +95,6 @@ func TestEventsDeleteNewForbiddenForNonAdmin(t *testing.T) {
 }
 
 func TestEventsDeleteNewRendersFormForAdmin(t *testing.T) {
-	t.Setenv("EVENT_ARCHIVE_DIR", t.TempDir())
 	seedEventsFixtures(t, testDB)
 	app := newEventsTestApp(testDB, true)
 
@@ -99,8 +108,8 @@ func TestEventsDeleteNewRendersFormForAdmin(t *testing.T) {
 }
 
 func TestEventsDeleteForbiddenForNonAdmin(t *testing.T) {
-	t.Setenv("EVENT_ARCHIVE_DIR", t.TempDir())
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
 	app := newEventsTestApp(testDB, false)
 
 	rec := postEventsForm(t, app, "/events/delete", url.Values{
@@ -109,12 +118,12 @@ func TestEventsDeleteForbiddenForNonAdmin(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Equal(t, 4, countEvents(t, testDB, ""))
-	assert.Empty(t, listArchiveFiles(t, os.Getenv("EVENT_ARCHIVE_DIR")))
+	assert.Equal(t, 0, countArchives(t, testDB))
 }
 
 func TestEventsDeleteRequiresExactConfirmation(t *testing.T) {
-	t.Setenv("EVENT_ARCHIVE_DIR", t.TempDir())
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
 	app := newEventsTestApp(testDB, true)
 
 	for _, form := range []url.Values{
@@ -129,13 +138,12 @@ func TestEventsDeleteRequiresExactConfirmation(t *testing.T) {
 	}
 	assert.Equal(t, 4, countEvents(t, testDB, ""), "no event may be deleted without exact confirmation")
 	assert.Equal(t, 3, countEvents(t, testDB, "center-a"))
-	assert.Empty(t, listArchiveFiles(t, os.Getenv("EVENT_ARCHIVE_DIR")), "failed attempts must not write archives")
+	assert.Equal(t, 0, countArchives(t, testDB), "failed attempts must not write archives")
 }
 
 func TestEventsDeleteAllArchivesThenDeletes(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("EVENT_ARCHIVE_DIR", dir)
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
 	app := newEventsTestApp(testDB, true)
 
 	rec := postEventsForm(t, app, "/events/delete", url.Values{
@@ -146,9 +154,14 @@ func TestEventsDeleteAllArchivesThenDeletes(t *testing.T) {
 
 	assert.Equal(t, 0, countEvents(t, testDB, ""))
 
-	files := listArchiveFiles(t, dir)
-	require.Len(t, files, 1)
-	lines := readArchiveLines(t, files[0])
+	archives := listArchives(t, testDB)
+	require.Len(t, archives, 1)
+	archive := archives[0]
+	assert.Equal(t, "all", archive.Scope)
+	assert.Equal(t, "", archive.InstanceID)
+	assert.Equal(t, 4, archive.EventCount)
+
+	lines := parseArchiveJSONL(t, archive.Content)
 	require.Len(t, lines, 4)
 
 	// Every archived line must carry the full original event data.
@@ -163,9 +176,8 @@ func TestEventsDeleteAllArchivesThenDeletes(t *testing.T) {
 }
 
 func TestEventsDeleteInstanceScopeOnlyTouchesThatInstance(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("EVENT_ARCHIVE_DIR", dir)
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
 	app := newEventsTestApp(testDB, true)
 
 	rec := postEventsForm(t, app, "/events/delete", url.Values{
@@ -178,10 +190,14 @@ func TestEventsDeleteInstanceScopeOnlyTouchesThatInstance(t *testing.T) {
 	assert.Equal(t, 0, countEvents(t, testDB, "center-a"))
 	assert.Equal(t, 1, countEvents(t, testDB, "center-b"), "other instances must survive")
 
-	files := listArchiveFiles(t, dir)
-	require.Len(t, files, 1)
-	assert.Contains(t, filepath.Base(files[0]), "center-a")
-	lines := readArchiveLines(t, files[0])
+	archives := listArchives(t, testDB)
+	require.Len(t, archives, 1)
+	archive := archives[0]
+	assert.Equal(t, "instance", archive.Scope)
+	assert.Equal(t, "center-a", archive.InstanceID)
+	assert.Equal(t, 3, archive.EventCount)
+
+	lines := parseArchiveJSONL(t, archive.Content)
 	require.Len(t, lines, 3)
 	for _, line := range lines {
 		assert.Equal(t, "center-a", line["instance_id"])
@@ -189,9 +205,8 @@ func TestEventsDeleteInstanceScopeOnlyTouchesThatInstance(t *testing.T) {
 }
 
 func TestEventsDeleteNothingMatchedWritesNoArchive(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("EVENT_ARCHIVE_DIR", dir)
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
 	require.NoError(t, testDB.RawQuery("DELETE FROM event_streams").Exec())
 	app := newEventsTestApp(testDB, true)
 
@@ -200,31 +215,105 @@ func TestEventsDeleteNothingMatchedWritesNoArchive(t *testing.T) {
 		"confirmation": {"DELETE ALL"},
 	})
 	require.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Empty(t, listArchiveFiles(t, dir), "an empty match must not create an archive file")
+	assert.Equal(t, 0, countArchives(t, testDB), "an empty match must not create an archive row")
 }
 
-func TestSanitizeArchiveTokenBlocksTraversal(t *testing.T) {
-	// Path separators must never survive: the token is embedded in a file
-	// name, so "../" sequences would escape the archive directory.
-	for _, raw := range []string{"../../etc/passwd", `..\..\evil`, "a/b", `c\d`} {
-		sanitized := sanitizeArchiveToken(raw)
-		assert.NotContains(t, sanitized, "/", raw)
-		assert.NotContains(t, sanitized, "\\", raw)
-	}
-	assert.Equal(t, "center-a", sanitizeArchiveToken("center-a"))
-	assert.Equal(t, "unknown", sanitizeArchiveToken("  "))
+func TestArchiveAndDeleteIsAtomic(t *testing.T) {
+	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
+
+	// Success-path invariant: after one call, archived rows and deleted rows
+	// match exactly (4 archived, 0 left).
+	deleted, archiveID, err := archiveAndDeleteEvents(testDB, "all", "")
+	require.NoError(t, err)
+	assert.Equal(t, 4, deleted)
+	require.NotEmpty(t, archiveID)
+
+	archives := listArchives(t, testDB)
+	require.Len(t, archives, 1)
+	assert.Equal(t, archiveID, archives[0].ID.String())
+	assert.Equal(t, 4, archives[0].EventCount)
+	assert.Equal(t, 0, countEvents(t, testDB, ""))
 }
 
 func TestArchiveFailureLeavesDatabaseUntouched(t *testing.T) {
+	// Scratch SQLite DB WITHOUT the event_stream_archives table: archiving
+	// must fail and the transaction must roll back, leaving events in place.
+	db, err := pop.NewConnection(&pop.ConnectionDetails{
+		Dialect:  "sqlite",
+		Database: ":memory:",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Open())
+	defer db.Close()
+
+	require.NoError(t, db.RawQuery(`
+		CREATE TABLE event_streams (
+			id TEXT PRIMARY KEY,
+			instance_id TEXT NOT NULL,
+			animal_id INTEGER NOT NULL,
+			event_type TEXT NOT NULL,
+			payload TEXT,
+			source_db TEXT NOT NULL DEFAULT '',
+			resync_run_id TEXT,
+			imported_at TIMESTAMP NOT NULL,
+			processed_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Exec())
+
+	e := &models.EventStream{
+		InstanceID: "center-x", AnimalID: 1, EventType: models.EventTypeAnimalDiscovered,
+		Payload: []byte(`{}`), ImportedAt: time.Now().UTC(),
+	}
+	require.NoError(t, db.Create(e))
+
+	_, _, err = archiveAndDeleteEvents(db, "all", "")
+	require.Error(t, err, "archiving into a missing table must fail")
+	assert.Equal(t, 1, countEvents(t, db, ""), "no deletion when archiving fails")
+}
+
+func TestEventsArchivesIndexForbiddenForNonAdmin(t *testing.T) {
+	app := newEventsTestApp(testDB, false)
+	rec := getEventsPage(t, app, "/events/archives")
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestEventsArchivesIndexAndDownload(t *testing.T) {
 	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
+	app := newEventsTestApp(testDB, true)
 
-	// An archive path that cannot be created (a file where the directory
-	// should be) must abort the whole operation.
-	blocker := filepath.Join(t.TempDir(), "blocker")
-	require.NoError(t, os.WriteFile(blocker, []byte("not a dir"), 0o644))
-	t.Setenv("EVENT_ARCHIVE_DIR", filepath.Join(blocker, "sub"))
+	// Create one archive through the real delete flow.
+	rec := postEventsForm(t, app, "/events/delete", url.Values{
+		"scope":        {"instance"},
+		"instance_id":  {"center-a"},
+		"confirmation": {"center-a"},
+	})
+	require.Equal(t, http.StatusSeeOther, rec.Code)
 
-	_, _, err := archiveAndDeleteEvents(testDB, "all", "")
-	require.Error(t, err)
-	assert.Equal(t, 4, countEvents(t, testDB, ""), "no deletion when archiving fails")
+	archives := listArchives(t, testDB)
+	require.Len(t, archives, 1)
+	archive := archives[0]
+
+	// Index page lists the archive.
+	rec = getEventsPage(t, app, "/events/archives")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), archive.ID.String())
+
+	// Download returns the stored JSONL as an attachment.
+	rec = getEventsPage(t, app, "/events/archives/"+archive.ID.String()+"/download")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), "attachment")
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), "center-a")
+	assert.Equal(t, archive.Content, rec.Body.String())
+	lines := parseArchiveJSONL(t, rec.Body.String())
+	assert.Len(t, lines, 3)
+}
+
+func TestEventsArchiveDownloadUnknownID(t *testing.T) {
+	app := newEventsTestApp(testDB, true)
+	rec := getEventsPage(t, app, "/events/archives/00000000-0000-0000-0000-000000000000/download")
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }

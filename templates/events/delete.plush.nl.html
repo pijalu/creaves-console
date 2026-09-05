@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
         <h1>Webhook-gebeurtenissen verwijderen</h1>
-        <p class="lead">Verwijdert de van de Creaves-instanties ontvangen gebeurtenissen definitief. Elke verwijderde gebeurtenis wordt eerst naar een JSONL-bestand gearchiveerd.</p>
+        <p class="lead">Verwijdert de van de Creaves-instanties ontvangen gebeurtenissen definitief. Elke verwijderde gebeurtenis wordt eerst in de database gearchiveerd.</p>
     </div>
 </div>
 
@@ -10,7 +10,7 @@
         <div class="card border-danger">
             <div class="card-body">
                 <h3 class="text-danger">Gevarenzone</h3>
-                <p>Dit kan vanuit de console niet ongedaan worden gemaakt. Gearchiveerde gebeurtenissen blijven als JSONL-bestanden onder <code>archives/event-deletions/</code> op deze server staan.</p>
+                <p>Dit kan vanuit de console niet ongedaan worden gemaakt. Gearchiveerde gebeurtenissen worden in de database bewaard en zijn als JSONL te downloaden via <a href="/events/archives">Gebeurtenisarchieven</a>.</p>
                 <form method="POST" action="/events/delete">
                     <input type="hidden" name="authenticity_token" value="<%= csrf_token() %>">
                     <div class="form-group">

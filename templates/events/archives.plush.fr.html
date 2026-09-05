@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Archives de suppression d'événements</h1>
+        <p class="lead">Les événements supprimés via le flux d'administration sont archivés ici, dans la base de données. Aucun fichier n'est stocké en dehors de la DB.</p>
+        <p><a class="btn btn-secondary" href="/events">Retour aux événements</a></p>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-12">
+        <%= if (archives) { %>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date (UTC)</th>
+                        <th>Portée</th>
+                        <th>Instance</th>
+                        <th>Événements</th>
+                        <th>Archive</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%= for (a) in archives { %>
+                        <tr>
+                            <td><%= a.CreatedAt.Format("2006-01-02 15:04:05") %> UTC</td>
+                            <td><%= a.Scope %></td>
+                            <td><code><%= a.InstanceID %></code></td>
+                            <td><%= a.EventCount %></td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" href="/events/archives/<%= a.ID %>/download">
+                                    <i class="fas fa-download"></i> JSONL
+                                </a>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <p class="text-muted">Aucune archive pour l'instant.</p>
+        <% } %>
+    </div>
+</div>
