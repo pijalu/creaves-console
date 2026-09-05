@@ -67,13 +67,16 @@ func seedRegisterFixtures(t *testing.T, tx *pop.Connection) {
 		outtakeType string
 		status      string
 		translation string
+		discLoc     string
+		discPC      string
+		discCity    string
 	}
 	fixtures := []fixture{
-		{"center-a", 2024, 1, "Hérisson", "Collision", "Adulte", "H12345", "", "in_care", ""},
-		{"center-a", 2024, 2, "Chouette", "Trouvé au sol", "Juvénile", "B999", "Transfert", "released", ""},
-		{"center-a", 2023, 1, "Hérisson", "Collision", "Adulte", "H678", "", "released", `{"fr":{"species":"Hérisson FR"}}`},
-		{"center-b", 2024, 1, "Renard", "Collision", "Jeune", "", "", "in_care", ""},
-		{"center-b", 2023, 5, "Chouette", "", "Adulte", "B12;3", "Sortie erreur", "died", ""},
+		{"center-a", 2024, 1, "Hérisson", "Collision", "Adulte", "H12345", "", "in_care", "", "Forêt domaniale", "67000", "Strasbourg"},
+		{"center-a", 2024, 2, "Chouette", "Trouvé au sol", "Juvénile", "B999", "Transfert", "released", "", "Bord de route", "67100", "Obernai"},
+		{"center-a", 2023, 1, "Hérisson", "Collision", "Adulte", "H678", "", "released", `{"fr":{"species":"Hérisson FR"}}`, "", "", ""},
+		{"center-b", 2024, 1, "Renard", "Collision", "Jeune", "", "", "in_care", "", "Jardin privé", "68000", "Colmar"},
+		{"center-b", 2023, 5, "Chouette", "", "Adulte", "B12;3", "Sortie erreur", "died", "", "", "", ""},
 	}
 	for _, f := range fixtures {
 		a := &models.ConsolidatedAnimal{
@@ -87,26 +90,26 @@ func seedRegisterFixtures(t *testing.T, tx *pop.Connection) {
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
-		if f.species != "" {
-			a.Species = nullsString(f.species)
-		}
-		if f.entryCause != "" {
-			a.EntryCause = nullsString(f.entryCause)
-		}
-		if f.age != "" {
-			a.AnimalAge = nullsString(f.age)
-		}
-		if f.ring != "" {
-			a.Ring = nullsString(f.ring)
-		}
-		if f.outtakeType != "" {
-			a.OuttakeType = nullsString(f.outtakeType)
-		}
-		if f.translation != "" {
-			a.Translations = nullsString(f.translation)
-		}
+		a.Species = optionalString(f.species)
+		a.EntryCause = optionalString(f.entryCause)
+		a.AnimalAge = optionalString(f.age)
+		a.Ring = optionalString(f.ring)
+		a.OuttakeType = optionalString(f.outtakeType)
+		a.Translations = optionalString(f.translation)
+		a.DiscoveryLocation = optionalString(f.discLoc)
+		a.DiscoveryPostalCode = optionalString(f.discPC)
+		a.DiscoveryCity = optionalString(f.discCity)
 		require.NoError(t, tx.Create(a))
 	}
+}
+
+// optionalString maps "" to a NULL nulls.String (nulls.NewString would mark
+// the empty string as valid) so fixture rows without a value stay NULL.
+func optionalString(s string) nulls.String {
+	if s == "" {
+		return nulls.String{}
+	}
+	return nulls.NewString(s)
 }
 
 func nullsString(s string) nulls.String {

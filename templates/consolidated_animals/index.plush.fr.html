@@ -29,7 +29,7 @@
                 <select name="year" id="year" class="form-control">
                     <option value="">Toutes</option>
                     <%= for (y) in yearsList { %>
-                        <option value="<%= y.Year %>" <%= if (params["year"] == string(y.Year)) { %>selected<% } %>><%= y.Year %></option>
+                        <option value="<%= y %>" <%= if (params["year"] == y) { %>selected<% } %>><%= y %></option>
                     <% } %>
                 </select>
             </div>
@@ -142,8 +142,20 @@
                             <td><%= animal.InstanceID %></td>
                             <td><%= animal.Year %></td>
                             <td><%= animal.YearNumber %></td>
-                            <td><%= if (animal.Species.Valid) { tfield_localized(animal, "species") } else { "-" } %></td>
-                            <td><%= if (animal.Ring.Valid) { animal.Ring.String } else { "-" } %></td>
+                            <td>
+                                <%= if (animal.Species.Valid) { %>
+                                    <%= tfield_localized(animal, "species") %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.Ring.Valid) { %>
+                                    <%= animal.Ring.String %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
                             <td>
                                 <%= if (animal.IntakeDate.Valid) { %>
                                     <%= animal.IntakeDate.Time.Format("02/01/2006") %>
@@ -158,10 +170,34 @@
                                     -
                                 <% } %>
                             </td>
-                            <td><%= if (animal.DiscoveryLocation.Valid) { animal.DiscoveryLocation.String } else { "-" } %></td>
-                            <td><%= if (animal.DiscoveryPostalCode.Valid) { animal.DiscoveryPostalCode.String } else { "-" } %></td>
-                            <td><%= if (animal.DiscoveryCity.Valid) { animal.DiscoveryCity.String } else { "-" } %></td>
-                            <td><%= if (animal.EntryCause.Valid) { animal.EntryCause.String } else { "-" } %></td>
+                            <td>
+                                <%= if (animal.DiscoveryLocation.Valid) { %>
+                                    <%= animal.DiscoveryLocation.String %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.DiscoveryPostalCode.Valid) { %>
+                                    <%= animal.DiscoveryPostalCode.String %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.DiscoveryCity.Valid) { %>
+                                    <%= animal.DiscoveryCity.String %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= if (animal.EntryCause.Valid) { %>
+                                    <%= animal.EntryCause.String %>
+                                <% } else { %>
+                                    -
+                                <% } %>
+                            </td>
                             <td>
                                 <span class="badge badge-<%= if (animal.CurrentStatus == "in_care") { %>success<% } else if (animal.CurrentStatus == "released") { %>primary<% } else if (animal.CurrentStatus == "died") { %>danger<% } else { %>secondary<% } %>">
                                     <%= tstatus_localized(animal.CurrentStatus) %>

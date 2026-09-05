@@ -154,10 +154,16 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	}
 	tx.RawQuery("SELECT DISTINCT discovery_city FROM consolidated_animals WHERE discovery_city IS NOT NULL ORDER BY discovery_city").All(&citiesList)
 
-	var yearsList []struct {
+	// Years are rendered as strings so the template can compare them directly
+	// against params["year"] (Plush `string(int)` yields "" — bugs.md #5).
+	var yearRows []struct {
 		Year int `db:"year"`
 	}
-	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals ORDER BY year DESC").All(&yearsList)
+	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals ORDER BY year DESC").All(&yearRows)
+	yearsList := make([]string, 0, len(yearRows))
+	for _, yr := range yearRows {
+		yearsList = append(yearsList, strconv.Itoa(yr.Year))
+	}
 
 	var entryCausesList []struct {
 		EntryCause string `db:"entry_cause"`
