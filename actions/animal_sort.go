@@ -95,6 +95,27 @@ func sortLink(field string, help plush.HelperContext) (template.HTML, error) {
 	return template.HTML(req.URL.Path + "?" + vals.Encode()), nil
 }
 
+// viewLink is a template helper: href switching the register column layout
+// (`view` param: compact/detailed) while preserving every other query
+// parameter (filters, sort, page).
+func viewLink(mode string, help plush.HelperContext) (template.HTML, error) {
+	req, _ := help.Value("request").(*http.Request)
+	if req == nil {
+		return template.HTML("#"), nil
+	}
+	vals := req.URL.Query()
+	if mode == "compact" {
+		vals.Del("view") // compact is the default; keep the URL clean
+	} else {
+		vals.Set("view", mode)
+	}
+	href := req.URL.Path
+	if q := vals.Encode(); q != "" {
+		href += "?" + q
+	}
+	return template.HTML(href), nil
+}
+
 // sortIcon is a template helper: ▲/▼ for the active sort column, empty for
 // inactive ones.
 func sortIcon(field string, help plush.HelperContext) (template.HTML, error) {

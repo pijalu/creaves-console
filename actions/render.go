@@ -194,6 +194,7 @@ func init() {
 			"csrf_token":        csrfToken,
 			"sortLink":          sortLink,
 			"sortIcon":          sortIcon,
+			"viewLink":          viewLink,
 			"outcomeClass":      outcomeClass,
 			"outcomeLabel":      outcomeLabel,
 			"statusClass":       statusClass,

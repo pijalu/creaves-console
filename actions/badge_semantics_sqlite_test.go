@@ -73,12 +73,15 @@ func extractRowContaining(t *testing.T, body, needle string) string {
 //     Released (primary) badge;
 //   - the status and outcome badges are visually separated (margin class);
 //   - the outtake type renders as its own block-level muted line.
+// These markers live in the *detailed* layout (ring column, outtake type
+// line), so the test requests view=detailed explicitly (compact is the
+// default, bugs.md 'consolidated view').
 func TestRegisterBadgeSeparationAndDeceasedSemantics(t *testing.T) {
 	app := newDashboardTestApp(testDB)
 	seedRegisterFixtures(t, testDB)
 	seedDeceasedReleasedAnimal(t, testDB)
 
-	res := getAnimalsPage(t, app, "/consolidated_animals")
+	res := getAnimalsPage(t, app, "/consolidated_animals?view=detailed")
 	require.Equal(t, http.StatusOK, res.Code, "status: %d", res.Code)
 	body := res.Body.String()
 

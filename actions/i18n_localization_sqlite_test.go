@@ -111,7 +111,8 @@ func TestI18n_Index_NL_LocalizedDropdowns(t *testing.T) {
 	seedI18nAnimal(t, tx)
 	app := newI18nTestApp(tx)
 
-	rec := i18nGet(t, app, "/consolidated_animals")
+	// view=detailed: the compact default layout has no entry_cause cell.
+	rec := i18nGet(t, app, "/consolidated_animals?view=detailed")
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 

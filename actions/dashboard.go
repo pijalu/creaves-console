@@ -249,6 +249,7 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 		c.Set("speciesLabels", speciesLabels)
 		c.Set("animalTypeLabels", animalTypeLabels)
 		c.Set("viewMode", viewMode)
+		c.Set("view", animalsViewLayout(c))
 		return c.Render(http.StatusOK, r.HTML("consolidated_animals/index.plush.html"))
 	}).Wants("json", func(c buffalo.Context) error {
 		return c.Render(200, r.JSON(animals))
@@ -265,6 +266,16 @@ func animalsViewMode(c buffalo.Context, scope ReportScope) string {
 		viewMode = "instance"
 	}
 	return viewMode
+}
+
+// animalsViewLayout resolves the register column layout: "compact" (default,
+// bugs.md 'consolidated view') or "detailed" (full column set). Any value
+// other than "detailed" falls back to compact.
+func animalsViewLayout(c buffalo.Context) string {
+	if c.Param("view") == "detailed" {
+		return "detailed"
+	}
+	return "compact"
 }
 
 // applyConsolidatedAnimalFilters adds WHERE clauses for the register search
