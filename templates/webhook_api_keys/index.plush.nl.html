@@ -19,7 +19,7 @@
                     <thead>
                         <tr>
                             <th>Naam</th>
-                            <th>Voorvoegsel</th>
+                            <th>API-sleutel</th>
                             <th>Instantie-ID</th>
                             <th>Actief</th>
                             <th>Laatst gebruikt</th>
@@ -31,7 +31,7 @@
                         <%= for (key) in webhookAPIKeys { %>
                             <tr>
                                 <td><%= key.Name %></td>
-                                <td><code>creaves_<%= key.KeyPrefix %>&hellip;</code></td>
+                                <td><%= if (key.KeyValue.Valid) { %><code class="text-monospace"><%= key.KeyValue.String %></code><% } else { %><code>creaves_<%= key.KeyPrefix %>&hellip;</code><em> (waarde niet beschikbaar)</em><% } %></td>
                                 <td><a href="/instances/<%= key.InstanceID %>"><%= key.InstanceID %></a></td>
                                 <td>
                                     <%= if (key.Active) { %>

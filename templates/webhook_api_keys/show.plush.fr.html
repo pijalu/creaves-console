@@ -13,10 +13,6 @@
                         <td><code><%= webhookAPIKey.ID %></code></td>
                     </tr>
                     <tr>
-                        <td><strong>Préfixe de clé :</strong></td>
-                        <td><code>creaves_<%= webhookAPIKey.KeyPrefix %>&hellip;</code></td>
-                    </tr>
-                    <tr>
                         <td><strong>Valeur de la clé API :</strong></td>
                         <td><%= if (webhookAPIKey.KeyValue.Valid) { %><code><%= webhookAPIKey.KeyValue.String %></code><% } else { %><em>Indisponible pour les clés créées avant l'activation de la visibilité</em><% } %></td>
                     </tr>
