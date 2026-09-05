@@ -8,7 +8,6 @@
 <div class="row mb-3">
     <div class="col-md-12">
         <form method="GET" action="/consolidated_animals" class="form-inline">
-            <%= if (viewMode == "instance") { %>
             <div class="form-group mr-2">
                 <label for="instance_id" class="mr-2">Instanz:</label>
                 <select name="instance_id" id="instance_id" class="form-control">
@@ -18,7 +17,6 @@
                     <% } %>
                 </select>
             </div>
-            <% } %>
             <div class="form-group mr-2">
                 <label for="year" class="mr-2">Jahr:</label>
                 <select name="year" id="year" class="form-control">
