@@ -7,6 +7,55 @@
 
 <div class="row mt-3">
     <div class="col-md-6 mb-4">
+        <form method="get" action="/reports/csv" class="form-inline">
+            <label for="instance_id" class="mr-2">Centre :</label>
+            <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
+                <%= for (i) in instances { %>
+                    <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>Tous les centres<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
+                <% } %>
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2><i class="fas fa-file-excel"></i> Rapports Excel</h2>
+        <p class="lead">Exports du registre avec tableaux croisés dynamiques, pour le centre sélectionné ci-dessus (tous les centres par défaut).</p>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book"></i> Registre détaillé (Excel)</h5>
+            </div>
+            <div class="card-body">
+                <p>Registre complet des animaux (entrées, découvertes, sorties) en classeur Excel avec tableaux croisés dynamiques.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/export/excel?query=registre_detail&amp;instance_id=<%= instanceID %>" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-map-marked-alt"></i> Statistiques par commune (Excel)</h5>
+            </div>
+            <div class="card-body">
+                <p>Entrées par commune de découverte en classeur Excel avec tableaux croisés dynamiques.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/export/excel?query=stat_communes&amp;instance_id=<%= instanceID %>" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-list"></i> Animaux consolidés</h5>

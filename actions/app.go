@@ -107,6 +107,10 @@ func App() *buffalo.App {
 		app.GET("/reports/snapshot", SnapshotIndex)
 		app.GET("/reports/snapshot/export.csv", SnapshotExportCSV)
 
+		// Excel exports (Bug 6): consolidated register reports, all instances
+		// or one instance via ?instance_id=.
+		app.GET("/export/excel", ExportExcel)
+
 		if ENV != "development" {
 			app.ErrorHandlers[500] = func(status int, err error, c buffalo.Context) error {
 				c.Flash().Add("danger", err.Error())

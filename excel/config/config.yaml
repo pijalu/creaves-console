@@ -1,0 +1,80 @@
+# Console variant of the Creaves excel export queries, running against the
+# denormalized consolidated_animals table. Column aliases MUST stay identical
+# to the Creaves originals: the embedded templates (registre.xlsx,
+# stats_communes.xlsx) ship pivot tables bound to those French headers.
+#
+# Placeholders:
+#   {scopeWhere}  — replaced with "WHERE instance_id = ?" (instance scope) or
+#                   "" (global scope) by RunQuery.
+#   {scopeAnd}    — replaced with "AND instance_id = ?" (instance scope) or
+#                   "" (global scope) by RunQuery.
+#   {stay}        — replaced with the dialect-specific "days in care"
+#                   expression (DATEDIFF on MySQL, JULIANDAY on SQLite).
+#
+# Fields with no console equivalent (discoverer contact, vet visit count,
+# travel KM, species cross-check, locality hierarchy) are emitted as empty
+# columns so the template/pivot layout stays identical to the Creaves export.
+queries:
+  - name: registre_detail
+    description: REGISTRE DÉTAILLÉ (consolidé)
+    template: registre.xlsx
+    sheet: animals
+    query: SELECT
+            a.animal_id AS "ID",
+            a.year AS "année",
+            a.year_number AS "N°",
+            a.species AS "Espèce",
+            "" AS "Check",
+            a.cage AS "cage",
+            a.ring AS "Identification",
+            a.gender AS "Genre",
+            a.animal_age AS "Age",
+            a.intake_date AS "Date d'entrée",
+            a.intake_general AS "état général",
+            a.intake_wounds AS "Bléssures",
+            a.intake_parasites AS "Parasites",
+            a.intake_remarks AS "Remarque d'entrée",
+            a.discovery_location AS "lieux de découverte",
+            a.entry_cause AS "Cause de découverte",
+            a.discovery_date AS "Date de découverte",
+            "" AS "Note sur la découverte",
+            a.outtake_date AS "Date de sortie",
+            a.outtake_type AS "Raison de la sortie",
+            a.outtake_location AS "Lieux de relacher",
+            "" AS "Note sur la sortie",
+            "" AS "Prénom",
+            "" AS "Nom",
+            "" AS "Adresse",
+            "" AS "Ville",
+            "" AS "Pays",
+            "" AS "Adresse mail",
+            "" AS "Téléphone",
+            "" AS "Note",
+            {stay} AS "séjour",
+            "" AS "Nombre visite VT",
+            "" AS "KM parcouru pour l'animal"
+            FROM consolidated_animals AS a
+            {scopeWhere}
+            ORDER BY a.instance_id ASC, a.animal_id ASC
+  - name: stat_communes
+    description: Statistique Communes (consolidé)
+    template: stats_communes.xlsx
+    sheet: bdd
+    query: SELECT
+            a.year AS "Année",
+            a.year_number AS "N°",
+            a.species AS "Espèce",
+            a.intake_date AS "Date d'entrée",
+            a.entry_cause AS "Cause de découverte",
+            a.discovery_location AS "lieux de découverte",
+            a.discovery_city AS "localté",
+            a.discovery_postal_code AS "Code postal",
+            "" AS "Commune",
+            "" AS "Province",
+            "" AS "Région",
+            "" AS "Pays",
+            "" AS "Cantonnement",
+            "" AS "Direction"
+            FROM consolidated_animals AS a
+            {scopeWhere}
+            ORDER BY a.year ASC, a.year_number ASC
