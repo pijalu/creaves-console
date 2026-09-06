@@ -19,34 +19,17 @@ services:
     build: .
     environment:
       GO_ENV: production
-      DATABASE_URL: mysql://consolidation:consolidation@consolidation-db:3306/consolidation
+      ADDR: 0.0.0.0
+      PORT: "3001"
+      DATABASE_URL: mysql://consolidation:consolidation@(consolidation-db:3306)/consolidation?parseTime=true&multiStatements=true&readTimeout=3s
     ports:
-      - "3001:3000"
+      - "3001:3001"
     depends_on:
       - consolidation-db
     networks:
       - consolidation-network
-    command: ["./consolidation"]
-
-  consolidation-cron:
-    build: .
-    environment:
-      GO_ENV: production
-      DATABASE_URL: mysql://consolidation:consolidation@consolidation-db:3306/consolidation
-    depends_on:
-      - consolidation-db
-    networks:
-      - consolidation-network
-    # Run import every 5 minutes
-    command: >
-      sh -c "
-        while true; do
-          echo '[$(date)] Starting scheduled import...'
-          ./consolidation-cli import
-          echo '[$(date)] Import completed. Sleeping for 5 minutes...'
-          sleep 300
-        done
-      "
+    # Default CMD (dockerscript/quickstart.prod.sh) runs migrations +
+    # db:seed, then starts the web server — same pattern as creaves.
 
 volumes:
   consolidation_db_data:

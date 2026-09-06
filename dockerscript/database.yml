@@ -1,0 +1,12 @@
+---
+development:
+  dialect: "mysql"
+  url: "mysql://consolidation:consolidation@(localhost:3306)/consolidation?parseTime=true&multiStatements=true&readTimeout=3s"
+
+test:
+  dialect: "sqlite"
+  database: "consolidation_test.sqlite"
+
+production:
+  dialect: "mysql"
+  url: {{envOr "DATABASE_URL" "mysql://consolidation:consolidation@(localhost:3306)/consolidation?parseTime=true&multiStatements=true&readTimeout=3s"}}

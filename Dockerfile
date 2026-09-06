@@ -1,34 +1,42 @@
-# Multi-stage build for consolidation application
-FROM golang:1.18-alpine AS builder
+# Multi-stage build (mirrors creaves/Dockerfile, minus the npm/yarn asset
+# pipeline — creaves-console has no webpack assets, templates and public
+# files are embedded via go:embed).
+FROM golang:1.21 AS builder
 
-RUN apk add --no-cache git
+ENV GOPROXY http://proxy.golang.org
+RUN go install github.com/gobuffalo/cli/cmd/buffalo@latest
+RUN mkdir -p /src/creaves-console
+WORKDIR /src/creaves-console
 
-WORKDIR /app
-
-COPY go.mod go.sum ./
+# Copy the Go Modules manifests and cache deps before copying source so
+# that source changes don't invalidate the downloaded layer.
+COPY go.mod go.mod
+COPY go.sum go.sum
 RUN go mod download
 
-COPY . .
+ADD . .
+RUN buffalo plugins install
+RUN buffalo build --environment production --static -o /bin/app
 
-# Build both binaries
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o consolidation ./cmd/consolidation
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o consolidation-cli ./cmd/cli
+FROM alpine
 
-FROM alpine:latest
+ARG TZ='Europe/Brussels'
+ENV DEFAULT_TZ ${TZ}
 
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache bash ca-certificates tzdata \
+  && cp /usr/share/zoneinfo/${DEFAULT_TZ} /etc/localtime
 
-WORKDIR /app/
+WORKDIR /bin/
 
-COPY --from=builder /app/consolidation .
-COPY --from=builder /app/consolidation-cli .
+COPY --from=builder /bin/app .
+COPY dockerscript/* /bin/
 
-ENV GO_ENV=production
-ENV ADDR=0.0.0.0
-ENV PORT=3000
+ENV GO_ENV production
 
-EXPOSE 3000
+# Bind the app to 0.0.0.0 so it can be seen from outside the container
+ENV ADDR 0.0.0.0
 
-# Default command starts the web server
-# For CLI mode, override CMD with the desired subcommand
-CMD ["./consolidation"]
+EXPOSE 3001
+
+# Migrate + seed, then start the web server (same pattern as creaves).
+CMD /bin/quickstart.prod.sh

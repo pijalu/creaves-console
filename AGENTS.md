@@ -78,7 +78,10 @@ development:
   password: "creaves"
 ```
 
-Production uses env vars: `DB_NAME`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`.
+Production uses the `DATABASE_URL` env var (same convention as creaves): export
+`DATABASE_URL='mysql://user:pass@(host:3306)/consolidation?parseTime=true&multiStatements=true'`
+before starting the binary/container. The container listens on `PORT` (default 3001)
+and binds `ADDR` (default 127.0.0.1; the Docker image sets `ADDR=0.0.0.0`).
 
 ```bash
 # Run migrations
@@ -486,17 +489,21 @@ with all tables manually, cleans tables before each test, and tears down on exit
 ## Docker
 
 ```bash
-# Build and run
+# Build and run (migrations + db:seed run automatically at container start,
+# via dockerscript/quickstart.prod.sh — same pattern as creaves)
 docker-compose up -d
 
-# Run migrations inside container
-docker-compose exec consolidation-app ./consolidation migrate
+# Run a consolidation task inside a container
+./docker-run.sh process    # or: rebuild, stats, serve, shell
 
-# Run consolidation task
-docker-compose run --rm consolidation-cli process
+# Build & push the multi-arch image (muaddib/creaves-console)
+./build.sh
 ```
 
-`Dockerfile` is a multi-stage build. `docker-compose.yml` includes MySQL + app + cron.
+`Dockerfile` is a multi-stage buffalo build producing a single `/bin/app` binary
+(migrations embedded via the buffalo-pop plugin, like creaves).
+`docker-compose.yml` includes MySQL + the web app. Point the container at any
+remote db/port by exporting `DATABASE_URL` — exactly like the creaves container.
 
 ---
 

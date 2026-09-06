@@ -18,8 +18,6 @@ test:
 
 production:
   dialect: "mysql"
-  database: {{envOr "DB_NAME" "consolidation"}}
-  host: {{envOr "DB_HOST" "localhost"}}
-  port: {{envOr "DB_PORT" "3307"}}
-  user: {{envOr "DB_USER" "consolidation"}}
-  password: {{envOr "DB_PASSWORD" "consolidation"}}
+  # Same convention as creaves/database.yml: point the container at any
+  # remote db/port by exporting DATABASE_URL before starting it.
+  url: {{envOr "DATABASE_URL" "mysql://consolidation:consolidation@(localhost:3306)/consolidation?parseTime=true&multiStatements=true&readTimeout=3s"}}

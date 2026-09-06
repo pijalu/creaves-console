@@ -22,10 +22,14 @@ var T *i18n.Translator
 func App() *buffalo.App {
 	if app == nil {
 		port := envy.Get("PORT", "3001")
+		// ADDR defaults to 127.0.0.1 for local dev; Docker images set
+		// ADDR=0.0.0.0 (same convention as the creaves Dockerfile) so the
+		// server is reachable from outside the container.
+		addr := envy.Get("ADDR", "127.0.0.1")
 		app = buffalo.New(buffalo.Options{
 			Env:         ENV,
 			SessionName: "_creaves_console_session",
-			Addr:        "127.0.0.1:" + port,
+			Addr:        addr + ":" + port,
 		})
 
 		app.Use(paramlogger.ParameterLogger)
