@@ -1,0 +1,65 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-file-csv"></i> CSV Reports</h1>
+        <p class="lead">Tabular exports of the consolidated data. Each report is available as an online view (sortable and filterable in the browser) and as a downloadable CSV file, for all centers or for a given center via the Center selector of the report page.</p>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Consolidated Animals</h5>
+            </div>
+            <div class="card-body">
+                <p>Full consolidated animal list across all registered centers, with filtering and sorting.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/consolidated_animals" class="btn btn-primary"><i class="fas fa-table"></i> Online view</a>
+                <a href="/consolidated_animals/export.csv" class="btn btn-success"><i class="fas fa-download"></i> Download CSV</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book"></i> Register Table</h5>
+            </div>
+            <div class="card-body">
+                <p>All animals of a register year, paginated, with year and center filters.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/register" class="btn btn-primary"><i class="fas fa-table"></i> Online view</a>
+                <a href="/reports/register/export.csv" class="btn btn-success"><i class="fas fa-download"></i> Download CSV</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-camera"></i> Year-End Snapshot</h5>
+            </div>
+            <div class="card-body">
+                <p>Animals present in care at a given date, with date and center filters.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/snapshot" class="btn btn-primary"><i class="fas fa-table"></i> Online view</a>
+                <a href="/reports/snapshot/export.csv" class="btn btn-success"><i class="fas fa-download"></i> Download CSV</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Annual Report</h5>
+            </div>
+            <div class="card-body">
+                <p>Annual statistics per center: intakes, outtakes and outcomes for one year.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/annual" class="btn btn-primary"><i class="fas fa-table"></i> Online view</a>
+                <a href="/reports/annual/export.csv" class="btn btn-success"><i class="fas fa-download"></i> Download CSV</a>
+            </div>
+        </div>
+    </div>
+</div>

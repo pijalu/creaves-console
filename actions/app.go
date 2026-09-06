@@ -96,6 +96,7 @@ func App() *buffalo.App {
 
 		// Reports
 		app.GET("/reports", ReportsIndex)
+		app.GET("/reports/csv", ReportsCSVIndex)
 		app.GET("/reports/by_location", ReportsByLocation)
 		app.GET("/reports/by_type", ReportsByType)
 		app.GET("/reports/by_species", ReportsBySpecies)

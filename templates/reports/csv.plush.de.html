@@ -1,0 +1,65 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-file-csv"></i> CSV-Berichte</h1>
+        <p class="lead">Tabellarische Exporte der konsolidierten Daten. Jeder Bericht ist als Online-Ansicht (im Browser sortier- und filterbar) und als herunterladbare CSV-Datei verfügbar, für alle Zentren oder für ein bestimmtes Zentrum über die Zentrum-Auswahl der Berichtsseite.</p>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Konsolidierte Tiere</h5>
+            </div>
+            <div class="card-body">
+                <p>Vollständige konsolidierte Tierliste aller registrierten Zentren, mit Filterung und Sortierung.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/consolidated_animals" class="btn btn-primary"><i class="fas fa-table"></i> Online-Ansicht</a>
+                <a href="/consolidated_animals/export.csv" class="btn btn-success"><i class="fas fa-download"></i> CSV herunterladen</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book"></i> Register-Tabelle</h5>
+            </div>
+            <div class="card-body">
+                <p>Alle Tiere eines Registerjahres, paginiert, mit Jahr- und Zentrum-Filtern.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/register" class="btn btn-primary"><i class="fas fa-table"></i> Online-Ansicht</a>
+                <a href="/reports/register/export.csv" class="btn btn-success"><i class="fas fa-download"></i> CSV herunterladen</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-camera"></i> Jahresende-Snapshot</h5>
+            </div>
+            <div class="card-body">
+                <p>Tiere in Pflege zu einem bestimmten Datum, mit Datums- und Zentrum-Filtern.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/snapshot" class="btn btn-primary"><i class="fas fa-table"></i> Online-Ansicht</a>
+                <a href="/reports/snapshot/export.csv" class="btn btn-success"><i class="fas fa-download"></i> CSV herunterladen</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Jahresbericht</h5>
+            </div>
+            <div class="card-body">
+                <p>Jährliche Statistiken pro Zentrum: Aufnahmen, Entlassungen und Ergebnisse für ein Jahr.</p>
+            </div>
+            <div class="card-footer">
+                <a href="/reports/annual" class="btn btn-primary"><i class="fas fa-table"></i> Online-Ansicht</a>
+                <a href="/reports/annual/export.csv" class="btn btn-success"><i class="fas fa-download"></i> CSV herunterladen</a>
+            </div>
+        </div>
+    </div>
+</div>
