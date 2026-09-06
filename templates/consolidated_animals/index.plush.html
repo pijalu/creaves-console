@@ -26,7 +26,7 @@
                     <% } %>
                 </select>
             </div>
-            <button type="button" class="btn btn-outline-secondary mr-2" data-toggle="collapse" data-target="#moreFilters" aria-expanded="<%= if (viewMode == "instance" || params["status"] || params["species"] || params["animal_type"] || params["city"] || params["entry_cause"] || params["animal_age"] || params["ring"] || params["outtake_type"]) { %>true<% } else { %>false<% } %>" aria-controls="moreFilters">
+            <button type="button" class="btn btn-outline-secondary mr-2" data-toggle="collapse" data-target="#moreFilters" aria-expanded="false" aria-controls="moreFilters">
                 <i class="fas fa-sliders-h"></i> More filters
             </button>
             <button type="submit" class="btn btn-primary">
@@ -47,7 +47,7 @@
                     <i class="fas fa-list"></i> Detailed
                 </a>
             </span>
-            <div class="collapse w-100 mt-2 <%= if (viewMode == "instance" || params["status"] || params["species"] || params["animal_type"] || params["city"] || params["entry_cause"] || params["animal_age"] || params["ring"] || params["outtake_type"]) { %>show<% } %>" id="moreFilters">
+            <div class="collapse w-100 mt-2" id="moreFilters">
             <div class="form-group mr-2 mt-2">
                 <label for="view_mode" class="mr-2">View:</label>
                 <select name="view_mode" id="view_mode" class="form-control">
@@ -292,3 +292,27 @@
         </div>
     </div>
 </div>
+
+<script>
+// Persist the "More filters" collapse state across page navigations (bugs.md:
+// consolidated view). State is global for this page, stored in localStorage.
+document.addEventListener("DOMContentLoaded", function () {
+    if (!window.jQuery) { return; }
+    var STORAGE_KEY = "consolidated_animals_filters_collapsed";
+    // Default (no stored value) = collapsed; expand only when the user
+    // explicitly expanded the panel before (stored "false").
+    var expanded = localStorage.getItem(STORAGE_KEY) === "false";
+    var $filters = $("#moreFilters");
+    var $toggle = $("button[data-target='#moreFilters']");
+    if (expanded) {
+        $filters.addClass("show");
+        $toggle.attr("aria-expanded", "true");
+    }
+    $filters.on("hidden.bs.collapse", function () {
+        localStorage.setItem(STORAGE_KEY, "true");
+    });
+    $filters.on("shown.bs.collapse", function () {
+        localStorage.setItem(STORAGE_KEY, "false");
+    });
+});
+</script>
