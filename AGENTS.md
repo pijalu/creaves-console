@@ -132,6 +132,8 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | `actions/consolidation_runner.go` | Orchestrates processing workflow |
 | `actions/sync_checksum.go` | Per-instance sync status (expected/confirmed/unconfirmed + shared state-set checksums) for the sync-management view |
 | `actions/dashboard.go` | Dashboard, consolidated animal list, drill-down, reports |
+| `actions/export_reports.go` | Ported Creaves export reports: handlers `ExportReportsIndex`/`ExportReportView`/`ExportReportCSV` + SQL placeholder/dialect translation |
+| `actions/export_queries.go` | Registry of the 22 ported export queries over `consolidated_animals` (bugs.md item 3) |
 | `actions/users.go` | Auth (session), user CRUD |
 | `actions/render.go` | Render engine, helpers |
 | `models/event_stream.go` | Event model + payload structs |
@@ -187,6 +189,9 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | GET | `/reports/by_species` | `ReportsBySpecies` | Session |
 | GET | `/reports/annual` | `ReportsAnnualIndex` | Session |
 | GET | `/reports/annual/export.csv` | `ReportsAnnualExportCSV` | Session |
+| GET | `/export/reports` | `ExportReportsIndex` | Session |
+| GET | `/export/reports/view` | `ExportReportView` | Session |
+| GET | `/export/reports/export.csv` | `ExportReportCSV` | Session |
 
 ### Middleware Stack
 
@@ -275,7 +280,9 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
     "zone": "Quarantine", "ring": "FR-2024-017",
     "animal_type": "Mammifère", "animal_age": "Adulte",
     "species_class": "Mammalia", "species_agw_group": "...",
-    "species_subside_group": "...", "species_native_status": "Indigène"
+    "species_subside_group": "...", "species_native_status": "Indigène",
+    "species_family": "Erinaceidae", "species_order": "Eulipotyphla",
+    "species_game": false, "species_huntable": false
   },
   "discovery": {
     "id": "uuid", "location": "...", "postal_code": "67000",
@@ -287,7 +294,7 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
     "discoverer_address": "...", "discoverer_city": "...",
     "discoverer_postal_code": "...", "discoverer_country": "...",
     "discoverer_email": "...", "discoverer_phone": "...",
-    "discoverer_note": "..."
+    "discoverer_note": "...", "discoverer_donation": "..."
   },
   "intake": {
     "id": "uuid", "date": "2024/01/15 11:00",
@@ -380,10 +387,15 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `year`, `year_number` | int | Animal identification |
 | `species`, `gender`, `cage`, `zone`, `ring` | varchar NULL | |
 | `species_class`, `species_agw_group`, `species_subside_group`, `species_native_status` | varchar NULL | Species taxonomy from source species table |
+| `species_family`, `species_order` | varchar NULL | Species taxonomy (bugs.md item 3) |
+| `species_game`, `species_huntable` | bool NULL | Species flags (bugs.md item 3) |
 | `animal_type`, `animal_age` | varchar NULL | |
 | `discovery_location`, `discovery_date`, `discovery_city`, `discovery_postal_code` | | |
 | `entry_cause` | varchar NULL | |
 | `entry_cause_detail`, `entry_cause_nature` | varchar NULL | |
+| `entry_cause_id` | int NULL | Source entry-cause reference id (bugs.md item 3) |
+| `discoverer_firstname`, `discoverer_lastname`, `discoverer_address`, `discoverer_city`, `discoverer_postal_code`, `discoverer_country`, `discoverer_email`, `discoverer_phone`, `discoverer_donation` | varchar NULL | Discoverer contact + donation (bugs.md item 3) |
+| `discoverer_note` | text NULL | Discoverer note (bugs.md item 3) |
 | `current_status` | varchar NOT NULL | in_care / under_treatment / released / died |
 | `intake_date`, `intake_general`, `intake_wounds`, `intake_parasites`, `intake_remarks` | | |
 | `outtake_date`, `outtake_type`, `outtake_location` | | |
@@ -471,6 +483,7 @@ Without `-tags sqlite`, tests will fail with:
 | `actions/sync_checksum_test.go` | Shared checksum golden vectors + per-instance counts math |
 | `actions/webhook_e2e_test.go` | Full push→receive→process flow over the real handler (contract E2E) |
 | `actions/webhook_e2e_second_extract_test.go` | E2E: second full extract keeps all years incl. current year, with a poison event present |
+| `actions/export_reports_sqlite_test.go` | Ported export reports: query registry, handler scope/auth, all queries run on SQLite, CSV format (bugs.md item 3) |
 | `models/models_test.go` | Model validation tests |
 
 ### Test Database

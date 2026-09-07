@@ -115,6 +115,12 @@ func App() *buffalo.App {
 		// or one instance via ?instance_id=.
 		app.GET("/export/excel", ExportExcel)
 
+		// Ported Creaves export reports (bugs.md item 3): online HTML view +
+		// CSV download, all instances or one instance via ?instance_id=.
+		app.GET("/export/reports", ExportReportsIndex)
+		app.GET("/export/reports/view", ExportReportView)
+		app.GET("/export/reports/export.csv", ExportReportCSV)
+
 		if ENV != "development" {
 			app.ErrorHandlers[500] = func(status int, err error, c buffalo.Context) error {
 				c.Flash().Add("danger", err.Error())

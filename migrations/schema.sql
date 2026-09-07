@@ -64,6 +64,21 @@ CREATE TABLE `consolidated_animals` (
   `translations` json DEFAULT NULL,
   `state_hash` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `last_state_at` datetime DEFAULT NULL,
+  `species_family` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `species_order` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `species_game` tinyint(1) DEFAULT NULL,
+  `species_huntable` tinyint(1) DEFAULT NULL,
+  `entry_cause_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_firstname` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_lastname` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_address` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_city` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_postal_code` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_country` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_email` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_phone` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discoverer_note` text COLLATE utf8mb4_general_ci,
+  `discoverer_donation` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `consolidated_animals_instance_id_animal_id_idx` (`instance_id`,`animal_id`),
   KEY `consolidated_animals_instance_id_idx` (`instance_id`),
@@ -241,4 +256,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-05 11:17:24
+-- Dump completed on 2026-09-07  8:13:29

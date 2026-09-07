@@ -26,6 +26,10 @@ type ConsolidatedAnimal struct {
 	SpeciesAGWGroup     nulls.String `json:"species_agw_group" db:"species_agw_group"`
 	SpeciesSubsideGroup nulls.String `json:"species_subside_group" db:"species_subside_group"`
 	SpeciesNativeStatus nulls.String `json:"species_native_status" db:"species_native_status"`
+	SpeciesFamily       nulls.String `json:"species_family" db:"species_family"`
+	SpeciesOrder        nulls.String `json:"species_order" db:"species_order"`
+	SpeciesGame         nulls.Bool   `json:"species_game" db:"species_game"`
+	SpeciesHuntable     nulls.Bool   `json:"species_huntable" db:"species_huntable"`
 	Gender              nulls.String `json:"gender" db:"gender"`
 	Cage                nulls.String `json:"cage" db:"cage"`
 	Zone                nulls.String `json:"zone" db:"zone"`
@@ -39,6 +43,19 @@ type ConsolidatedAnimal struct {
 	EntryCause          nulls.String `json:"entry_cause" db:"entry_cause"`
 	EntryCauseDetail    nulls.String `json:"entry_cause_detail" db:"entry_cause_detail"`
 	EntryCauseNature    nulls.String `json:"entry_cause_nature" db:"entry_cause_nature"`
+	EntryCauseID        nulls.String `json:"entry_cause_id" db:"entry_cause_id"`
+	// Discoverer contact + donation (bugs.md item 3) for the discoverer and
+	// donation register exports.
+	DiscovererFirstname  nulls.String `json:"discoverer_firstname" db:"discoverer_firstname"`
+	DiscovererLastname   nulls.String `json:"discoverer_lastname" db:"discoverer_lastname"`
+	DiscovererAddress    nulls.String `json:"discoverer_address" db:"discoverer_address"`
+	DiscovererCity       nulls.String `json:"discoverer_city" db:"discoverer_city"`
+	DiscovererPostalCode nulls.String `json:"discoverer_postal_code" db:"discoverer_postal_code"`
+	DiscovererCountry    nulls.String `json:"discoverer_country" db:"discoverer_country"`
+	DiscovererEmail      nulls.String `json:"discoverer_email" db:"discoverer_email"`
+	DiscovererPhone      nulls.String `json:"discoverer_phone" db:"discoverer_phone"`
+	DiscovererNote       nulls.String `json:"discoverer_note" db:"discoverer_note"`
+	DiscovererDonation   nulls.String `json:"discoverer_donation" db:"discoverer_donation"`
 	CurrentStatus       string       `json:"current_status" db:"current_status"`
 	IntakeDate          nulls.Time   `json:"intake_date" db:"intake_date"`
 	IntakeGeneral       nulls.String `json:"intake_general" db:"intake_general"`
@@ -240,6 +257,21 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	if payload.Animal.SpeciesNativeStatus != "" {
 		c.SpeciesNativeStatus = nulls.NewString(payload.Animal.SpeciesNativeStatus)
 	}
+	if payload.Animal.SpeciesFamily != "" {
+		c.SpeciesFamily = nulls.NewString(payload.Animal.SpeciesFamily)
+	}
+	if payload.Animal.SpeciesOrder != "" {
+		c.SpeciesOrder = nulls.NewString(payload.Animal.SpeciesOrder)
+	}
+	// Game/Huntable are booleans: omitempty drops false on the wire, so a
+	// received true is authoritative; false only reaches here via a full
+	// state snapshot which rewrites the row wholesale.
+	if payload.Animal.SpeciesGame {
+		c.SpeciesGame = nulls.NewBool(true)
+	}
+	if payload.Animal.SpeciesHuntable {
+		c.SpeciesHuntable = nulls.NewBool(true)
+	}
 	if payload.Animal.Gender != "" {
 		c.Gender = nulls.NewString(payload.Animal.Gender)
 	}
@@ -282,6 +314,40 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Discovery.EntryCauseNature != "" {
 		c.EntryCauseNature = nulls.NewString(payload.Discovery.EntryCauseNature)
+	}
+	if payload.Discovery.EntryCauseID != "" {
+		c.EntryCauseID = nulls.NewString(payload.Discovery.EntryCauseID)
+	}
+	// Discoverer contact + donation.
+	if payload.Discovery.DiscovererFirstname != "" {
+		c.DiscovererFirstname = nulls.NewString(payload.Discovery.DiscovererFirstname)
+	}
+	if payload.Discovery.DiscovererLastname != "" {
+		c.DiscovererLastname = nulls.NewString(payload.Discovery.DiscovererLastname)
+	}
+	if payload.Discovery.DiscovererAddress != "" {
+		c.DiscovererAddress = nulls.NewString(payload.Discovery.DiscovererAddress)
+	}
+	if payload.Discovery.DiscovererCity != "" {
+		c.DiscovererCity = nulls.NewString(payload.Discovery.DiscovererCity)
+	}
+	if payload.Discovery.DiscovererPostalCode != "" {
+		c.DiscovererPostalCode = nulls.NewString(payload.Discovery.DiscovererPostalCode)
+	}
+	if payload.Discovery.DiscovererCountry != "" {
+		c.DiscovererCountry = nulls.NewString(payload.Discovery.DiscovererCountry)
+	}
+	if payload.Discovery.DiscovererEmail != "" {
+		c.DiscovererEmail = nulls.NewString(payload.Discovery.DiscovererEmail)
+	}
+	if payload.Discovery.DiscovererPhone != "" {
+		c.DiscovererPhone = nulls.NewString(payload.Discovery.DiscovererPhone)
+	}
+	if payload.Discovery.DiscovererNote != "" {
+		c.DiscovererNote = nulls.NewString(payload.Discovery.DiscovererNote)
+	}
+	if payload.Discovery.DiscovererDonation != "" {
+		c.DiscovererDonation = nulls.NewString(payload.Discovery.DiscovererDonation)
 	}
 
 	// Update intake info
