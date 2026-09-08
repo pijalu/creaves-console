@@ -8,20 +8,22 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"creaves-console/models"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestExportQueries_Registry guards the ported report registry: 22 stable
+// TestExportQueries_Registry guards the ported report registry: 28 stable
 // ids, unique, and findExportQuery is case-insensitive.
 func TestExportQueries_Registry(t *testing.T) {
-	require.Len(t, exportQueries, 22, "expected 22 ported export queries")
+	require.Len(t, exportQueries, 28, "expected 28 ported export queries")
 
 	seen := map[string]bool{}
 	for _, q := range exportQueries {
@@ -201,4 +203,162 @@ func TestExportReports_AllQueriesRunOnSQLite(t *testing.T) {
 		rec = getExport(t, app, "/export/reports/export.csv?query="+q.Name+"&instance_id=center-a")
 		require.Equal(t, http.StatusOK, rec.Code, "scoped query %q failed: %.300s", q.Name, rec.Body.Bytes())
 	}
+}
+
+// TestExportReports_DateAggregates covers the item-4 date aggregate reports
+// ({year:...}, {dow:...}, {df:...} placeholders on intake_date): 5 seeded
+// animals, intakes 2024-01-10..12 shared across centers (Wed..Fri).
+func TestExportReports_DateAggregates(t *testing.T) {
+	tx := setupTest(t)
+	seedExcelInstances(t, tx)
+	app := newExportReportsTestApp(tx, true)
+
+	// Per day of year: 3 distinct intake days (Jan 10/11/12, shared across
+	// centers), counts 2/2/1; both dialect paths exercised ({year:...} ->
+	// strftime('%Y', ...), {df:...%Y %m %d}).
+	rec := getExport(t, app, "/export/reports/export.csv?query=entry_date_year")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body := strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	// 1 header + 3 distinct intake days.
+	assert.Len(t, lines, 4)
+	assert.Contains(t, lines[0], "Date d'Entrée")
+	assert.Contains(t, body, "2024;2024 01 10;2")
+	assert.Contains(t, body, "2024;2024 01 12;1")
+
+	// Per weekday: 3 distinct weekdays; 2024-01-12 is a Friday -> 6.
+	rec = getExport(t, app, "/export/reports/export.csv?query=entry_day_week")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines = strings.Split(strings.TrimSpace(body), "\n")
+	assert.Len(t, lines, 4)
+	assert.Contains(t, lines[0], "1=dimanche")
+	assert.Contains(t, body, "2024;4;2", "Wednesday 2024-01-10 must map to DAYOFWEEK 4")
+	assert.Contains(t, body, "2024;6;1", "Friday 2024-01-12 must map to DAYOFWEEK 6")
+
+	// Per month: single January row with 5 animals.
+	rec = getExport(t, app, "/export/reports/export.csv?query=day_to_month")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines = strings.Split(strings.TrimSpace(body), "\n")
+	assert.Len(t, lines, 2)
+	assert.Contains(t, lines[1], "2024;01;5")
+
+	// Scope filter: center-b has 2 animals on 2024-01-10/11.
+	rec = getExport(t, app, "/export/reports/export.csv?query=entry_date_year&instance_id=center-b")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines = strings.Split(strings.TrimSpace(body), "\n")
+	assert.Len(t, lines, 3, "scoped report must only contain center-b days")
+	assert.NotContains(t, body, "2024 01 12", "2024-01-12 has only center-a animals")
+}
+
+// seedAnnexeAnimal creates one consolidated animal with the fields the
+// Annexe reports group/filter on.
+func seedAnnexeAnimal(t *testing.T, tx *pop.Connection, instanceID string, animalID, year, yearNumber int, species string, subsideGroup, class, order, outtakeType *string) {
+	t.Helper()
+	now := time.Now().UTC()
+	a := &models.ConsolidatedAnimal{
+		ID:            uuid.Must(uuid.NewV4()),
+		InstanceID:    instanceID,
+		AnimalID:      animalID,
+		Year:          year,
+		YearNumber:    yearNumber,
+		Species:       nulls.NewString(species),
+		IntakeDate:    nulls.NewTime(time.Date(year, 1, 10, 0, 0, 0, 0, time.UTC)),
+		OuttakeDate:   nulls.NewTime(time.Date(year, 2, 10, 0, 0, 0, 0, time.UTC)),
+		CurrentStatus: "released",
+		LastEventAt:   now,
+	}
+	if subsideGroup != nil {
+		a.SpeciesSubsideGroup = nulls.NewString(*subsideGroup)
+	}
+	if class != nil {
+		a.SpeciesClass = nulls.NewString(*class)
+	}
+	if order != nil {
+		a.SpeciesOrder = nulls.NewString(*order)
+	}
+	if outtakeType != nil {
+		a.OuttakeType = nulls.NewString(*outtakeType)
+	}
+	require.NoError(t, tx.Create(a))
+}
+
+func strptr(s string) *string { return &s }
+
+// TestExportReports_AnnexeReports covers the 3 item-4 Annexe reports against
+// a fixture spanning all subside groups and class/order branches, incl. an
+// unknown species (no enrichment) and a non-SG animal.
+func TestExportReports_AnnexeReports(t *testing.T) {
+	tx := setupTest(t)
+	seedExcelInstances(t, tx)
+
+	// Fixture (center-a unless noted):
+	//  id 10  Buse        SG2 + Aves            outtake "Relacher"
+	//  id 11  Hibou       SG1 + Aves            outtake "DCD"
+	//  id 12  Hérisson    SG3 + Mammalia/Eulipotyphla  outtake "Mort à l'arrivée avant l'encodage" (-> DCD)
+	//  id 13  Chauve-souris (no SG) + Chiroptera  (center-b)
+	//  id 14  Inconnue    no enrichment at all  (unknown species)
+	seedAnnexeAnimal(t, tx, "center-a", 10, 2024, 1, "Buse variable", strptr("SG2"), strptr("Aves"), nil, strptr("Relacher"))
+	seedAnnexeAnimal(t, tx, "center-a", 11, 2024, 2, "Hibou moyen-duc", strptr("SG1"), strptr("Aves"), nil, strptr("DCD"))
+	seedAnnexeAnimal(t, tx, "center-a", 12, 2024, 3, "Hérisson", strptr("SG3"), strptr("Mammalia"), strptr("Eulipotyphla"), strptr("Mort à l'arrivée avant l'encodage"))
+	seedAnnexeAnimal(t, tx, "center-b", 13, 2024, 1, "Pipistrelle", nil, strptr("Mammalia"), strptr("Chiroptera"), strptr("Transferer"))
+	seedAnnexeAnimal(t, tx, "center-a", 14, 2024, 4, "Espèce inconnue", nil, nil, nil, nil)
+	app := newExportReportsTestApp(tx, true)
+
+	// Annexe_2A_2024: detail rows for SG1/SG2/SG3 animals only (3 of 5),
+	// group labels + outtake-type mapping.
+	rec := getExport(t, app, "/export/reports/export.csv?query=Annexe_2A_2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body := strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	// 1 header + 3 SG animals (Pipistrelle and unknown species excluded).
+	assert.Len(t, lines, 4)
+	assert.Contains(t, lines[0], "Groupe")
+	assert.Contains(t, body, "A) Mammifères non volants")
+	assert.Contains(t, body, "B) Rapaces, oiseaux d’eau, échassiers ou limicoles")
+	assert.Contains(t, body, "C) Autres oiseaux et chauves-souris, batraciens et reptiles")
+	assert.Contains(t, body, "DCD")
+	assert.Contains(t, body, "Relacher")
+	assert.NotContains(t, body, "Pipistrelle", "non-SG animal must be excluded")
+	assert.NotContains(t, body, "inconnue", "unknown species must be excluded")
+
+	// Scoped to center-b: no SG animals there -> header only.
+	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2A_2024&instance_id=center-b")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	lines = strings.Split(strings.TrimSpace(strings.TrimPrefix(rec.Body.String(), "\ufeff")), "\n")
+	assert.Len(t, lines, 1, "center-b has no SG animals")
+
+	// Annexe_2B_2024: counts per year x subside group -> 3 rows of 1.
+	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2B_2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	lines = strings.Split(strings.TrimSpace(body), "\n")
+	assert.Len(t, lines, 4)
+	assert.Contains(t, lines[0], "Groupes SUBSIDE")
+	assert.Contains(t, body, "(50/tranche)")
+	assert.Contains(t, body, "(100/tranche)")
+
+	// Annexe_2024: Oiseaux = 2 (both Aves), Mammifères non volants = 1
+	// (Eulipotyphla), Mammifères volants et autres = 1 (Chiroptera); all
+	// other animals fall into an empty group row.
+	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	assert.Contains(t, body, "Oiseaux;2")
+	assert.Contains(t, body, "Mammifères non volants;1")
+	assert.Contains(t, body, "Mammifères volants et autres espèces;1")
+
+	// Scoped Annexe_2024 to center-b: only the Chiroptera row remains.
+	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2024&instance_id=center-b")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
+	assert.NotContains(t, body, "Oiseaux;", "scoped report must exclude center-a birds")
+	assert.Contains(t, body, "Mammifères volants et autres espèces;1")
+
+	// Online view of one Annexe report renders.
+	rec = getExport(t, app, "/export/reports/view?query=Annexe_2B_2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	assert.Contains(t, rec.Body.String(), "3 row(s)")
 }

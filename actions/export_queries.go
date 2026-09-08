@@ -11,9 +11,11 @@ import "strings"
 //
 //	{scopeWhere}  "WHERE a.instance_id = ?" (instance scope) or "" (global)
 //	{scopeAnd}    "AND a.instance_id = ?"   (instance scope) or "" (global)
-//	{df}          date-format fn: (col, fmt) -> dialect-specific DATE_FORMAT/strftime
-//	{year}        year extraction: (col) -> EXTRACT/YEAR or strftime('%Y', col)
+//	{df:col:fmt}  date-format fn: dialect-specific DATE_FORMAT/strftime
+//	{year:col}    year extraction: YEAR(col) or strftime('%Y', col)
+//	{dow:col}     weekday number: DAYOFWEEK(col) or strftime('%w', col)+1
 //	{stay}        days-in-care expression (outtake - intake + 1)
+//	{true}        boolean TRUE literal
 //
 // "a" is always the consolidated_animals alias.
 
@@ -291,6 +293,108 @@ var exportQueries = []exportQuery{
 			FROM consolidated_animals AS a
 			{scopeWhere}
 			GROUP BY 1
+			ORDER BY 1 DESC`,
+	},
+	// bugs.md item 4: date aggregates over the intake date.
+	{
+		Name: "entry_date_year", Description: "Nombre d'animaux accueillis selon le jour de l'année", Aggregate: true,
+		SQL: `SELECT
+			{year:intake_date} AS "Année",
+			{df:intake_date:%Y %m %d} AS "Date d'Entrée",
+			COUNT(*) AS "Nombre"
+			FROM consolidated_animals AS a
+			WHERE a.intake_date IS NOT NULL {scopeAnd}
+			GROUP BY 1, 2
+			ORDER BY 1 DESC, 2 ASC`,
+	},
+	{
+		Name: "entry_day_week", Description: "Nombre d'animaux accueillis selon le jour de la semaine", Aggregate: true,
+		SQL: `SELECT
+			{year:intake_date} AS "Année",
+			{dow:intake_date} AS "numéro jour de la semaine - (1=dimanche)",
+			COUNT(*) AS "Nombre"
+			FROM consolidated_animals AS a
+			WHERE a.intake_date IS NOT NULL {scopeAnd}
+			GROUP BY 1, 2
+			ORDER BY 1 DESC, 2 ASC`,
+	},
+	{
+		Name: "day_to_month", Description: "Nombre d'animaux accueillis selon le mois", Aggregate: true,
+		SQL: `SELECT
+			{year:intake_date} AS "Année",
+			{df:intake_date:%m} AS "Mois d'Entrée",
+			COUNT(*) AS "Nombre d'Animaux"
+			FROM consolidated_animals AS a
+			WHERE a.intake_date IS NOT NULL {scopeAnd}
+			GROUP BY 1, 2
+			ORDER BY 1 DESC, 2 ASC`,
+	},
+	// bugs.md item 4: Annexe reports (subsidy annexes). Approximation vs the
+	// Creaves originals: outtaketypes.error is not part of the webhook
+	// payload, so the "oo.error = 0 OR oo.error IS NULL" filter is dropped
+	// (all consolidated outtake types are kept) and the WHERE clause uses
+	// explicit parentheses instead of replicating the Creaves AND/OR
+	// precedence bug (see docs/plan/item4-missing-exports-investigation.md).
+	{
+		Name:        "Annexe_2A_2024",
+		Description: "Annexe 2A 2024 — détail par groupe subside (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		SQL: `SELECT DISTINCT
+			a.animal_id AS "ID",
+			a.year AS "année",
+			a.year_number AS "N°",
+			a.species AS "Espèce",
+			CASE
+			WHEN a.species_subside_group='SG3' THEN 'A) Mammifères non volants'
+			WHEN a.species_subside_group='SG1' THEN 'B) Rapaces, oiseaux d’eau, échassiers ou limicoles'
+			WHEN a.species_subside_group='SG2' THEN 'C) Autres oiseaux et chauves-souris, batraciens et reptiles'
+			END AS "Groupe",
+			{df:intake_date:%d/%m/%Y} AS "Date d'Entrée",
+			{df:outtake_date:%d/%m/%Y} AS "Date de Sortie",
+			{year:outtake_date} AS "Année de Sortie",
+			CASE
+			WHEN a.outtake_type='DCD' THEN 'DCD'
+			WHEN a.outtake_type='Euthanasier' THEN 'DCD'
+			WHEN a.outtake_type='Mort à l''arrivée avant l''encodage' THEN 'DCD'
+			WHEN a.outtake_type='Relacher' THEN 'Relacher'
+			WHEN a.outtake_type='Transferer' THEN 'Transferer'
+			WHEN a.outtake_type='Adoption' THEN 'Adoption'
+			END AS "Raison de la sortie",
+			a.instance_id AS "Instance"
+			FROM consolidated_animals AS a
+			WHERE a.species_subside_group IN ('SG1','SG2','SG3') {scopeAnd}
+			ORDER BY 1 DESC`,
+	},
+	{
+		Name: "Annexe_2B_2024", Aggregate: true,
+		Description: "Annexe 2B 2024 — nombre par année et groupe subside (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		SQL: `SELECT
+			a.year AS "Année",
+			CASE
+			WHEN a.species_subside_group='SG3' THEN 'A) Mammifères non volants (100/tranche)'
+			WHEN a.species_subside_group='SG1' THEN 'B) Rapaces, oiseaux d’eau, échassiers ou limicoles (50/tranche)'
+			WHEN a.species_subside_group='SG2' THEN 'C) Autres oiseaux et chauves-souris, batraciens et reptiles (100/tranche)'
+			END AS "Groupes SUBSIDE",
+			COUNT(*) AS "Nombre"
+			FROM consolidated_animals AS a
+			WHERE a.species_subside_group IN ('SG1','SG2','SG3') {scopeAnd}
+			GROUP BY 1, 2
+			ORDER BY 1 DESC`,
+	},
+	{
+		Name: "Annexe_2024", Aggregate: true,
+		Description: "Annexe au rapport 2024 — nombre par année et groupe (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		SQL: `SELECT
+			a.year AS "année",
+			CASE
+			WHEN a.species_class='Aves' THEN 'Oiseaux'
+			WHEN a.species_order IN ('Artiodactyla','Carnivora','Castorimorpha','Caviomorpha','Érinaceomorphes','Eulipotyphla','Lagomorpha','Muroidea','Musteloidea','Pecora','Rodentia','Suina','Viverroidea') THEN 'Mammifères non volants'
+			WHEN a.species_order='Chiroptera' THEN 'Mammifères volants et autres espèces'
+			WHEN a.species_class IN ('Reptilia','Amphibia') THEN 'Mammifères volants et autres espèces'
+			END AS "Rapport Groupe",
+			COUNT(*) AS "Nombre"
+			FROM consolidated_animals AS a
+			{scopeWhere}
+			GROUP BY 1, 2
 			ORDER BY 1 DESC`,
 	},
 }

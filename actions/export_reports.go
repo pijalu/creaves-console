@@ -18,6 +18,9 @@ import (
 // dfPlaceholderRe matches a {df:column:format} placeholder.
 var dfPlaceholderRe = regexp.MustCompile(`\{df:([a-z_]+):([^}]+)\}`)
 
+// colPlaceholderRe matches a {year:column} or {dow:column} placeholder.
+var colPlaceholderRe = regexp.MustCompile(`\{(year|dow):([a-z_]+)\}`)
+
 // buildExportSQL substitutes the placeholders of q for the given scope and
 // dialect and returns the final SQL plus the scope argument (if any).
 func buildExportSQL(q exportQuery, scope ReportScope, dialect string) (string, []interface{}) {
@@ -28,6 +31,17 @@ func buildExportSQL(q exportQuery, scope ReportScope, dialect string) (string, [
 		parts := dfPlaceholderRe.FindStringSubmatch(m)
 		col, format := parts[1], parts[2]
 		return dateFormatExpr(dialect, "a."+col, format)
+	})
+
+	// Column placeholders {year:col} and {dow:col} -> dialect-specific
+	// year / weekday-number extraction.
+	sql = colPlaceholderRe.ReplaceAllStringFunc(sql, func(m string) string {
+		parts := colPlaceholderRe.FindStringSubmatch(m)
+		kind, col := parts[1], "a."+parts[2]
+		if kind == "year" {
+			return yearExpr(dialect, col)
+		}
+		return dowExpr(dialect, col)
 	})
 
 	// Days-in-care.
@@ -80,6 +94,24 @@ func stayExprExport(dialect string) string {
 		return "CAST(JULIANDAY(a.outtake_date) - JULIANDAY(a.intake_date) AS INTEGER) + 1"
 	}
 	return "DATEDIFF(a.outtake_date, a.intake_date) + 1"
+}
+
+// yearExpr renders a dialect-specific 4-digit year extraction.
+func yearExpr(dialect, col string) string {
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		return fmt.Sprintf("strftime('%%Y', %s)", col)
+	}
+	return fmt.Sprintf("YEAR(%s)", col)
+}
+
+// dowExpr renders a dialect-specific weekday-number extraction following the
+// MySQL DAYOFWEEK convention (1 = Sunday .. 7 = Saturday). SQLite strftime
+// '%w' returns 0 = Sunday, hence the +1.
+func dowExpr(dialect, col string) string {
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		return fmt.Sprintf("(CAST(strftime('%%w', %s) AS INTEGER) + 1)", col)
+	}
+	return fmt.Sprintf("DAYOFWEEK(%s)", col)
 }
 
 // boolLiteral renders a dialect-specific TRUE literal.
