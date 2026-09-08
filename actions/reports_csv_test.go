@@ -90,6 +90,7 @@ func TestReportsCSVIndexListsAllReports(t *testing.T) {
 		assert.Contains(t, body, link, "missing CSV download link %s", link)
 	}
 
-	// Nav dropdown of the layout must expose the CSV reports entry.
+	// Nav dropdown of the layout must expose the General and Exports entries.
 	assert.Contains(t, body, `href="/reports/csv"`)
+	assert.Contains(t, body, `href="/export/reports"`)
 }

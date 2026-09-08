@@ -61,7 +61,6 @@ CREATE TABLE `consolidated_animals` (
   `species_native_status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `outtake_rating` int DEFAULT NULL,
   `outtake_dead` tinyint(1) DEFAULT NULL,
-  `outtake_error` tinyint(1) DEFAULT NULL,
   `translations` json DEFAULT NULL,
   `state_hash` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `last_state_at` datetime DEFAULT NULL,
@@ -80,6 +79,7 @@ CREATE TABLE `consolidated_animals` (
   `discoverer_phone` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `discoverer_note` text COLLATE utf8mb4_general_ci,
   `discoverer_donation` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `outtake_error` tinyint(1) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `consolidated_animals_instance_id_animal_id_idx` (`instance_id`,`animal_id`),
   KEY `consolidated_animals_instance_id_idx` (`instance_id`),
@@ -257,4 +257,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-07  8:13:29
+-- Dump completed on 2026-09-08 21:18:27
