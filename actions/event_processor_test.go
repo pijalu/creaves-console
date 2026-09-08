@@ -170,6 +170,7 @@ func createTables() {
 			outtake_location TEXT,
 			outtake_rating INTEGER,
 			outtake_dead BOOLEAN,
+			outtake_error BOOLEAN,
 			translations TEXT,
 			state_hash TEXT,
 			last_state_at TIMESTAMP,

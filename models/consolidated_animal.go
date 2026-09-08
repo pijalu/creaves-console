@@ -67,6 +67,7 @@ type ConsolidatedAnimal struct {
 	OuttakeLocation     nulls.String `json:"outtake_location" db:"outtake_location"`
 	OuttakeRating       nulls.Int    `json:"outtake_rating" db:"outtake_rating"`
 	OuttakeDead         nulls.Bool   `json:"outtake_dead" db:"outtake_dead"`
+	OuttakeError        nulls.Bool   `json:"outtake_error" db:"outtake_error"`
 	Translations        nulls.String `json:"translations" db:"translations"`
 	StateHash           nulls.String `json:"state_hash" db:"state_hash"`
 	LastStateAt         nulls.Time   `json:"last_state_at" db:"last_state_at"`
@@ -188,7 +189,7 @@ func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Tim
 	c.EntryCause, c.EntryCauseDetail, c.EntryCauseNature = nulls.String{}, nulls.String{}, nulls.String{}
 	c.IntakeDate, c.IntakeGeneral, c.IntakeWounds, c.IntakeParasites, c.IntakeRemarks = nulls.Time{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.OuttakeDate, c.OuttakeType, c.OuttakeLocation = nulls.Time{}, nulls.String{}, nulls.String{}
-	c.OuttakeRating, c.OuttakeDead = nulls.Int{}, nulls.Bool{}
+	c.OuttakeRating, c.OuttakeDead, c.OuttakeError = nulls.Int{}, nulls.Bool{}, nulls.Bool{}
 	previousCount := c.EventCount
 	c.CurrentStatus = ""
 	c.UpdateFromPayload(payload, EventTypeAnimalState, eventTime)
@@ -220,10 +221,11 @@ func (c *ConsolidatedAnimal) applyOuttake(payload EventPayload) {
 		c.OuttakeLocation = nulls.NewString(payload.Outtake.Location)
 	}
 	if payload.Outtake.Date == "" && payload.Outtake.Type == "" && payload.Outtake.Location == "" {
-		return // no outtake block: leave rating/dead untouched
+		return // no outtake block: leave rating/dead/error untouched
 	}
 	c.OuttakeRating = nulls.NewInt(payload.Outtake.Rating)
 	c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
+	c.OuttakeError = nulls.NewBool(payload.Outtake.Error)
 	if payload.Outtake.Rating < 0 || payload.Outtake.Dead {
 		c.CurrentStatus = "died"
 	} else if c.CurrentStatus != "died" {

@@ -61,6 +61,7 @@ CREATE TABLE `consolidated_animals` (
   `species_native_status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `outtake_rating` int DEFAULT NULL,
   `outtake_dead` tinyint(1) DEFAULT NULL,
+  `outtake_error` tinyint(1) DEFAULT NULL,
   `translations` json DEFAULT NULL,
   `state_hash` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `last_state_at` datetime DEFAULT NULL,

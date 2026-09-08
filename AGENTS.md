@@ -304,7 +304,7 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
   "outtake": {
     "id": "uuid", "date": "2024/03/01 09:00",
     "type": "Released to Wild", "location": "...", "note": "...",
-    "rating": 1, "dead": false
+    "rating": 1, "dead": false, "error": false
   },
   "initial_status": "in_care",
   "current_status": "in_care",
@@ -401,6 +401,7 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `outtake_date`, `outtake_type`, `outtake_location` | | |
 | `outtake_rating` | int NULL | From outtake type definition |
 | `outtake_dead` | bool NULL | From outtake type definition |
+| `outtake_error` | bool NULL | Outtake-type "erroneous record" flag (Annexe reports exclude error=true) |
 | `last_event_at` | datetime | |
 | `event_count` | int | Number of events applied |
 | `created_at`, `updated_at` | datetime | |

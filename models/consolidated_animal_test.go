@@ -154,7 +154,7 @@ func TestConsolidatedAnimalUpdateFromPayloadNeutralOuttakeStored(t *testing.T) {
 	c := newConsolidatedAnimal()
 	c.CurrentStatus = "in_care"
 	payload := EventPayload{
-		Outtake: OuttakePayload{Type: "Transfert", Date: "2024/06/15 09:00", Rating: 0, Dead: false},
+		Outtake: OuttakePayload{Type: "Transfert", Date: "2024/06/15 09:00", Rating: 0, Dead: false, Error: false},
 	}
 
 	c.UpdateFromPayload(payload, EventTypeAnimalReleased, time.Now())
@@ -165,8 +165,27 @@ func TestConsolidatedAnimalUpdateFromPayloadNeutralOuttakeStored(t *testing.T) {
 	if !c.OuttakeDead.Valid || c.OuttakeDead.Bool {
 		t.Errorf("expected explicit OuttakeDead false, got %+v", c.OuttakeDead)
 	}
+	if !c.OuttakeError.Valid || c.OuttakeError.Bool {
+		t.Errorf("expected explicit OuttakeError false, got %+v", c.OuttakeError)
+	}
 	if c.CurrentStatus != "released" {
 		t.Errorf("expected status %q, got %q", "released", c.CurrentStatus)
+	}
+}
+
+func TestConsolidatedAnimalUpdateFromPayloadErrorOuttakeStored(t *testing.T) {
+	// The outtake-type error flag (webhook contract v2) must be stored so the
+	// Annexe reports can exclude erroneous records.
+	c := newConsolidatedAnimal()
+	c.CurrentStatus = "in_care"
+	payload := EventPayload{
+		Outtake: OuttakePayload{Type: "Doublon", Date: "2024/06/15 09:00", Rating: 0, Dead: false, Error: true},
+	}
+
+	c.UpdateFromPayload(payload, EventTypeAnimalReleased, time.Now())
+
+	if !c.OuttakeError.Valid || !c.OuttakeError.Bool {
+		t.Errorf("expected OuttakeError true, got %+v", c.OuttakeError)
 	}
 }
 
@@ -204,6 +223,9 @@ func TestConsolidatedAnimalUpdateFromPayloadNoOuttakeLeavesRatingNull(t *testing
 	}
 	if c.OuttakeDead.Valid {
 		t.Errorf("expected OuttakeDead to stay NULL, got %+v", c.OuttakeDead)
+	}
+	if c.OuttakeError.Valid {
+		t.Errorf("expected OuttakeError to stay NULL, got %+v", c.OuttakeError)
 	}
 }
 

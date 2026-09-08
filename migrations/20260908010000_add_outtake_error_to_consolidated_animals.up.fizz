@@ -1,0 +1,1 @@
+add_column("consolidated_animals", "outtake_error", "boolean", {null: true})

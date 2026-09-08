@@ -123,6 +123,10 @@ type OuttakePayload struct {
 	Note     string `json:"note,omitempty"`
 	Rating   int    `json:"rating,omitempty"`
 	Dead     bool   `json:"dead,omitempty"`
+	// Error is the outtake-type "erroneous record" flag. No omitempty: the
+	// producer always serializes it (contract v2), and false is a real value
+	// the Annexe reports filter on.
+	Error bool `json:"error"`
 }
 
 // EventPayload represents the complete structured event payload with all entities

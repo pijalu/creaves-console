@@ -329,15 +329,15 @@ var exportQueries = []exportQuery{
 			GROUP BY 1, 2
 			ORDER BY 1 DESC, 2 ASC`,
 	},
-	// bugs.md item 4: Annexe reports (subsidy annexes). Approximation vs the
-	// Creaves originals: outtaketypes.error is not part of the webhook
-	// payload, so the "oo.error = 0 OR oo.error IS NULL" filter is dropped
-	// (all consolidated outtake types are kept) and the WHERE clause uses
-	// explicit parentheses instead of replicating the Creaves AND/OR
-	// precedence bug (see docs/plan/item4-missing-exports-investigation.md).
+	// bugs.md item 4: Annexe reports (subsidy annexes). The outtake-type
+	// "error" exclusion of the Creaves originals is now real: the webhook
+	// contract forwards outtaketypes.error (consolidated_animals.outtake_error),
+	// so these ports apply the same (error = 0 OR error IS NULL) filter. WHERE
+	// clauses use explicit parentheses instead of replicating the Creaves
+	// AND/OR precedence bug (see docs/archive/item4-missing-exports-investigation.md).
 	{
 		Name:        "Annexe_2A_2024",
-		Description: "Annexe 2A 2024 — détail par groupe subside (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		Description: "Annexe 2A 2024 — détail par groupe subside",
 		SQL: `SELECT DISTINCT
 			a.animal_id AS "ID",
 			a.year AS "année",
@@ -361,12 +361,12 @@ var exportQueries = []exportQuery{
 			END AS "Raison de la sortie",
 			a.instance_id AS "Instance"
 			FROM consolidated_animals AS a
-			WHERE a.species_subside_group IN ('SG1','SG2','SG3') {scopeAnd}
+			WHERE a.species_subside_group IN ('SG1','SG2','SG3') AND (a.outtake_error = 0 OR a.outtake_error IS NULL) {scopeAnd}
 			ORDER BY 1 DESC`,
 	},
 	{
 		Name: "Annexe_2B_2024", Aggregate: true,
-		Description: "Annexe 2B 2024 — nombre par année et groupe subside (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		Description: "Annexe 2B 2024 — nombre par année et groupe subside",
 		SQL: `SELECT
 			a.year AS "Année",
 			CASE
@@ -376,13 +376,13 @@ var exportQueries = []exportQuery{
 			END AS "Groupes SUBSIDE",
 			COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
-			WHERE a.species_subside_group IN ('SG1','SG2','SG3') {scopeAnd}
+			WHERE a.species_subside_group IN ('SG1','SG2','SG3') AND (a.outtake_error = 0 OR a.outtake_error IS NULL) {scopeAnd}
 			GROUP BY 1, 2
 			ORDER BY 1 DESC`,
 	},
 	{
 		Name: "Annexe_2024", Aggregate: true,
-		Description: "Annexe au rapport 2024 — nombre par année et groupe (approximation: filtre outtaketypes.error omis, absent du webhook)",
+		Description: "Annexe au rapport 2024 — nombre par année et groupe",
 		SQL: `SELECT
 			a.year AS "année",
 			CASE
@@ -393,7 +393,7 @@ var exportQueries = []exportQuery{
 			END AS "Rapport Groupe",
 			COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
-			{scopeWhere}
+			WHERE (a.outtake_error = 0 OR a.outtake_error IS NULL) {scopeAnd}
 			GROUP BY 1, 2
 			ORDER BY 1 DESC`,
 	},

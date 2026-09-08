@@ -257,6 +257,11 @@ func TestExportReports_DateAggregates(t *testing.T) {
 // Annexe reports group/filter on.
 func seedAnnexeAnimal(t *testing.T, tx *pop.Connection, instanceID string, animalID, year, yearNumber int, species string, subsideGroup, class, order, outtakeType *string) {
 	t.Helper()
+	seedAnnexeAnimalErr(t, tx, instanceID, animalID, year, yearNumber, species, subsideGroup, class, order, outtakeType, nil)
+}
+
+func seedAnnexeAnimalErr(t *testing.T, tx *pop.Connection, instanceID string, animalID, year, yearNumber int, species string, subsideGroup, class, order, outtakeType *string, outtakeError *bool) {
+	t.Helper()
 	now := time.Now().UTC()
 	a := &models.ConsolidatedAnimal{
 		ID:            uuid.Must(uuid.NewV4()),
@@ -282,10 +287,14 @@ func seedAnnexeAnimal(t *testing.T, tx *pop.Connection, instanceID string, anima
 	if outtakeType != nil {
 		a.OuttakeType = nulls.NewString(*outtakeType)
 	}
+	if outtakeError != nil {
+		a.OuttakeError = nulls.NewBool(*outtakeError)
+	}
 	require.NoError(t, tx.Create(a))
 }
 
 func strptr(s string) *string { return &s }
+func boolptr(b bool) *bool    { return &b }
 
 // TestExportReports_AnnexeReports covers the 3 item-4 Annexe reports against
 // a fixture spanning all subside groups and class/order branches, incl. an
@@ -305,22 +314,30 @@ func TestExportReports_AnnexeReports(t *testing.T) {
 	seedAnnexeAnimal(t, tx, "center-a", 12, 2024, 3, "Hérisson", strptr("SG3"), strptr("Mammalia"), strptr("Eulipotyphla"), strptr("Mort à l'arrivée avant l'encodage"))
 	seedAnnexeAnimal(t, tx, "center-b", 13, 2024, 1, "Pipistrelle", nil, strptr("Mammalia"), strptr("Chiroptera"), strptr("Transferer"))
 	seedAnnexeAnimal(t, tx, "center-a", 14, 2024, 4, "Espèce inconnue", nil, nil, nil, nil)
+	// id 15: error-flagged outtake type — must be excluded from all 3 Annexe
+	// reports (the webhook now forwards outtaketypes.error as outtake_error).
+	seedAnnexeAnimalErr(t, tx, "center-a", 15, 2024, 5, "Martre", strptr("SG3"), strptr("Mammalia"), strptr("Carnivora"), strptr("Relacher"), boolptr(true))
+	// id 16: explicit error=false outtake — must be kept (real non-error).
+	seedAnnexeAnimalErr(t, tx, "center-a", 16, 2024, 6, "Fouine", strptr("SG3"), strptr("Mammalia"), strptr("Carnivora"), strptr("Relacher"), boolptr(false))
 	app := newExportReportsTestApp(tx, true)
 
-	// Annexe_2A_2024: detail rows for SG1/SG2/SG3 animals only (3 of 5),
-	// group labels + outtake-type mapping.
+	// Annexe_2A_2024: detail rows for SG1/SG2/SG3 animals without the error
+	// flag (4 of 7), group labels + outtake-type mapping.
 	rec := getExport(t, app, "/export/reports/export.csv?query=Annexe_2A_2024")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body := strings.TrimPrefix(rec.Body.String(), "\ufeff")
 	lines := strings.Split(strings.TrimSpace(body), "\n")
-	// 1 header + 3 SG animals (Pipistrelle and unknown species excluded).
-	assert.Len(t, lines, 4)
+	// 1 header + 4 kept SG animals (Pipistrelle/unknown excluded: non-SG;
+	// Martre excluded: outtake_error=1; Fouine kept: outtake_error=0).
+	assert.Len(t, lines, 5)
 	assert.Contains(t, lines[0], "Groupe")
 	assert.Contains(t, body, "A) Mammifères non volants")
 	assert.Contains(t, body, "B) Rapaces, oiseaux d’eau, échassiers ou limicoles")
 	assert.Contains(t, body, "C) Autres oiseaux et chauves-souris, batraciens et reptiles")
 	assert.Contains(t, body, "DCD")
 	assert.Contains(t, body, "Relacher")
+	assert.Contains(t, body, "Fouine", "error=false outtake must be kept")
+	assert.NotContains(t, body, "Martre", "error-flagged outtake must be excluded")
 	assert.NotContains(t, body, "Pipistrelle", "non-SG animal must be excluded")
 	assert.NotContains(t, body, "inconnue", "unknown species must be excluded")
 
@@ -330,7 +347,8 @@ func TestExportReports_AnnexeReports(t *testing.T) {
 	lines = strings.Split(strings.TrimSpace(strings.TrimPrefix(rec.Body.String(), "\ufeff")), "\n")
 	assert.Len(t, lines, 1, "center-b has no SG animals")
 
-	// Annexe_2B_2024: counts per year x subside group -> 3 rows of 1.
+	// Annexe_2B_2024: counts per year x subside group -> 3 rows; the SG3 row
+	// counts 2 (Hérisson + Fouine), error-flagged Martre excluded.
 	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2B_2024")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
@@ -338,16 +356,17 @@ func TestExportReports_AnnexeReports(t *testing.T) {
 	assert.Len(t, lines, 4)
 	assert.Contains(t, lines[0], "Groupes SUBSIDE")
 	assert.Contains(t, body, "(50/tranche)")
-	assert.Contains(t, body, "(100/tranche)")
+	assert.Contains(t, body, "(100/tranche);2", "SG3 counts Hérisson + Fouine, excludes error-flagged Martre")
 
-	// Annexe_2024: Oiseaux = 2 (both Aves), Mammifères non volants = 1
-	// (Eulipotyphla), Mammifères volants et autres = 1 (Chiroptera); all
-	// other animals fall into an empty group row.
+	// Annexe_2024: Oiseaux = 2 (both Aves), Mammifères non volants = 2
+	// (Eulipotyphla + Carnivora Fouine; Martre excluded), Mammifères volants
+	// et autres = 1 (Chiroptera); remaining animals fall into an empty group
+	// row.
 	rec = getExport(t, app, "/export/reports/export.csv?query=Annexe_2024")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body = strings.TrimPrefix(rec.Body.String(), "\ufeff")
 	assert.Contains(t, body, "Oiseaux;2")
-	assert.Contains(t, body, "Mammifères non volants;1")
+	assert.Contains(t, body, "Mammifères non volants;2")
 	assert.Contains(t, body, "Mammifères volants et autres espèces;1")
 
 	// Scoped Annexe_2024 to center-b: only the Chiroptera row remains.
