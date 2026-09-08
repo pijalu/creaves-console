@@ -195,7 +195,7 @@ func RunQuery(c buffalo.Context, tx *pop.Connection, query, instanceID string) e
 		return err
 	}
 
-	return writeExcelResponse(c, f, sqlQuery.Sheet, lastRow, len(cols))
+	return writeExcelResponse(c, f, sqlQuery.Template, sqlQuery.Sheet, lastRow, len(cols))
 }
 
 // writeSheetRows writes the header and data rows of the query result into
@@ -239,8 +239,9 @@ func writeSheetRows(c buffalo.Context, f *excelize.File, sqlQuery *Queries, rows
 
 // writeExcelResponse applies the Bug 5 pivot-cache fixups to f, serializes
 // the workbook, patches the final archive (template row truncation +
-// _FilterDatabase defined name) and writes it to the response.
-func writeExcelResponse(c buffalo.Context, f *excelize.File, sheet string, lastRow, nCols int) error {
+// _FilterDatabase defined name + Bug 7 template styles.xml restore) and
+// writes it to the response.
+func writeExcelResponse(c buffalo.Context, f *excelize.File, template, sheet string, lastRow, nCols int) error {
 	// Update pivot caches to reference the data range actually written and
 	// force Excel to refresh them on open (Bug 5). Without this, the cached
 	// template range/records make Excel show a "repair/recover" prompt.
@@ -264,6 +265,17 @@ func writeExcelResponse(c buffalo.Context, f *excelize.File, sheet string, lastR
 	if err != nil {
 		c.Logger().Debugf("warning: failed to finalize export archive: %v", err)
 		out = buf.Bytes()
+	}
+
+	// Bug 7: excelize's re-serialized styles.xml makes Excel flag the file
+	// for repair. Replace it with the template's original part, keeping only
+	// the cellXfs entries excelize legitimately appended while writing cells.
+	if tplStyles, err := templateStylesXML(template); err != nil {
+		c.Logger().Debugf("warning: failed to read template styles.xml: %v", err)
+	} else if patched, err := restoreStylesInZip(out, tplStyles); err != nil {
+		c.Logger().Debugf("warning: failed to restore template styles.xml: %v", err)
+	} else {
+		out = patched
 	}
 
 	if cnt, err := c.Response().Write(out); err != nil {
