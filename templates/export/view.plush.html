@@ -1,6 +1,6 @@
 <div class="row">
     <div class="col-md-12">
-        <h1><i class="fas fa-file-export"></i> <%= query.Description %></h1>
+        <h1><a href="/export/reports?instance_id=<%= instanceID %>" title="Back to reports" class="mr-2"><i class="fas fa-arrow-left"></i></a> <%= query.Description %></h1>
         <p class="lead"><code><%= query.Name %></code> — <%= len(rows) %> row(s).</p>
     </div>
 </div>
@@ -19,7 +19,12 @@
     </div>
     <div class="col-md-4 text-right">
         <a class="btn btn-success" href="/export/reports/export.csv?query=<%= query.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-download"></i> Download CSV</a>
-        <a class="btn btn-secondary" href="/export/reports?instance_id=<%= instanceID %>"><i class="fas fa-arrow-left"></i> All reports</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-1">
+        <button type="button" id="toggleColumnFilters" class="btn btn-outline-secondary btn-sm" aria-pressed="false"><i class="fas fa-filter"></i> Filters</button>
     </div>
 </div>
 
@@ -30,6 +35,11 @@
                 <tr>
                     <%= for (col) in cols { %>
                         <th><%= col %></th>
+                    <% } %>
+                </tr>
+                <tr class="column-filters" style="display:none">
+                    <%= for (col) in cols { %>
+                        <th><input type="search" class="form-control form-control-sm column-filter" placeholder="<%= col %>" aria-label="Filter <%= col %>"></th>
                     <% } %>
                 </tr>
             </thead>
@@ -65,10 +75,24 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         className: 'dt-body-right'
     });
-    $('#exportTable').DataTable({
+    var table = $('#exportTable').DataTable({
         deferRender: true,
+        // Keep sorting on the title row: the second header row holds the
+        // per-column filter inputs.
+        orderCellsTop: true,
         pageLength: 50,
         lengthMenu: [25, 50, 100, 250, 500]
+    });
+    // Per-column filters (case-insensitive "contains", the DataTables
+    // default): the filter row is hidden until the Filters button toggles it.
+    $('#exportTable thead tr.column-filters input.column-filter').on('keyup change', function () {
+        table.column($(this).closest('th').index()).search(this.value).draw();
+    });
+    $('#toggleColumnFilters').on('click', function () {
+        var row = $('#exportTable thead tr.column-filters');
+        var show = !row.is(':visible');
+        row.css('display', show ? 'table-row' : 'none');
+        $(this).toggleClass('active', show).attr('aria-pressed', show);
     });
 });
 </script>

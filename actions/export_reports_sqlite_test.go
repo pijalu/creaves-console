@@ -145,6 +145,27 @@ func TestExportReports_RegisterView_GlobalAndScoped(t *testing.T) {
 	assert.NotContains(t, body, "sortExportTable")
 	assert.NotContains(t, body, "filterExportTable")
 
+	// Per-column filters: hidden filter row (one input per column) toggled by
+	// a dedicated button; sorting stays on the title row (orderCellsTop).
+	// The toggle button sits at the top left of the table (before the table
+	// markup), and each input's placeholder is the column name.
+	assert.Contains(t, body, `id="toggleColumnFilters"`)
+	assert.Contains(t, body, `tr class="column-filters" style="display:none"`)
+	// Each filter input's placeholder is the column name (rendered), not the
+	// generic word "Filter".
+	assert.Contains(t, body, `class="form-control form-control-sm column-filter" placeholder="Espèce"`)
+	assert.NotContains(t, body, `placeholder="Filter"`)
+	assert.Contains(t, body, "orderCellsTop: true")
+	assert.Contains(t, body, `.search(this.value).draw()`)
+	btnIdx := strings.Index(body, `id="toggleColumnFilters"`)
+	tableIdx := strings.Index(body, `id="exportTable"`)
+	assert.True(t, btnIdx > 0 && btnIdx < tableIdx, "filter toggle must render before the table")
+
+	// Bug 10: the back-to-list link sits next to the export title (inside the
+	// <h1>), not in the right-hand toolbar.
+	assert.Contains(t, body, `<h1><a href="/export/reports?instance_id=`)
+	assert.NotContains(t, body, `All reports</a>`, "toolbar must not keep the old back button")
+
 	// Scoped to center-b: 2 animals.
 	rec = getExport(t, app, "/export/reports/view?query=register&instance_id=center-b")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
