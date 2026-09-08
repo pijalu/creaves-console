@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -137,10 +136,11 @@ func workbookSheetPath(t *testing.T, parts map[string][]byte, sheetName string) 
 	return "xl/" + target
 }
 
-// assertPivotCache verifies the Bug 5 fixups on a generated workbook: the
-// pivot cache points at the real written range, recordCount matches the data
-// rows, refreshOnLoad is set, cached records are emptied and the data sheet
-// holds exactly header+recordCount rows.
+// assertPivotCache verifies the pivot-cache invariants on a generated
+// workbook: the cache source points at the real written range,
+// refreshOnLoad is set, the template cache stays internally consistent
+// (recordCount == cached records count), and the data sheet holds exactly
+// the written rows.
 func assertPivotCache(t *testing.T, parts map[string][]byte, sheet, lastCol string, dataRows int) {
 	t.Helper()
 
@@ -156,18 +156,17 @@ func assertPivotCache(t *testing.T, parts map[string][]byte, sheet, lastCol stri
 	require.NotNil(t, sm, "worksheetSource sheet missing")
 	assert.Equal(t, sheet, string(sm[1]))
 
-	cm := recordCountRe.FindSubmatch(def)
-	require.NotNil(t, cm, "recordCount missing")
-	assert.Equal(t, strconv.Itoa(dataRows), string(cm[1]))
-
 	assert.True(t, refreshOnLoad.Match(def), "refreshOnLoad=1 missing")
 
-	// Cached records must be emptied so Excel rebuilds from the source range.
+	// Template cache kept verbatim: recordCount must equal the records part
+	// count (Excel rejects the file otherwise) — refreshOnLoad rebuilds.
+	cm := recordCountRe.FindSubmatch(def)
+	require.NotNil(t, cm, "recordCount missing")
 	rec, ok := parts["xl/pivotCache/pivotCacheRecords1.xml"]
 	require.True(t, ok, "pivotCacheRecords1.xml missing")
 	rm := recordsCountRe.FindSubmatch(rec)
 	require.NotNil(t, rm, "pivotCacheRecords count missing")
-	assert.Equal(t, "0", string(rm[1]))
+	assert.Equal(t, string(cm[1]), string(rm[1]), "recordCount must match cached records count")
 
 	// The data sheet must hold exactly the written rows (no leftover
 	// template rows) and the dimension must cover exactly the written range.
