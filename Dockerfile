@@ -1,7 +1,7 @@
 # Multi-stage build (mirrors creaves/Dockerfile, minus the npm/yarn asset
 # pipeline — creaves-console has no webpack assets, templates and public
 # files are embedded via go:embed).
-FROM golang:1.21 AS builder
+FROM golang AS builder
 
 ENV GOPROXY http://proxy.golang.org
 RUN go install github.com/gobuffalo/cli/cmd/buffalo@latest
