@@ -135,6 +135,14 @@ func TestExportReports_RegisterView_GlobalAndScoped(t *testing.T) {
 	// Dates must be rendered dd/mm/yyyy by the sqlite strftime path.
 	assert.Contains(t, body, "10/01/2024")
 
+	// bugs.md datatable item: sort/filter/pagination delegated to DataTables;
+	// the hand-rolled sort/filter JS must be gone.
+	assert.Contains(t, body, `id="exportTable"`)
+	assert.Contains(t, body, `$('#exportTable').DataTable({`)
+	assert.Contains(t, body, "deferRender: true")
+	assert.NotContains(t, body, "sortExportTable")
+	assert.NotContains(t, body, "filterExportTable")
+
 	// Scoped to center-b: 2 animals.
 	rec = getExport(t, app, "/export/reports/view?query=register&instance_id=center-b")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())

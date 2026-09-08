@@ -23,19 +23,13 @@
     </div>
 </div>
 
-<div class="row mb-2">
-    <div class="col-md-4">
-        <input type="text" id="exportFilter" class="form-control" placeholder="Rijen filteren…" onkeyup="filterExportTable()">
-    </div>
-</div>
-
 <div class="row">
     <div class="col-md-12 table-responsive">
-        <table class="table table-striped table-hover table-sm" id="exportTable">
+        <table class="table table-striped table-hover table-sm" id="exportTable" style="width:100%">
             <thead class="thead-dark">
                 <tr>
-                    <%= for (idx, col) in cols { %>
-                        <th><a href="javascript:void(0)" class="text-light" onclick="sortExportTable(<%= idx %>)"><%= col %> <i class="fas fa-sort"></i></a></th>
+                    <%= for (col) in cols { %>
+                        <th><%= col %></th>
                     <% } %>
                 </tr>
             </thead>
@@ -53,26 +47,45 @@
 </div>
 
 <script>
-function filterExportTable() {
-    var filter = document.getElementById("exportFilter").value.toLowerCase();
-    var rows = document.querySelectorAll("#exportTable tbody tr");
-    rows.forEach(function(r) {
-        r.style.display = r.textContent.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+// bugs.md datatable item: DataTables (CDN assets loaded at end of body in the
+// layout) replaces the hand-rolled sort/filter JS. This template renders
+// before the layout's jQuery <script> tag, so init waits for DOMContentLoaded.
+// deferRender renders only the visible page: sort/filter operate on the data
+// cache, not a 10k-row DOM.
+document.addEventListener('DOMContentLoaded', function () {
+    // French decimal-comma numbers ("1,5") sort numerically.
+    DataTable.type('num-comma', {
+        detect: function (d) {
+            return /^-?\d+([.,]\d+)?$/.test((d || '').trim()) ? 'num-comma' : null;
+        },
+        order: {
+            pre: function (d) {
+                return parseFloat((d || '').trim().replace(',', '.')) || 0;
+            }
+        },
+        className: 'dt-body-right'
     });
-}
-function sortExportTable(col) {
-    var table = document.getElementById("exportTable");
-    var tbody = table.tBodies[0];
-    var rows = Array.from(tbody.rows);
-    var asc = table.getAttribute("data-sort-col") != String(col) || table.getAttribute("data-sort-dir") == "desc";
-    rows.sort(function(a, b) {
-        var x = a.cells[col].textContent.trim(), y = b.cells[col].textContent.trim();
-        var nx = parseFloat(x.replace(",", ".")), ny = parseFloat(y.replace(",", "."));
-        var cmp = (!isNaN(nx) && !isNaN(ny) && x !== "" && y !== "") ? nx - ny : x.localeCompare(y, undefined, {numeric: true});
-        return asc ? cmp : -cmp;
+    $('#exportTable').DataTable({
+        deferRender: true,
+        pageLength: 50,
+        lengthMenu: [25, 50, 100, 250, 500],
+        language: {
+                "search": "Zoeken:",
+                "lengthMenu": "_MENU_ resultaten weergeven",
+                "info": "_START_ tot _END_ van _TOTAL_ resultaten",
+                "infoEmpty": "Geen resultaten om weer te geven",
+                "infoFiltered": " (gefilterd uit _MAX_ resultaten)",
+                "zeroRecords": "Geen resultaten gevonden",
+                "emptyTable": "Geen resultaten aanwezig in de tabel",
+                "loadingRecords": "Een moment geduld aub - bezig met laden...",
+                "processing": "Verwerken...",
+                "paginate": {
+                        "first": "Eerste",
+                        "last": "Laatste",
+                        "next": "Volgende",
+                        "previous": "Vorige"
+                }
+        }
     });
-    rows.forEach(function(r) { tbody.appendChild(r); });
-    table.setAttribute("data-sort-col", String(col));
-    table.setAttribute("data-sort-dir", asc ? "asc" : "desc");
-}
+});
 </script>
