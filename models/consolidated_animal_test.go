@@ -366,6 +366,81 @@ func TestApplyEvent_AnimalStateStoresTranslationsAndHash(t *testing.T) {
 	}
 }
 
+func TestConsolidatedAnimalUpdateFromPayloadLocalityFields(t *testing.T) {
+	c := newConsolidatedAnimal()
+	payload := EventPayload{
+		Discovery: DiscoveryPayload{
+			City:                 "Bruxelles",
+			LocalityCommune:      "Bruxelles",
+			LocalityProvince:     "Bruxelles-Capitale",
+			LocalityRegion:       "Région de Bruxelles-Capitale",
+			LocalityCountry:      "Belgique",
+			LocalityCantonnement: "Bruxelles",
+			LocalityDirection:    "Bruxelles",
+		},
+	}
+
+	c.UpdateFromPayload(payload, EventTypeAnimalDiscovered, time.Now())
+
+	checks := []struct {
+		name string
+		got  nulls.String
+		want string
+	}{
+		{"DiscoveryCommune", c.DiscoveryCommune, "Bruxelles"},
+		{"DiscoveryProvince", c.DiscoveryProvince, "Bruxelles-Capitale"},
+		{"DiscoveryRegion", c.DiscoveryRegion, "Région de Bruxelles-Capitale"},
+		{"DiscoveryCountry", c.DiscoveryCountry, "Belgique"},
+		{"DiscoveryCantonnement", c.DiscoveryCantonnement, "Bruxelles"},
+		{"DiscoveryDirection", c.DiscoveryDirection, "Bruxelles"},
+	}
+	for _, ch := range checks {
+		if !ch.got.Valid || ch.got.String != ch.want {
+			t.Errorf("expected %s %q, got %+v", ch.name, ch.want, ch.got)
+		}
+	}
+}
+
+func TestConsolidatedAnimalUpdateFromPayloadLocalityEmptyStaysNull(t *testing.T) {
+	c := newConsolidatedAnimal()
+	// No locality resolution on producer side (unknown city) → all empty.
+	payload := EventPayload{Discovery: DiscoveryPayload{City: "Nowhere"}}
+
+	c.UpdateFromPayload(payload, EventTypeAnimalDiscovered, time.Now())
+
+	if c.DiscoveryCommune.Valid || c.DiscoveryProvince.Valid || c.DiscoveryRegion.Valid ||
+		c.DiscoveryCountry.Valid || c.DiscoveryCantonnement.Valid || c.DiscoveryDirection.Valid {
+		t.Errorf("expected all locality fields NULL, got %+v / %+v / %+v / %+v / %+v / %+v",
+			c.DiscoveryCommune, c.DiscoveryProvince, c.DiscoveryRegion,
+			c.DiscoveryCountry, c.DiscoveryCantonnement, c.DiscoveryDirection)
+	}
+}
+
+func TestApplyStateClearsLocalityFields(t *testing.T) {
+	c := newConsolidatedAnimal()
+	c.DiscoveryCommune = nulls.NewString("Bruxelles")
+	c.DiscoveryProvince = nulls.NewString("Bruxelles-Capitale")
+	c.DiscoveryRegion = nulls.NewString("Région de Bruxelles-Capitale")
+	c.DiscoveryCountry = nulls.NewString("Belgique")
+	c.DiscoveryCantonnement = nulls.NewString("Bruxelles")
+	c.DiscoveryDirection = nulls.NewString("Bruxelles")
+
+	// An animal_state event without locality fields resets them.
+	err := c.ApplyEvent(EventStream{
+		EventType: EventTypeAnimalState,
+		Payload:   json.RawMessage(`{"animal":{"species":"Fox"}}`),
+		CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("ApplyEvent failed: %v", err)
+	}
+
+	if c.DiscoveryCommune.Valid || c.DiscoveryProvince.Valid || c.DiscoveryRegion.Valid ||
+		c.DiscoveryCountry.Valid || c.DiscoveryCantonnement.Valid || c.DiscoveryDirection.Valid {
+		t.Error("expected locality fields cleared by applyState reset")
+	}
+}
+
 func TestConsolidatedAnimalLocalizedField(t *testing.T) {
 	c := ConsolidatedAnimal{Species: nulls.NewString("Hérisson"), Translations: nulls.NewString(`{"en-US":{"species":"Hedgehog"},"de":{"species":"Igel"}}`)}
 	if got := c.LocalizedField("en-US", "species"); got != "Hedgehog" {

@@ -1,0 +1,6 @@
+drop_column("consolidated_animals", "discovery_commune")
+drop_column("consolidated_animals", "discovery_province")
+drop_column("consolidated_animals", "discovery_region")
+drop_column("consolidated_animals", "discovery_country")
+drop_column("consolidated_animals", "discovery_cantonnement")
+drop_column("consolidated_animals", "discovery_direction")

@@ -69,12 +69,12 @@ queries:
             a.discovery_location AS "lieux de découverte",
             a.discovery_city AS "localté",
             a.discovery_postal_code AS "Code postal",
-            "" AS "Commune",
-            "" AS "Province",
-            "" AS "Région",
-            "" AS "Pays",
-            "" AS "Cantonnement",
-            "" AS "Direction"
+            IFNULL(a.discovery_commune, "") AS "Commune",
+            IFNULL(a.discovery_province, "") AS "Province",
+            IFNULL(a.discovery_region, "") AS "Région",
+            IFNULL(a.discovery_country, "") AS "Pays",
+            IFNULL(a.discovery_cantonnement, "") AS "Cantonnement",
+            IFNULL(a.discovery_direction, "") AS "Direction"
             FROM consolidated_animals AS a
             {scopeWhere}
             ORDER BY a.year ASC, a.year_number ASC

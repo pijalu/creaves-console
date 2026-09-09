@@ -80,6 +80,12 @@ CREATE TABLE `consolidated_animals` (
   `discoverer_note` text COLLATE utf8mb4_general_ci,
   `discoverer_donation` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `outtake_error` tinyint(1) DEFAULT NULL,
+  `discovery_commune` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discovery_province` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discovery_region` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discovery_country` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discovery_cantonnement` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `discovery_direction` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `consolidated_animals_instance_id_animal_id_idx` (`instance_id`,`animal_id`),
   KEY `consolidated_animals_instance_id_idx` (`instance_id`),
@@ -257,4 +263,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-08 21:18:27
+-- Dump completed on 2026-09-09  9:30:08

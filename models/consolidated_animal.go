@@ -40,6 +40,15 @@ type ConsolidatedAnimal struct {
 	DiscoveryDate       nulls.Time   `json:"discovery_date" db:"discovery_date"`
 	DiscoveryCity       nulls.String `json:"discovery_city" db:"discovery_city"`
 	DiscoveryPostalCode nulls.String `json:"discovery_postal_code" db:"discovery_postal_code"`
+	// Locality hierarchy resolved by the producing instance (localities
+	// reference table, stat_communes export) — the console has no locality
+	// reference data of its own.
+	DiscoveryCommune      nulls.String `json:"discovery_commune" db:"discovery_commune"`
+	DiscoveryProvince     nulls.String `json:"discovery_province" db:"discovery_province"`
+	DiscoveryRegion       nulls.String `json:"discovery_region" db:"discovery_region"`
+	DiscoveryCountry      nulls.String `json:"discovery_country" db:"discovery_country"`
+	DiscoveryCantonnement nulls.String `json:"discovery_cantonnement" db:"discovery_cantonnement"`
+	DiscoveryDirection    nulls.String `json:"discovery_direction" db:"discovery_direction"`
 	EntryCause          nulls.String `json:"entry_cause" db:"entry_cause"`
 	EntryCauseDetail    nulls.String `json:"entry_cause_detail" db:"entry_cause_detail"`
 	EntryCauseNature    nulls.String `json:"entry_cause_nature" db:"entry_cause_nature"`
@@ -186,6 +195,8 @@ func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Tim
 	c.SpeciesClass, c.SpeciesAGWGroup, c.SpeciesSubsideGroup, c.SpeciesNativeStatus = nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.AnimalType, c.AnimalAge = nulls.String{}, nulls.String{}
 	c.DiscoveryLocation, c.DiscoveryDate, c.DiscoveryCity, c.DiscoveryPostalCode = nulls.String{}, nulls.Time{}, nulls.String{}, nulls.String{}
+	c.DiscoveryCommune, c.DiscoveryProvince, c.DiscoveryRegion = nulls.String{}, nulls.String{}, nulls.String{}
+	c.DiscoveryCountry, c.DiscoveryCantonnement, c.DiscoveryDirection = nulls.String{}, nulls.String{}, nulls.String{}
 	c.EntryCause, c.EntryCauseDetail, c.EntryCauseNature = nulls.String{}, nulls.String{}, nulls.String{}
 	c.IntakeDate, c.IntakeGeneral, c.IntakeWounds, c.IntakeParasites, c.IntakeRemarks = nulls.Time{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.OuttakeDate, c.OuttakeType, c.OuttakeLocation = nulls.Time{}, nulls.String{}, nulls.String{}
@@ -307,6 +318,24 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Discovery.PostalCode != "" {
 		c.DiscoveryPostalCode = nulls.NewString(payload.Discovery.PostalCode)
+	}
+	if payload.Discovery.LocalityCommune != "" {
+		c.DiscoveryCommune = nulls.NewString(payload.Discovery.LocalityCommune)
+	}
+	if payload.Discovery.LocalityProvince != "" {
+		c.DiscoveryProvince = nulls.NewString(payload.Discovery.LocalityProvince)
+	}
+	if payload.Discovery.LocalityRegion != "" {
+		c.DiscoveryRegion = nulls.NewString(payload.Discovery.LocalityRegion)
+	}
+	if payload.Discovery.LocalityCountry != "" {
+		c.DiscoveryCountry = nulls.NewString(payload.Discovery.LocalityCountry)
+	}
+	if payload.Discovery.LocalityCantonnement != "" {
+		c.DiscoveryCantonnement = nulls.NewString(payload.Discovery.LocalityCantonnement)
+	}
+	if payload.Discovery.LocalityDirection != "" {
+		c.DiscoveryDirection = nulls.NewString(payload.Discovery.LocalityDirection)
 	}
 	if payload.Discovery.EntryCause != "" {
 		c.EntryCause = nulls.NewString(payload.Discovery.EntryCause)

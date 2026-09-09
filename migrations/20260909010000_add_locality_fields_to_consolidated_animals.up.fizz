@@ -1,0 +1,6 @@
+add_column("consolidated_animals", "discovery_commune", "string", {null: true})
+add_column("consolidated_animals", "discovery_province", "string", {null: true})
+add_column("consolidated_animals", "discovery_region", "string", {null: true})
+add_column("consolidated_animals", "discovery_country", "string", {null: true})
+add_column("consolidated_animals", "discovery_cantonnement", "string", {null: true})
+add_column("consolidated_animals", "discovery_direction", "string", {null: true})

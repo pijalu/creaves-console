@@ -290,6 +290,9 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
     "entry_cause": "...", "entry_cause_detail": "...",
     "entry_cause_nature": "...", "reason": "...", "note": "...",
     "return_habitat": false, "in_garden": true,
+    "locality_commune": "...", "locality_province": "...",
+    "locality_region": "...", "locality_country": "...",
+    "locality_cantonnement": "...", "locality_direction": "...",
     "discoverer_firstname": "...", "discoverer_lastname": "...",
     "discoverer_address": "...", "discoverer_city": "...",
     "discoverer_postal_code": "...", "discoverer_country": "...",
@@ -391,6 +394,7 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `species_game`, `species_huntable` | bool NULL | Species flags (bugs.md item 3) |
 | `animal_type`, `animal_age` | varchar NULL | |
 | `discovery_location`, `discovery_date`, `discovery_city`, `discovery_postal_code` | | |
+| `discovery_commune`, `discovery_province`, `discovery_region`, `discovery_country`, `discovery_cantonnement`, `discovery_direction` | varchar NULL | Locality hierarchy resolved by the producing instance (stat_communes export, bugs.md Bug 9) |
 | `entry_cause` | varchar NULL | |
 | `entry_cause_detail`, `entry_cause_nature` | varchar NULL | |
 | `entry_cause_id` | int NULL | Source entry-cause reference id (bugs.md item 3) |
