@@ -5,8 +5,26 @@
     </div>
 </div>
 
+<style>
+/* Table-tools bar: sits directly above the table, aligned right,
+   wraps to the next line instead of overflowing on narrow screens. */
+.export-view-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-bottom: .5rem;
+}
+.export-view-toolbar input[type="search"] {
+    width: 12rem;
+    max-width: 100%;
+    border-radius: 2rem;
+}
+</style>
+
 <div class="row mt-2 mb-3">
-    <div class="col-md-8">
+    <div class="col-md-12">
         <form method="get" action="/export/reports/view" class="form-inline">
             <input type="hidden" name="query" value="<%= query.Name %>">
             <label for="instance_id" class="mr-2">Center:</label>
@@ -17,15 +35,12 @@
             </select>
         </form>
     </div>
-    <div class="col-md-4 text-right">
-        <a class="btn btn-success" href="/export/reports/export.csv?query=<%= query.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-download"></i> Download CSV</a>
-    </div>
 </div>
 
-<div class="row">
-    <div class="col-md-12 mb-1">
-        <button type="button" id="toggleColumnFilters" class="btn btn-outline-secondary btn-sm" aria-pressed="false"><i class="fas fa-filter"></i> Filters</button>
-    </div>
+<div class="export-view-toolbar" role="toolbar" aria-label="Table tools">
+    <button type="button" id="toggleColumnFilters" class="btn btn-outline-secondary btn-sm" aria-pressed="false" title="Show/hide per-column filters" data-toggle="tooltip" data-placement="bottom"><i class="fas fa-filter"></i></button>
+    <input type="search" id="exportGlobalSearch" class="form-control form-control-sm" placeholder="Search…" aria-label="Search all columns" title="Search all columns" data-toggle="tooltip" data-placement="bottom">
+    <a class="btn btn-outline-secondary btn-sm" href="/export/reports/export.csv?query=<%= query.Name %>&amp;instance_id=<%= instanceID %>" title="Download CSV" data-toggle="tooltip" data-placement="bottom"><i class="fas fa-download"></i></a>
 </div>
 
 <div class="row">
@@ -80,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Keep sorting on the title row: the second header row holds the
         // per-column filter inputs.
         orderCellsTop: true,
+        // Global search lives in the floating toolbar (#exportGlobalSearch):
+        // hide the built-in DataTables filter box (no "f" in dom).
+        dom: 'lrtip',
         pageLength: 50,
         lengthMenu: [25, 50, 100, 250, 500]
     });
@@ -88,6 +106,12 @@ document.addEventListener('DOMContentLoaded', function () {
     $('#exportTable thead tr.column-filters input.column-filter').on('keyup change', function () {
         table.column($(this).closest('th').index()).search(this.value).draw();
     });
+    // Floating toolbar: global search across all columns.
+    $('#exportGlobalSearch').on('keyup change', function () {
+        table.search(this.value).draw();
+    });
+    // Icon-only buttons get Bootstrap tooltips.
+    $('.export-view-toolbar [data-toggle="tooltip"]').tooltip();
     $('#toggleColumnFilters').on('click', function () {
         var row = $('#exportTable thead tr.column-filters');
         var show = !row.is(':visible');
