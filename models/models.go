@@ -54,9 +54,10 @@ func envInt(key string, def int) int {
 }
 
 // configureConnectionPool applies explicit pool sizing (env-overridable).
-// Without it, database/sql defaults apply (MaxIdleConns=2, unlimited open),
-// which under bursty multi-user load causes constant connection churn —
-// this deployment has a history of MySQL Error 1040 / wedged pools.
+// Without it, the production DATABASE_URL path gets database/sql defaults
+// (MaxIdleConns=2, unlimited open) because pop cannot carry pool settings in
+// a URL — dev database.yml already sets pool/idlepool, this guarantees the
+// same bounds everywhere. Defaults mirror database.yml: 25 / 5 / 10m / 1m.
 func configureConnectionPool(conn *pop.Connection) {
 	if conn == nil {
 		return
@@ -66,8 +67,8 @@ func configureConnectionPool(conn *pop.Connection) {
 		return
 	}
 	maxOpen := envInt("DB_MAX_OPEN_CONNS", 25)
-	maxIdle := envInt("DB_MAX_IDLE_CONNS", 10)
-	lifetime := time.Duration(envInt("DB_CONN_MAX_LIFETIME_SECONDS", 300)) * time.Second
+	maxIdle := envInt("DB_MAX_IDLE_CONNS", 5)
+	lifetime := time.Duration(envInt("DB_CONN_MAX_LIFETIME_SECONDS", 600)) * time.Second
 	idleTime := time.Duration(envInt("DB_CONN_MAX_IDLE_TIME_SECONDS", 60)) * time.Second
 
 	if maxOpen > 0 {
