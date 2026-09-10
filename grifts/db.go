@@ -49,6 +49,9 @@ func cleanupDatabase() error {
 	})
 }
 
+// createAdminUser is the sole production db:seed operation in Console. It
+// performs one indexed existence check for the unique admin login and returns;
+// Console has no reference-table or translation seed to repeat on startup.
 func createAdminUser(c *grift.Context) error {
 	return models.DB.Transaction(func(tx *pop.Connection) error {
 		// Check if admin already exists
