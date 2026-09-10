@@ -1,0 +1,4 @@
+add_index("consolidated_animals", ["entry_cause"], {})
+add_index("consolidated_animals", ["animal_age"], {})
+add_index("consolidated_animals", ["outtake_type"], {})
+add_index("event_streams", ["imported_at"], {})

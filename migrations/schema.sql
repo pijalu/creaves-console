@@ -93,7 +93,10 @@ CREATE TABLE `consolidated_animals` (
   KEY `consolidated_animals_species_idx` (`species`),
   KEY `consolidated_animals_discovery_city_idx` (`discovery_city`),
   KEY `consolidated_animals_animal_type_idx` (`animal_type`),
-  KEY `consolidated_animals_year_instance_id_idx` (`year`,`instance_id`)
+  KEY `consolidated_animals_year_instance_id_idx` (`year`,`instance_id`),
+  KEY `consolidated_animals_entry_cause_idx` (`entry_cause`),
+  KEY `consolidated_animals_animal_age_idx` (`animal_age`),
+  KEY `consolidated_animals_outtake_type_idx` (`outtake_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -165,7 +168,8 @@ CREATE TABLE `event_streams` (
   PRIMARY KEY (`id`),
   KEY `event_streams_instance_id_animal_id_created_at_idx` (`instance_id`,`animal_id`,`created_at`),
   KEY `event_streams_processed_at_idx` (`processed_at`),
-  KEY `event_streams_source_db_idx` (`source_db`)
+  KEY `event_streams_source_db_idx` (`source_db`),
+  KEY `event_streams_imported_at_idx` (`imported_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -263,4 +267,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-09  9:45:24
+-- Dump completed on 2026-09-10 13:29:49
