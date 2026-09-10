@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"database/sql"
 	"creaves-console/models"
 	"strings"
 	"time"
@@ -20,29 +21,54 @@ func NewEventProcessor(tx *pop.Connection) *EventProcessor {
 	return &EventProcessor{tx: tx}
 }
 
-// ProcessUnprocessedEvents processes all unprocessed events in order
+// ProcessUnprocessedEvents processes all unprocessed events in order.
+// Chunked keyset replay: fetches replayBatchSize events per round instead of
+// the whole backlog in one query (payload rows are large; a full resync
+// backlog must not be materialized in memory). The cursor advances past
+// every fetched row — poison events stay unprocessed but are stepped over,
+// so they cannot loop the scan forever.
 func (ep *EventProcessor) ProcessUnprocessedEvents() (int, error) {
-	events := &models.EventStreams{}
-
-	if err := ep.tx.Where("processed_at IS NULL").Order("created_at asc").All(events); err != nil {
-		return 0, errors.WithStack(err)
-	}
+	const replayBatchSize = 500
 
 	processedCount := 0
 	var skipped []string
 	var firstErr error
-	for _, event := range *events {
-		if err := ep.processEvent(&event); err != nil {
-			// Poison event: do not abort — a single malformed event must not
-			// block the replay of newer events (it stays unprocessed and is
-			// reported in the returned error).
-			skipped = append(skipped, event.ID.String())
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
+
+	cursorTime := time.Time{}
+	cursorID := uuid.Nil
+
+	for {
+		events := &models.EventStreams{}
+		q := ep.tx.Where("processed_at IS NULL")
+		if !cursorTime.IsZero() {
+			q = q.Where("(created_at > ? OR (created_at = ? AND id > ?))", cursorTime, cursorTime, cursorID)
 		}
-		processedCount++
+		if err := q.Order("created_at asc, id asc").Limit(replayBatchSize).All(events); err != nil {
+			return processedCount, errors.WithStack(err)
+		}
+		if len(*events) == 0 {
+			break
+		}
+
+		for _, event := range *events {
+			cursorTime = event.CreatedAt
+			cursorID = event.ID
+			if err := ep.processEvent(&event); err != nil {
+				// Poison event: do not abort — a single malformed event must not
+				// block the replay of newer events (it stays unprocessed and is
+				// reported in the returned error).
+				skipped = append(skipped, event.ID.String())
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			processedCount++
+		}
+
+		if len(*events) < replayBatchSize {
+			break
+		}
 	}
 
 	if firstErr != nil {
@@ -99,7 +125,7 @@ func (ep *EventProcessor) ProcessEventsBatch(limit int) (int, bool, error) {
 }
 
 func (ep *EventProcessor) processEvent(event *models.EventStream) error {
-	consolidated, err := ep.findOrCreateConsolidatedAnimal(event.InstanceID, event.AnimalID)
+	consolidated, isNew, err := ep.findOrCreateConsolidatedAnimal(event.InstanceID, event.AnimalID)
 	if err != nil {
 		return err
 	}
@@ -117,7 +143,7 @@ func (ep *EventProcessor) processEvent(event *models.EventStream) error {
 		}
 	}
 
-	if err := ep.saveConsolidatedAnimal(consolidated); err != nil {
+	if err := ep.saveConsolidatedAnimal(consolidated, isNew); err != nil {
 		return err
 	}
 	// Change-driven cache invalidation: report the reference values this
@@ -134,19 +160,19 @@ func (ep *EventProcessor) processEvent(event *models.EventStream) error {
 	return nil
 }
 
-func (ep *EventProcessor) findOrCreateConsolidatedAnimal(instanceID string, animalID int) (*models.ConsolidatedAnimal, error) {
+// findOrCreateConsolidatedAnimal loads the consolidated row for a source
+// animal in a single query; no row means the caller must create a fresh one
+// (flagged via isNew so saveConsolidatedAnimal needs no extra existence
+// round trip).
+func (ep *EventProcessor) findOrCreateConsolidatedAnimal(instanceID string, animalID int) (*models.ConsolidatedAnimal, bool, error) {
 	consolidated := &models.ConsolidatedAnimal{}
 
-	exists, err := ep.tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).Exists(consolidated)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	err := ep.tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).First(consolidated)
+	if err == nil {
+		return consolidated, false, nil
 	}
-
-	if exists {
-		if err := ep.tx.Where("instance_id = ? AND animal_id = ?", instanceID, animalID).First(consolidated); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return consolidated, nil
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, false, errors.WithStack(err)
 	}
 
 	consolidated = &models.ConsolidatedAnimal{
@@ -158,20 +184,14 @@ func (ep *EventProcessor) findOrCreateConsolidatedAnimal(instanceID string, anim
 		EventCount:    0,
 	}
 
-	return consolidated, nil
+	return consolidated, true, nil
 }
 
-func (ep *EventProcessor) saveConsolidatedAnimal(consolidated *models.ConsolidatedAnimal) error {
-	exists, err := ep.tx.Where("id = ?", consolidated.ID).Exists(consolidated)
-	if err != nil {
-		return errors.WithStack(err)
+func (ep *EventProcessor) saveConsolidatedAnimal(consolidated *models.ConsolidatedAnimal, isNew bool) error {
+	if isNew {
+		return ep.tx.Create(consolidated)
 	}
-
-	if exists {
-		return ep.tx.Update(consolidated)
-	}
-
-	return ep.tx.Create(consolidated)
+	return ep.tx.Update(consolidated)
 }
 
 // GetConsolidatedStats returns statistics
