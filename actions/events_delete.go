@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"creaves-console/models"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
+	"github.com/gofrs/uuid"
 )
 
 // EventsDeleteNew renders the confirmation form for deleting received events
@@ -99,64 +101,105 @@ func EventsDeleteCreate(c buffalo.Context) error {
 // event_stream_archives table (JSONL content) and then deletes exactly those
 // rows — both inside one database transaction. A failure to archive rolls
 // the deletion back and vice versa.
+//
+// Chunked keyset streaming: events are fetched in batches ordered by
+// (imported_at, id), each batch is appended to the JSONL archive buffer and
+// deleted immediately, so neither the event rows nor their payloads are ever
+// fully materialized in memory (a full console wipe can involve 100k+ rows).
 func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (deleted int, archiveID string, err error) {
-	events := &models.EventStreams{}
+	const batchSize = 500
+
+	// Cheap pre-check so an empty scope returns (0, "", nil) with no archive
+	// row at all (preserved original behaviour).
+	pre := tx.Q()
 	if scope == "instance" {
-		err = tx.Where("instance_id = ?", instanceID).Order("imported_at asc").All(events)
-	} else {
-		err = tx.Order("imported_at asc").All(events)
+		pre = pre.Where("instance_id = ?", instanceID)
 	}
+	empty, err := pre.Exists(&models.EventStream{})
 	if err != nil {
 		return 0, "", err
 	}
-
-	if len(*events) == 0 {
+	if !empty {
 		return 0, "", nil
 	}
 
-	content, err := marshalEventsJSONL(*events)
-	if err != nil {
-		return 0, "", err
-	}
+	content := &bytes.Buffer{}
+	archive := &models.EventStreamArchive{Scope: scope, InstanceID: instanceID}
 
-	// Archive and delete atomically, in one transaction.
+	var cursorTime time.Time
+	var cursorID uuid.UUID
+	haveCursor := false
+
 	err = tx.Transaction(func(t *pop.Connection) error {
-		archive := &models.EventStreamArchive{
-			Scope:      scope,
-			InstanceID: instanceID,
-			EventCount: len(*events),
-			Content:    content,
-		}
 		if err := t.Create(archive); err != nil {
 			return fmt.Errorf("could not store event archive: %w", err)
 		}
 		archiveID = archive.ID.String()
 
-		ids := make([]string, 0, len(*events))
-		for _, e := range *events {
-			ids = append(ids, e.ID.String())
+		for {
+			events := &models.EventStreams{}
+			q := t.Q()
+			if scope == "instance" {
+				q = q.Where("instance_id = ?", instanceID)
+			}
+			if haveCursor {
+				q = q.Where("(imported_at > ? OR (imported_at = ? AND id > ?))", cursorTime, cursorTime, cursorID)
+			}
+			if err := q.Order("imported_at asc, id asc").Limit(batchSize).All(events); err != nil {
+				return err
+			}
+			if len(*events) == 0 {
+				break
+			}
+
+			if err := appendEventsJSONL(content, *events); err != nil {
+				return err
+			}
+
+			ids := make([]string, 0, len(*events))
+			for _, e := range *events {
+				ids = append(ids, e.ID.String())
+			}
+			last := &(*events)[len(*events)-1]
+			cursorTime = last.ImportedAt
+			cursorID = last.ID
+			haveCursor = true
+
+			if err := t.RawQuery("DELETE FROM event_streams WHERE id IN (?)", ids).Exec(); err != nil {
+				return err
+			}
+			deleted += len(*events)
+
+			if len(*events) < batchSize {
+				break
+			}
 		}
-		return t.RawQuery("DELETE FROM event_streams WHERE id IN (?)", ids).Exec()
+
+		archive.EventCount = deleted
+		archive.Content = content.String()
+		if err := t.Update(archive); err != nil {
+			return fmt.Errorf("could not store event archive content: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
 		return 0, "", err
 	}
-	return len(*events), archiveID, nil
+	return deleted, archiveID, nil
 }
 
-// marshalEventsJSONL serializes events to the same JSONL payload the old file
-// archive contained: one full event JSON per line.
-func marshalEventsJSONL(events models.EventStreams) (string, error) {
-	var buf bytes.Buffer
+// appendEventsJSONL appends the given events to buf as JSONL: one full event
+// JSON per line.
+func appendEventsJSONL(buf *bytes.Buffer, events models.EventStreams) error {
 	for _, e := range events {
 		line, err := json.Marshal(e)
 		if err != nil {
-			return "", fmt.Errorf("could not serialize event %s: %w", e.ID, err)
+			return fmt.Errorf("could not serialize event %s: %w", e.ID, err)
 		}
 		buf.Write(line)
 		buf.WriteByte('\n')
 	}
-	return buf.String(), nil
+	return nil
 }
 
 // EventsArchivesIndex lists the event deletion archives stored in the
