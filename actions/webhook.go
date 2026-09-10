@@ -3,6 +3,7 @@ package actions
 import (
 	"bytes"
 	"creaves-console/models"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -190,14 +191,17 @@ func (w *webhookIngest) event(webhookEvent *WebhookEvent) {
 		return
 	}
 
-	// Check if event already exists (idempotent)
-	exists, err := w.tx.Where("id = ?", eventID).Exists(&models.EventStream{})
-	if err != nil {
-		w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to check event %s: %v", webhookEvent.ID, err))
+	// Load the event row directly: idempotency check + fetch in one query
+	// (the previous Exists+Find pair issued the same SELECT twice). No row
+	// means this is a fresh event.
+	existing := &models.EventStream{}
+	err = w.tx.Find(existing, eventID)
+	if err == nil {
+		w.existing(existing, webhookEvent)
 		return
 	}
-	if exists {
-		w.existing(eventID, webhookEvent)
+	if !errors.Is(err, sql.ErrNoRows) {
+		w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to check event %s: %v", webhookEvent.ID, err))
 		return
 	}
 	w.fresh(eventID, eventInstanceID, webhookEvent)
@@ -205,15 +209,10 @@ func (w *webhookIngest) event(webhookEvent *WebhookEvent) {
 
 // existing re-ingests a redelivered event: self-healing reprocess, legacy
 // payload refresh and acknowledgement.
-func (w *webhookIngest) existing(eventID uuid.UUID, webhookEvent *WebhookEvent) {
+func (w *webhookIngest) existing(existing *models.EventStream, webhookEvent *WebhookEvent) {
 	// The event was already received. If it was not processed yet
 	// (e.g. a previous delivery created the row but processing
 	// failed), process it now so a redelivery is self-healing.
-	existing := &models.EventStream{}
-	if err := w.tx.Find(existing, eventID); err != nil {
-		w.eventErrors = append(w.eventErrors, fmt.Sprintf("failed to load existing event %s: %v", webhookEvent.ID, err))
-		return
-	}
 	needsProcessing := existing.ProcessedAt == nil
 	// A resync redelivery backfills the resync run id onto events that
 	// were originally delivered live, so the Source column of the
@@ -406,21 +405,35 @@ func storeAnnouncedSyncFromEnvelope(tx *pop.Connection, key *models.WebhookAPIKe
 // models.GenerateKey) prefilters candidates so bcrypt runs only on plausibly
 // matching keys instead of every active key.
 func findAndAuthenticateKey(tx *pop.Connection, rawKey string) (*models.WebhookAPIKey, error) {
-	keys := &models.WebhookAPIKeys{}
-	if err := tx.Where("active = ?", true).All(keys); err != nil {
-		return nil, err
-	}
-
 	const prefixLen = 8
 	var candidatePrefix string
 	if strings.HasPrefix(rawKey, "creaves_") && len(rawKey) >= len("creaves_")+prefixLen {
 		candidatePrefix = rawKey[len("creaves_") : len("creaves_")+prefixLen]
 	}
 
-	for _, key := range *keys {
-		if candidatePrefix != "" && key.KeyPrefix != candidatePrefix {
-			continue
+	keys := &models.WebhookAPIKeys{}
+	if candidatePrefix != "" {
+		// Fast path: the prefix prefilter runs in SQL, so at most a couple of
+		// candidate rows (key_prefix is only 8 chars, collisions are possible)
+		// are loaded and bcrypt runs on those only — instead of loading and
+		// scanning every active key on each webhook request.
+		if err := tx.Where("active = ? AND key_prefix = ?", true, candidatePrefix).All(keys); err != nil {
+			return nil, err
 		}
+		for _, key := range *keys {
+			if key.Authenticate(rawKey) {
+				return &key, nil
+			}
+		}
+	}
+
+	// Fallback (also covers malformed key shapes): historical full scan over
+	// all active keys. Reached only on failed auth, never on the happy path.
+	keys = &models.WebhookAPIKeys{}
+	if err := tx.Where("active = ?", true).All(keys); err != nil {
+		return nil, err
+	}
+	for _, key := range *keys {
 		if key.Authenticate(rawKey) {
 			return &key, nil
 		}
