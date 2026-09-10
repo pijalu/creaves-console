@@ -162,72 +162,14 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 		return err
 	}
 
-	// Get filter options
+	// Get filter options — served from the register reference cache
+	// (refcache.go); builders run only on cold cache or invalidation.
 	instances, err := consolidatedInstanceOptions(tx)
 	if err != nil {
 		return err
 	}
 
-	var speciesList []struct {
-		Species string `db:"species"`
-	}
-	tx.RawQuery("SELECT DISTINCT species FROM consolidated_animals WHERE species IS NOT NULL ORDER BY species").All(&speciesList)
-
-	var typesList []struct {
-		AnimalType string `db:"animal_type"`
-	}
-	tx.RawQuery("SELECT DISTINCT animal_type FROM consolidated_animals WHERE animal_type IS NOT NULL ORDER BY animal_type").All(&typesList)
-
-	var citiesList []struct {
-		City string `db:"discovery_city"`
-	}
-	tx.RawQuery("SELECT DISTINCT discovery_city FROM consolidated_animals WHERE discovery_city IS NOT NULL ORDER BY discovery_city").All(&citiesList)
-
-	// Years are rendered as strings so the template can compare them directly
-	// against params["year"] (Plush `string(int)` yields "" — bugs.md #5).
-	var yearRows []struct {
-		Year int `db:"year"`
-	}
-	tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals ORDER BY year DESC").All(&yearRows)
-	yearsList := make([]string, 0, len(yearRows))
-	for _, yr := range yearRows {
-		yearsList = append(yearsList, strconv.Itoa(yr.Year))
-	}
-
-	var entryCausesList []struct {
-		EntryCause string `db:"entry_cause"`
-	}
-	tx.RawQuery("SELECT DISTINCT entry_cause FROM consolidated_animals WHERE entry_cause IS NOT NULL ORDER BY entry_cause").All(&entryCausesList)
-
-	var agesList []struct {
-		AnimalAge string `db:"animal_age"`
-	}
-	tx.RawQuery("SELECT DISTINCT animal_age FROM consolidated_animals WHERE animal_age IS NOT NULL ORDER BY animal_age").All(&agesList)
-
-	var outtakeTypesList []struct {
-		OuttakeType string `db:"outtake_type"`
-	}
-	tx.RawQuery("SELECT DISTINCT outtake_type FROM consolidated_animals WHERE outtake_type IS NOT NULL ORDER BY outtake_type").All(&outtakeTypesList)
-
-	// Localized dropdown labels for translatable fields
-	uiLang := requestUILang(c)
-	entryCauseLabels, err := localizedGroupLabels(tx, scope, "entry_cause", uiLang, "WHERE entry_cause IS NOT NULL", nil)
-	if err != nil {
-		return err
-	}
-	animalAgeLabels, err := localizedGroupLabels(tx, scope, "animal_age", uiLang, "WHERE animal_age IS NOT NULL", nil)
-	if err != nil {
-		return err
-	}
-	outtakeTypeLabels, err := localizedGroupLabels(tx, scope, "outtake_type", uiLang, "WHERE outtake_type IS NOT NULL", nil)
-	if err != nil {
-		return err
-	}
-	speciesLabels, err := localizedGroupLabels(tx, scope, "species", uiLang, "WHERE species IS NOT NULL", nil)
-	if err != nil {
-		return err
-	}
-	animalTypeLabels, err := localizedGroupLabels(tx, scope, "animal_type", uiLang, "WHERE animal_type IS NOT NULL", nil)
+	filters, err := registerFilterOptions(tx, scope, requestUILang(c))
 	if err != nil {
 		return err
 	}
@@ -236,24 +178,80 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 		c.Set("pagination", q.Paginator)
 		c.Set("animals", animals)
 		c.Set("instances", instances)
-		c.Set("speciesList", speciesList)
-		c.Set("typesList", typesList)
-		c.Set("citiesList", citiesList)
-		c.Set("yearsList", yearsList)
-		c.Set("entryCausesList", entryCausesList)
-		c.Set("agesList", agesList)
-		c.Set("outtakeTypesList", outtakeTypesList)
-		c.Set("entryCauseLabels", entryCauseLabels)
-		c.Set("animalAgeLabels", animalAgeLabels)
-		c.Set("outtakeTypeLabels", outtakeTypeLabels)
-		c.Set("speciesLabels", speciesLabels)
-		c.Set("animalTypeLabels", animalTypeLabels)
+		c.Set("speciesList", filters.SpeciesList)
+		c.Set("typesList", filters.TypesList)
+		c.Set("citiesList", filters.CitiesList)
+		c.Set("yearsList", filters.YearsList)
+		c.Set("entryCausesList", filters.EntryCausesList)
+		c.Set("agesList", filters.AgesList)
+		c.Set("outtakeTypesList", filters.OuttakeTypesList)
+		c.Set("entryCauseLabels", filters.EntryCauseLabels)
+		c.Set("animalAgeLabels", filters.AnimalAgeLabels)
+		c.Set("outtakeTypeLabels", filters.OuttakeTypeLabels)
+		c.Set("speciesLabels", filters.SpeciesLabels)
+		c.Set("animalTypeLabels", filters.AnimalTypeLabels)
 		c.Set("viewMode", viewMode)
 		c.Set("view", animalsViewLayout(c))
 		return c.Render(http.StatusOK, r.HTML("consolidated_animals/index.plush.html"))
 	}).Wants("json", func(c buffalo.Context) error {
 		return c.Render(200, r.JSON(animals))
 	}).Respond(c)
+}
+
+// registerFilterData bundles the register dropdown value lists and their
+// localized label maps served to consolidated_animals/index templates.
+type registerFilterData struct {
+	SpeciesList     []string
+	TypesList       []string
+	CitiesList      []string
+	YearsList       []string
+	EntryCausesList []string
+	AgesList        []string
+	OuttakeTypesList []string
+
+	SpeciesLabels     map[string]string
+	AnimalTypeLabels  map[string]string
+	AnimalAgeLabels   map[string]string
+	EntryCauseLabels  map[string]string
+	OuttakeTypeLabels map[string]string
+}
+
+// registerFilterOptions gathers every cached dropdown input for the register
+// page: the distinct value lists plus the localized label maps for the
+// translatable fields.
+func registerFilterOptions(tx *pop.Connection, scope ReportScope, uiLang string) (*registerFilterData, error) {
+	d := &registerFilterData{}
+	var err error
+
+	load := func(dst *[]string, field, baseWhere string) error {
+		*dst, err = refCacheStringField(tx, scope, field, baseWhere)
+		return err
+	}
+	loadLabel := func(dst *map[string]string, field string) error {
+		*dst, err = refCacheLabelsField(tx, scope, field, uiLang, "WHERE "+field+" IS NOT NULL")
+		return err
+	}
+
+	steps := []func() error{
+		func() error { return load(&d.SpeciesList, "species", "WHERE species IS NOT NULL") },
+		func() error { return load(&d.TypesList, "animal_type", "WHERE animal_type IS NOT NULL") },
+		func() error { return load(&d.CitiesList, "discovery_city", "WHERE discovery_city IS NOT NULL") },
+		func() error { var e error; d.YearsList, e = refCacheYearsField(tx, scope); return e },
+		func() error { return load(&d.EntryCausesList, "entry_cause", "WHERE entry_cause IS NOT NULL") },
+		func() error { return load(&d.AgesList, "animal_age", "WHERE animal_age IS NOT NULL") },
+		func() error { return load(&d.OuttakeTypesList, "outtake_type", "WHERE outtake_type IS NOT NULL") },
+		func() error { return loadLabel(&d.SpeciesLabels, "species") },
+		func() error { return loadLabel(&d.AnimalTypeLabels, "animal_type") },
+		func() error { return loadLabel(&d.AnimalAgeLabels, "animal_age") },
+		func() error { return loadLabel(&d.EntryCauseLabels, "entry_cause") },
+		func() error { return loadLabel(&d.OuttakeTypeLabels, "outtake_type") },
+	}
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return nil, err
+		}
+	}
+	return d, nil
 }
 
 // animalsViewMode resolves the register view mode from params and scope.

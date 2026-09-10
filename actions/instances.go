@@ -124,6 +124,8 @@ func InstanceCleanup(c buffalo.Context) error {
 	if err := purgeInstance(tx, id); err != nil {
 		return err
 	}
+	// Purged rows can remove the last carriers of cached dropdown values.
+	refCacheInvalidateAll()
 	c.Flash().Add("success", "Instance cleaned; trigger a full resync from Creaves")
 	return c.Redirect(http.StatusSeeOther, "/instances")
 }

@@ -59,6 +59,9 @@ func (ep *EventProcessor) ProcessAllEvents() (int, error) {
 	if err := ep.tx.RawQuery("DELETE FROM consolidated_animals").Exec(); err != nil {
 		return 0, errors.WithStack(err)
 	}
+	// Rebuild wipes consolidated rows: cached dropdown values may no longer
+	// exist. Drop the register reference cache before reprocessing.
+	refCacheInvalidateAll()
 
 	if err := ep.tx.RawQuery("UPDATE event_streams SET processed_at = NULL").Exec(); err != nil {
 		return 0, errors.WithStack(err)
@@ -117,6 +120,10 @@ func (ep *EventProcessor) processEvent(event *models.EventStream) error {
 	if err := ep.saveConsolidatedAnimal(consolidated); err != nil {
 		return err
 	}
+	// Change-driven cache invalidation: report the reference values this
+	// event carries; unknown values drop their cached dropdown entries
+	// (refcache.go).
+	refCacheObservePayload(payload)
 
 	now := time.Now()
 	event.ProcessedAt = &now

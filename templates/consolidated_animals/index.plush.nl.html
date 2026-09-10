@@ -69,7 +69,7 @@
                 <select name="species" id="species" class="form-control">
                     <option value="">Alle</option>
                     <%= for (sp) in speciesList { %>
-                        <option value="<%= sp.Species %>" <%= if (params["species"] == sp.Species) { %>selected<% } %>><%= tlabel_localized(sp.Species, speciesLabels) %></option>
+                        <option value="<%= sp %>" <%= if (params["species"] == sp) { %>selected<% } %>><%= tlabel_localized(sp, speciesLabels) %></option>
                     <% } %>
                 </select>
             </div>
@@ -78,7 +78,7 @@
                 <select name="animal_type" id="animal_type" class="form-control">
                     <option value="">Alle</option>
                     <%= for (t) in typesList { %>
-                        <option value="<%= t.AnimalType %>" <%= if (params["animal_type"] == t.AnimalType) { %>selected<% } %>><%= tlabel_localized(t.AnimalType, animalTypeLabels) %></option>
+                        <option value="<%= t %>" <%= if (params["animal_type"] == t) { %>selected<% } %>><%= tlabel_localized(t, animalTypeLabels) %></option>
                     <% } %>
                 </select>
             </div>
@@ -87,7 +87,7 @@
                 <select name="city" id="city" class="form-control">
                     <option value="">Alle</option>
                     <%= for (ct) in citiesList { %>
-                        <option value="<%= ct.City %>" <%= if (params["city"] == ct.City) { %>selected<% } %>><%= ct.City %></option>
+                        <option value="<%= ct %>" <%= if (params["city"] == ct) { %>selected<% } %>><%= ct %></option>
                     <% } %>
                 </select>
             </div>
@@ -96,7 +96,7 @@
                 <select name="entry_cause" id="entry_cause" class="form-control">
                     <option value="">Alle</option>
                     <%= for (ec) in entryCausesList { %>
-                        <option value="<%= ec.EntryCause %>" <%= if (params["entry_cause"] == ec.EntryCause) { %>selected<% } %>><%= tlabel_localized(ec.EntryCause, entryCauseLabels) %></option>
+                        <option value="<%= ec %>" <%= if (params["entry_cause"] == ec) { %>selected<% } %>><%= tlabel_localized(ec, entryCauseLabels) %></option>
                     <% } %>
                 </select>
             </div>
@@ -105,7 +105,7 @@
                 <select name="animal_age" id="animal_age" class="form-control">
                     <option value="">Alle</option>
                     <%= for (ag) in agesList { %>
-                        <option value="<%= ag.AnimalAge %>" <%= if (params["animal_age"] == ag.AnimalAge) { %>selected<% } %>><%= tlabel_localized(ag.AnimalAge, animalAgeLabels) %></option>
+                        <option value="<%= ag %>" <%= if (params["animal_age"] == ag) { %>selected<% } %>><%= tlabel_localized(ag, animalAgeLabels) %></option>
                     <% } %>
                 </select>
             </div>
@@ -118,7 +118,7 @@
                 <select name="outtake_type" id="outtake_type" class="form-control">
                     <option value="">Alle</option>
                     <%= for (ot) in outtakeTypesList { %>
-                        <option value="<%= ot.OuttakeType %>" <%= if (params["outtake_type"] == ot.OuttakeType) { %>selected<% } %>><%= tlabel_localized(ot.OuttakeType, outtakeTypeLabels) %></option>
+                        <option value="<%= ot %>" <%= if (params["outtake_type"] == ot) { %>selected<% } %>><%= tlabel_localized(ot, outtakeTypeLabels) %></option>
                     <% } %>
                 </select>
             </div>

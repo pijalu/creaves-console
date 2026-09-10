@@ -248,6 +248,10 @@ func setupTest(t *testing.T) *pop.Connection {
 		require.NoError(t, err)
 	}
 
+	// The register reference cache is process-global; tests swap data under
+	// it, so cached dropdown builds must never leak between tests.
+	refCacheReset()
+
 	return testDB
 }
 
