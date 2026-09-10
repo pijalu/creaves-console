@@ -1,0 +1,3 @@
+ALTER TABLE event_streams DROP INDEX event_streams_instance_id_imported_at_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_discovery_postal_code_idx;
+ALTER TABLE consolidated_animals DROP INDEX year_desc_number_asc_idx;
