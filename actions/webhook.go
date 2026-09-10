@@ -401,14 +401,26 @@ func storeAnnouncedSyncFromEnvelope(tx *pop.Connection, key *models.WebhookAPIKe
 	}
 }
 
-// findAndAuthenticateKey looks up an API key by hash and authenticates it
+// findAndAuthenticateKey looks up an API key by hash and authenticates it.
+// The stored key_prefix (first 8 chars of the key's UUID part, see
+// models.GenerateKey) prefilters candidates so bcrypt runs only on plausibly
+// matching keys instead of every active key.
 func findAndAuthenticateKey(tx *pop.Connection, rawKey string) (*models.WebhookAPIKey, error) {
 	keys := &models.WebhookAPIKeys{}
 	if err := tx.Where("active = ?", true).All(keys); err != nil {
 		return nil, err
 	}
 
+	const prefixLen = 8
+	var candidatePrefix string
+	if strings.HasPrefix(rawKey, "creaves_") && len(rawKey) >= len("creaves_")+prefixLen {
+		candidatePrefix = rawKey[len("creaves_") : len("creaves_")+prefixLen]
+	}
+
 	for _, key := range *keys {
+		if candidatePrefix != "" && key.KeyPrefix != candidatePrefix {
+			continue
+		}
 		if key.Authenticate(rawKey) {
 			return &key, nil
 		}
