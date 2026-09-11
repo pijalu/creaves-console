@@ -133,23 +133,38 @@ func ComputeInstanceSyncStatus(tx *pop.Connection, instanceID string) (*Instance
 }
 
 // latestEventStateHashes maps each animal to the state hash of its latest
-// animal_state event (created_at ASC, later events overwrite earlier ones).
+// animal_state event that carries a non-empty state hash (created_at ASC,
+// later events overwrite earlier ones).
+//
+// Implemented SQL-side (window function) so we don't ship every payload to
+// Go just to discard all but the newest per animal. json_extract/json_valid
+// exist in both MySQL 8 and SQLite, keeping tests and production aligned.
+// Semantics match the former Go loop: only events with a parseable payload
+// and a non-empty state_hash participate; per animal, the newest wins.
 func latestEventStateHashes(tx *pop.Connection, instanceID string) (map[int]string, error) {
-	events := &models.EventStreams{}
-	if err := tx.Where("instance_id = ? AND event_type = ?", instanceID, models.EventTypeAnimalState).
-		Order("created_at asc").All(events); err != nil {
+	type row struct {
+		AnimalID  int    `db:"animal_id"`
+		StateHash string `db:"state_hash"`
+	}
+	rows := []row{}
+	if err := tx.RawQuery(
+		`SELECT animal_id, state_hash FROM (
+			SELECT animal_id,
+				json_extract(payload, '$.state_hash') AS state_hash,
+				ROW_NUMBER() OVER (PARTITION BY animal_id ORDER BY created_at DESC) AS rn
+			FROM event_streams
+			WHERE instance_id = ? AND event_type = ?
+				AND json_valid(payload)
+				AND json_extract(payload, '$.state_hash') IS NOT NULL
+				AND json_extract(payload, '$.state_hash') <> ''
+		) t WHERE rn = 1`,
+		instanceID, models.EventTypeAnimalState,
+	).All(&rows); err != nil {
 		return nil, fmt.Errorf("failed to load state events: %w", err)
 	}
-	latest := map[int]string{}
-	for i := range *events {
-		payload, err := (*events)[i].GetPayload()
-		if err != nil {
-			continue // unreadable payload: cannot fingerprint this event
-		}
-		if payload.StateHash == "" {
-			continue
-		}
-		latest[(*events)[i].AnimalID] = payload.StateHash
+	latest := make(map[int]string, len(rows))
+	for _, r := range rows {
+		latest[r.AnimalID] = r.StateHash
 	}
 	return latest, nil
 }
