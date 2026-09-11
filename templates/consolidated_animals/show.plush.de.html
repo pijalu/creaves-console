@@ -122,6 +122,14 @@
     </div>
 </div>
 
+<div class="row mt-4"><div class="col-md-12"><div class="card"><div class="card-header"><h5>Vollständige Tierinformationen</h5></div><div class="card-body"><table class="table table-sm table-borderless">
+<tr><td>Geschlecht</td><td><%= animal_value(animal.Gender) %></td><td>Käfig</td><td><%= animal_value(animal.Cage) %></td><td>Zone</td><td><%= animal_value(animal.Zone) %></td></tr>
+<tr><td>Ring</td><td><%= animal_value(animal.Ring) %></td><td>Klasse</td><td><%= animal_value(animal.SpeciesClass) %></td><td>Familie / Ordnung</td><td><%= animal_value(animal.SpeciesFamily) %> / <%= animal_value(animal.SpeciesOrder) %></td></tr>
+<tr><td>Einheimisch</td><td><%= animal_value(animal.SpeciesNativeStatus) %></td><td>AGW-Gruppe</td><td><%= animal_value(animal.SpeciesAGWGroup) %></td><td>Untergruppe</td><td><%= animal_value(animal.SpeciesSubsideGroup) %></td></tr>
+<tr><td>Gemeinde</td><td><%= animal_value(animal.DiscoveryCommune) %></td><td>Provinz / Region</td><td><%= animal_value(animal.DiscoveryProvince) %> / <%= animal_value(animal.DiscoveryRegion) %></td><td>Land</td><td><%= animal_value(animal.DiscoveryCountry) %></td></tr>
+<tr><td>Entdecker</td><td><%= animal_value(animal.DiscovererFirstname) %> <%= animal_value(animal.DiscovererLastname) %></td><td>Kontakt</td><td><%= animal_value(animal.DiscovererEmail) %> / <%= animal_value(animal.DiscovererPhone) %></td><td>Adresse</td><td><%= animal_value(animal.DiscovererAddress) %></td></tr>
+<tr><td>Spende / Notiz</td><td><%= animal_value(animal.DiscovererDonation) %> / <%= animal_value(animal.DiscovererNote) %></td><td>Bewertung</td><td><%= animal_value(animal.OuttakeRating) %></td><td>Tot / Fehler</td><td><%= animal_value(animal.OuttakeDead) %> / <%= animal_value(animal.OuttakeError) %></td></tr>
+</table><small class="text-muted">Angewandte Ereignisse: <%= animal.EventCount %></small></div></div></div></div>
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">

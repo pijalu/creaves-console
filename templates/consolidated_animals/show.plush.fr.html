@@ -122,6 +122,15 @@
     </div>
 </div>
 
+<div class="row mt-4"><div class="col-md-12"><div class="card"><div class="card-header"><h5>Informations complètes</h5></div><div class="card-body"><table class="table table-sm table-borderless">
+<tr><td>Genre</td><td><%= animal_value(animal.Gender) %></td><td>Cage</td><td><%= animal_value(animal.Cage) %></td><td>Zone</td><td><%= animal_value(animal.Zone) %></td></tr>
+<tr><td>Bague</td><td><%= animal_value(animal.Ring) %></td><td>Classe</td><td><%= animal_value(animal.SpeciesClass) %></td><td>Famille / ordre</td><td><%= animal_value(animal.SpeciesFamily) %> / <%= animal_value(animal.SpeciesOrder) %></td></tr>
+<tr><td>Statut indigène</td><td><%= animal_value(animal.SpeciesNativeStatus) %></td><td>Groupe AGW</td><td><%= animal_value(animal.SpeciesAGWGroup) %></td><td>Groupe subs.</td><td><%= animal_value(animal.SpeciesSubsideGroup) %></td></tr>
+<tr><td>Commune</td><td><%= animal_value(animal.DiscoveryCommune) %></td><td>Province / région</td><td><%= animal_value(animal.DiscoveryProvince) %> / <%= animal_value(animal.DiscoveryRegion) %></td><td>Pays</td><td><%= animal_value(animal.DiscoveryCountry) %></td></tr>
+<tr><td>Direction</td><td><%= animal_value(animal.DiscoveryDirection) %></td><td>Découvreur</td><td><%= animal_value(animal.DiscovererFirstname) %> <%= animal_value(animal.DiscovererLastname) %></td><td>Contact</td><td><%= animal_value(animal.DiscovererEmail) %> / <%= animal_value(animal.DiscovererPhone) %></td></tr>
+<tr><td>Adresse</td><td><%= animal_value(animal.DiscovererAddress) %></td><td>Don</td><td><%= animal_value(animal.DiscovererDonation) %></td><td>Note</td><td><%= animal_value(animal.DiscovererNote) %></td></tr>
+<tr><td>Évaluation</td><td><%= animal_value(animal.OuttakeRating) %></td><td>Décédé</td><td><%= animal_value(animal.OuttakeDead) %></td><td>Erreur</td><td><%= animal_value(animal.OuttakeError) %></td></tr>
+</table><small class="text-muted">Événements appliqués : <%= animal.EventCount %></small></div></div></div></div>
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">

@@ -123,6 +123,20 @@
 </div>
 
 <div class="row mt-4">
+    <div class="col-md-12"><div class="card">
+        <div class="card-header"><h5>Complete Animal Information</h5></div>
+        <div class="card-body"><table class="table table-sm table-borderless">
+            <tr><td>Gender</td><td><%= animal_value(animal.Gender) %></td><td>Cage</td><td><%= animal_value(animal.Cage) %></td><td>Zone</td><td><%= animal_value(animal.Zone) %></td></tr>
+            <tr><td>Ring</td><td><%= animal_value(animal.Ring) %></td><td>Class</td><td><%= animal_value(animal.SpeciesClass) %></td><td>Family / order</td><td><%= animal_value(animal.SpeciesFamily) %> / <%= animal_value(animal.SpeciesOrder) %></td></tr>
+            <tr><td>Native status</td><td><%= animal_value(animal.SpeciesNativeStatus) %></td><td>AGW group</td><td><%= animal_value(animal.SpeciesAGWGroup) %></td><td>Subside group</td><td><%= animal_value(animal.SpeciesSubsideGroup) %></td></tr>
+            <tr><td>Game / huntable</td><td><%= animal_value(animal.SpeciesGame) %> / <%= animal_value(animal.SpeciesHuntable) %></td><td>Commune</td><td><%= animal_value(animal.DiscoveryCommune) %></td><td>Province / region</td><td><%= animal_value(animal.DiscoveryProvince) %> / <%= animal_value(animal.DiscoveryRegion) %></td></tr>
+            <tr><td>Country</td><td><%= animal_value(animal.DiscoveryCountry) %></td><td>Direction</td><td><%= animal_value(animal.DiscoveryDirection) %></td><td>Discoverer</td><td><%= animal_value(animal.DiscovererFirstname) %> <%= animal_value(animal.DiscovererLastname) %></td></tr>
+            <tr><td>Email / phone</td><td><%= animal_value(animal.DiscovererEmail) %> / <%= animal_value(animal.DiscovererPhone) %></td><td>Address</td><td><%= animal_value(animal.DiscovererAddress) %></td><td>Donation / note</td><td><%= animal_value(animal.DiscovererDonation) %> / <%= animal_value(animal.DiscovererNote) %></td></tr>
+            <tr><td>Rating</td><td><%= animal_value(animal.OuttakeRating) %></td><td>Dead</td><td><%= animal_value(animal.OuttakeDead) %></td><td>Erroneous</td><td><%= animal_value(animal.OuttakeError) %></td></tr>
+        </table><small class="text-muted">Events applied: <%= animal.EventCount %></small></div>
+    </div></div>
+</div>
+<div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
@@ -141,11 +155,7 @@
                         <%= for (event) in events { %>
                             <tr>
                                 <td><%= event.CreatedAt.Format("02/01/2006 15:04") %></td>
-                                <td>
-                                    <span class="badge badge-<%= eventTypeClass(event) %>">
-                                        <%= eventTypeLabel(event) %>
-                                    </span>
-                                </td>
+                                <td><span class="badge badge-<%= eventTypeClass(event) %>"><%= eventTypeLabel(event) %></span></td>
                                 <td><%= eventSource(event) %></td>
                             </tr>
                         <% } %>

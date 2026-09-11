@@ -17,18 +17,32 @@ package actions
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/gobuffalo/nulls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestConsolidatedAnimalsRegisterRendersNonEmptyCells asserts the six formerly
-// empty columns (Species, Identification, Discovery location, PC, City, Cause)
-// actually render their values for rows that have them and "-" for rows that
-// don't. Those columns belong to the *detailed* layout, so the test requests
-// view=detailed explicitly (compact is the default, bugs.md 'consolidated view').
+func TestShowTemplatesHaveSingleEventHistory(t *testing.T) {
+	for _, name := range []string{"show.plush.html", "show.plush.fr.html", "show.plush.de.html", "show.plush.nl.html"} {
+		body, err := os.ReadFile(filepath.Join("..", "templates", "consolidated_animals", name))
+		require.NoError(t, err)
+		count := strings.Count(string(body), "Event History") + strings.Count(string(body), "Historique des événements") + strings.Count(string(body), "Ereignisverlauf") + strings.Count(string(body), "Gebeurtenisgeschiedenis")
+		assert.Equal(t, 1, count, name)
+	}
+}
+
+func TestAnimalValueRendersNullableDetailFields(t *testing.T) {
+	assert.Equal(t, "value", animalValue(nulls.NewString("value")))
+	assert.Equal(t, "true", animalValue(nulls.NewBool(true)))
+	assert.Equal(t, "7", animalValue(nulls.NewInt(7)))
+	assert.Equal(t, "-", animalValue(nulls.String{}))
+}
+
 func TestConsolidatedAnimalsRegisterRendersNonEmptyCells(t *testing.T) {
 	app := newDashboardTestApp(testDB)
 	seedRegisterFixtures(t, testDB)
@@ -91,7 +105,7 @@ func TestConsolidatedAnimalsDefaultViewIsCompact(t *testing.T) {
 	body := res.Body.String()
 
 	thead := extractThead(t, body)
-	assert.Equal(t, 7, strings.Count(thead, "<th>"),
+	assert.Equal(t, 8, strings.Count(thead, "<th>"),
 		"compact view must render exactly 7 columns, got: %s", thead)
 
 	// Compact column set present (sortable headers carry sort=<field>).
@@ -103,7 +117,7 @@ func TestConsolidatedAnimalsDefaultViewIsCompact(t *testing.T) {
 	for _, field := range []string{"identification", "discovery_location", "postal_code", "entry_cause", "outcome_location"} {
 		assert.NotContains(t, thead, "sort="+field, "compact header must NOT contain sort=%s", field)
 	}
-	assert.NotContains(t, thead, "Actions", "compact view must not render the Actions column")
+	assert.Contains(t, thead, "Actions", "compact view must render the Actions column")
 
 	// The deceased fixture row (rating -2 + dead flag) shows the negative
 	// outcome badge in the compact Outcome column.
@@ -127,7 +141,7 @@ func TestConsolidatedAnimalsDetailedTogglePreservesFilters(t *testing.T) {
 	body := res.Body.String()
 
 	thead := extractThead(t, body)
-	assert.Equal(t, 7, strings.Count(thead, "<th>"), "default layout stays compact under filters")
+	assert.Equal(t, 8, strings.Count(thead, "<th>"), "default layout stays compact under filters")
 
 	// The detailed toggle preserves the active filters.
 	toggle := extractAnchorByID(t, body, "view-detailed")

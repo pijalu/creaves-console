@@ -139,6 +139,31 @@ func localizedLabel(value string, labels map[string]string, help plush.HelperCon
 	return value, nil
 }
 
+// animalValue renders nullable model fields reliably in Plush. Inline if
+// expressions with branch values are not emitted by Plush, so detail pages use
+// this helper instead.
+func animalValue(value interface{}) string {
+	switch v := value.(type) {
+	case nulls.String:
+		if v.Valid {
+			return v.String
+		}
+	case nulls.Bool:
+		if v.Valid {
+			return fmt.Sprintf("%t", v.Bool)
+		}
+	case nulls.Int:
+		if v.Valid {
+			return fmt.Sprintf("%d", v.Int)
+		}
+	case nulls.Time:
+		if v.Valid {
+			return v.Time.Format("2006-01-02 15:04")
+		}
+	}
+	return "-"
+}
+
 func localizedField(value interface{}, field string, help plush.HelperContext) (string, error) {
 	lang := currentUILang(help)
 	switch labels := value.(type) {
@@ -189,6 +214,7 @@ func init() {
 			},
 			"langLinks":         langLinks,
 			"tfield_localized":  localizedField,
+			"animal_value":      animalValue,
 			"tlabel_localized":  localizedLabel,
 			"tstatus_localized": localizedStatus,
 			"csrf_token":        csrfToken,

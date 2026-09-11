@@ -141,6 +141,7 @@
                         <th><a class="text-light" href="<%= sortLink("intake_date") %>">Intake date <%= sortIcon("intake_date") %></a></th>
                         <th><a class="text-light" href="<%= sortLink("outcome_date") %>">Outcome date <%= sortIcon("outcome_date") %></a></th>
                         <th><a class="text-light" href="<%= sortLink("outcome") %>">Outcome <%= sortIcon("outcome") %></a></th>
+                        <th>Actions</th>
                         <% } else { %>
                         <th><a class="text-light" href="<%= sortLink("instance") %>">Instance <%= sortIcon("instance") %></a></th>
                         <th><a class="text-light" href="<%= sortLink("year") %>">Year <%= sortIcon("year") %></a></th>
@@ -195,6 +196,7 @@
                                     <span class="badge badge-<%= statusClass(animal) %>"><%= tstatus_localized(animal.EffectiveStatus()) %></span>
                                 <% } %>
                             </td>
+                            <td><a href="/consolidated_animals/<%= animal.ID %>" class="btn btn-sm btn-info" title="View animal details" aria-label="View animal details"><i class="fas fa-eye"></i></a></td>
                             <% } else { %>
                             <td><%= animal.InstanceID %></td>
                             <td><%= animal.Year %></td>
