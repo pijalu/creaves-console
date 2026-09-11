@@ -170,18 +170,23 @@ func latestEventStateHashes(tx *pop.Connection, instanceID string) (map[int]stri
 }
 
 // consolidatedStateHashes maps each consolidated animal of the instance to
-// its stored state hash (animals without a hash are omitted).
+// its stored state hash (animals without a hash are omitted). Selects only
+// the two needed columns instead of full rows.
 func consolidatedStateHashes(tx *pop.Connection, instanceID string) (map[int]string, error) {
-	animals := &models.ConsolidatedAnimals{}
-	if err := tx.Where("instance_id = ?", instanceID).All(animals); err != nil {
+	type row struct {
+		AnimalID  int    `db:"animal_id"`
+		StateHash string `db:"state_hash"`
+	}
+	rows := []row{}
+	if err := tx.RawQuery(
+		"SELECT animal_id, state_hash FROM consolidated_animals WHERE instance_id = ? AND state_hash IS NOT NULL AND state_hash <> ''",
+		instanceID,
+	).All(&rows); err != nil {
 		return nil, fmt.Errorf("failed to load consolidated animals: %w", err)
 	}
-	consolidatedHash := map[int]string{}
-	for i := range *animals {
-		a := &(*animals)[i]
-		if a.StateHash.Valid && a.StateHash.String != "" {
-			consolidatedHash[a.AnimalID] = a.StateHash.String
-		}
+	consolidatedHash := make(map[int]string, len(rows))
+	for _, r := range rows {
+		consolidatedHash[r.AnimalID] = r.StateHash
 	}
 	return consolidatedHash, nil
 }
