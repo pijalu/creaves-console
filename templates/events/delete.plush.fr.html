@@ -18,6 +18,7 @@
                         <select name="scope" id="scope" class="form-control" required>
                             <option value="">Choisir une portée&hellip;</option>
                             <option value="instance">Tous les événements d'une instance</option>
+                            <option value="processed">Uniquement les événements traités</option>
                             <option value="all">Tous les événements (toutes instances)</option>
                         </select>
                     </div>
@@ -27,7 +28,7 @@
                     </div>
                     <div class="form-group">
                         <label for="confirmation">Confirmation</label>
-                        <p class="text-muted">Saisissez <code>DELETE ALL</code> pour tous les événements, ou l'ID d'instance exact pour une seule instance.</p>
+                        <p class="text-muted">Saisissez <code>DELETE ALL</code> pour tous les événements, <code>DELETE PROCESSED</code> pour les événements traités, ou l'ID d'instance exact pour une seule instance.</p>
                         <input class="form-control" name="confirmation" id="confirmation" required>
                     </div>
                     <button class="btn btn-danger" type="submit">Supprimer les événements</button>

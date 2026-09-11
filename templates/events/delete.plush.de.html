@@ -18,6 +18,7 @@
                         <select name="scope" id="scope" class="form-control" required>
                             <option value="">Umfang wählen&hellip;</option>
                             <option value="instance">Alle Ereignisse einer Instanz</option>
+                            <option value="processed">Nur verarbeitete Ereignisse</option>
                             <option value="all">Alle Ereignisse (jede Instanz)</option>
                         </select>
                     </div>
@@ -27,7 +28,7 @@
                     </div>
                     <div class="form-group">
                         <label for="confirmation">Bestätigung</label>
-                        <p class="text-muted">Tippen Sie <code>DELETE ALL</code> für alle Ereignisse oder die exakte Instanz-ID für eine einzelne Instanz.</p>
+                        <p class="text-muted">Tippen Sie <code>DELETE ALL</code> für alle Ereignisse, <code>DELETE PROCESSED</code> für verarbeitete Ereignisse oder die exakte Instanz-ID für eine einzelne Instanz.</p>
                         <input class="form-control" name="confirmation" id="confirmation" required>
                     </div>
                     <button class="btn btn-danger" type="submit">Ereignisse löschen</button>

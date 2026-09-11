@@ -12,7 +12,7 @@ import (
 
 // purgeInstance atomically removes all console data owned by one source.
 func purgeInstance(tx *pop.Connection, instanceID string) error {
-	return tx.Transaction(func(t *pop.Connection) error {
+	return withTx(tx, func(t *pop.Connection) error {
 		if err := t.Where("instance_id = ?", instanceID).Delete(&models.EventStream{}); err != nil {
 			return err
 		}

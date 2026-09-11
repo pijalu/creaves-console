@@ -132,7 +132,7 @@ func (v WebhookAPIKeysResource) Create(c buffalo.Context) error {
 	// An API key always belongs to an instance: register the instance (if it
 	// does not exist yet) and store the key in the same transaction, so the
 	// instance page works immediately after key creation.
-	err = tx.Transaction(func(t *pop.Connection) error {
+	err = withTx(tx, func(t *pop.Connection) error {
 		if err := models.UpsertByInstanceID(t, key.InstanceID, key.Name, "", time.Now().UTC()); err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 
 	// Reassigning a key registers the target instance if it is missing — a
 	// key must never point to a non-existent instance.
-	err = tx.Transaction(func(t *pop.Connection) error {
+	err = withTx(tx, func(t *pop.Connection) error {
 		if err := models.UpsertByInstanceID(t, key.InstanceID, "", "", time.Now().UTC()); err != nil {
 			return err
 		}

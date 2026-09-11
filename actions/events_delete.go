@@ -15,7 +15,7 @@ import (
 )
 
 // EventsDeleteNew renders the confirmation form for deleting received events
-// (all of them, or only those from one instance).
+// (all of them, only the processed ones, or only those from one instance).
 func EventsDeleteNew(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
 	if cu == nil || !cu.Admin {
@@ -39,11 +39,12 @@ func EventsDeleteNew(c buffalo.Context) error {
 
 // EventsDeleteCreate archives and then deletes received events. Scope:
 //   - scope=all        → every event in the console
+//   - scope=processed  → only events already processed into the consolidated view
 //   - scope=instance   → only the events of the given instance_id
 //
-// Both scopes require a typed confirmation ("DELETE ALL" resp. the exact
-// instance_id). The events are archived in the event_stream_archives table
-// (JSONL content) inside the same transaction as the DELETE; if archiving
+// All scopes require a typed confirmation ("DELETE ALL", "DELETE PROCESSED"
+// resp. the exact instance_id). The events are archived in the event_stream_archives
+// table (JSONL content) inside the same transaction as the DELETE; if archiving
 // fails, nothing is removed. No files are written outside the database.
 func EventsDeleteCreate(c buffalo.Context) error {
 	cu := GetCurrentUser(c)
@@ -65,20 +66,8 @@ func EventsDeleteCreate(c buffalo.Context) error {
 	}
 	confirmation := strings.TrimSpace(c.Request().FormValue("confirmation"))
 
-	switch scope {
-	case "all":
-		if confirmation != "DELETE ALL" {
-			return c.Error(http.StatusUnprocessableEntity, fmt.Errorf("type exactly DELETE ALL to confirm deleting every event"))
-		}
-	case "instance":
-		if instanceID == "" {
-			return c.Error(http.StatusUnprocessableEntity, fmt.Errorf("instance_id is required when scope is instance"))
-		}
-		if confirmation != instanceID {
-			return c.Error(http.StatusUnprocessableEntity, fmt.Errorf("type the exact instance_id to confirm deleting its events"))
-		}
-	default:
-		return c.Error(http.StatusUnprocessableEntity, fmt.Errorf("scope must be all or instance"))
+	if err := validateEventsDeleteForm(scope, instanceID, confirmation); err != nil {
+		return c.Error(http.StatusUnprocessableEntity, err)
 	}
 
 	deleted, archiveID, err := archiveAndDeleteEvents(tx, scope, instanceID)
@@ -97,6 +86,42 @@ func EventsDeleteCreate(c buffalo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/events")
 }
 
+// validateEventsDeleteForm checks the scope and its exact typed confirmation.
+// Returns an error suitable for a 422 response.
+func validateEventsDeleteForm(scope, instanceID, confirmation string) error {
+	switch scope {
+	case "all":
+		if confirmation != "DELETE ALL" {
+			return fmt.Errorf("type exactly DELETE ALL to confirm deleting every event")
+		}
+	case "processed":
+		if confirmation != "DELETE PROCESSED" {
+			return fmt.Errorf("type exactly DELETE PROCESSED to confirm deleting processed events")
+		}
+	case "instance":
+		if instanceID == "" {
+			return fmt.Errorf("instance_id is required when scope is instance")
+		}
+		if confirmation != instanceID {
+			return fmt.Errorf("type the exact instance_id to confirm deleting its events")
+		}
+	default:
+		return fmt.Errorf("scope must be all, processed or instance")
+	}
+	return nil
+}
+
+// applyEventsScope adds the WHERE clauses matching a deletion scope to q.
+func applyEventsScope(q *pop.Query, scope, instanceID string) *pop.Query {
+	switch scope {
+	case "instance":
+		q = q.Where("instance_id = ?", instanceID)
+	case "processed":
+		q = q.Where("processed_at IS NOT NULL")
+	}
+	return q
+}
+
 // archiveAndDeleteEvents archives every event matched by the scope into the
 // event_stream_archives table (JSONL content) and then deletes exactly those
 // rows — both inside one database transaction. A failure to archive rolls
@@ -111,10 +136,7 @@ func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (delet
 
 	// Cheap pre-check so an empty scope returns (0, "", nil) with no archive
 	// row at all (preserved original behaviour).
-	pre := tx.Q()
-	if scope == "instance" {
-		pre = pre.Where("instance_id = ?", instanceID)
-	}
+	pre := applyEventsScope(tx.Q(), scope, instanceID)
 	empty, err := pre.Exists(&models.EventStream{})
 	if err != nil {
 		return 0, "", err
@@ -130,7 +152,7 @@ func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (delet
 	var cursorID uuid.UUID
 	haveCursor := false
 
-	err = tx.Transaction(func(t *pop.Connection) error {
+	err = withTx(tx, func(t *pop.Connection) error {
 		if err := t.Create(archive); err != nil {
 			return fmt.Errorf("could not store event archive: %w", err)
 		}
@@ -138,10 +160,7 @@ func archiveAndDeleteEvents(tx *pop.Connection, scope, instanceID string) (delet
 
 		for {
 			events := &models.EventStreams{}
-			q := t.Q()
-			if scope == "instance" {
-				q = q.Where("instance_id = ?", instanceID)
-			}
+			q := applyEventsScope(t.Q(), scope, instanceID)
 			if haveCursor {
 				q = q.Where("(imported_at > ? OR (imported_at = ? AND id > ?))", cursorTime, cursorTime, cursorID)
 			}

@@ -204,6 +204,64 @@ func TestEventsDeleteInstanceScopeOnlyTouchesThatInstance(t *testing.T) {
 	}
 }
 
+func TestEventsDeleteProcessedScopeOnlyTouchesProcessedEvents(t *testing.T) {
+	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
+	app := newEventsTestApp(testDB, true)
+
+	// Wrong confirmation is rejected and nothing is deleted.
+	rec := postEventsForm(t, app, "/events/delete", url.Values{
+		"scope":        {"processed"},
+		"confirmation": {"DELETE ALL"},
+	})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Equal(t, 4, countEvents(t, testDB, ""))
+	assert.Equal(t, 0, countArchives(t, testDB))
+
+	// Correct confirmation deletes only processed events (3 of 4 fixtures).
+	rec = postEventsForm(t, app, "/events/delete", url.Values{
+		"scope":        {"processed"},
+		"confirmation": {"DELETE PROCESSED"},
+	})
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	assert.Equal(t, 1, countEvents(t, testDB, ""), "only the unprocessed event must survive")
+	remaining := models.EventStreams{}
+	require.NoError(t, testDB.All(&remaining))
+	require.Len(t, remaining, 1)
+	assert.Nil(t, remaining[0].ProcessedAt)
+	assert.Equal(t, "center-a", remaining[0].InstanceID)
+	assert.Equal(t, 43, remaining[0].AnimalID)
+
+	archives := listArchives(t, testDB)
+	require.Len(t, archives, 1)
+	archive := archives[0]
+	assert.Equal(t, "processed", archive.Scope)
+	assert.Equal(t, "", archive.InstanceID)
+	assert.Equal(t, 3, archive.EventCount)
+
+	lines := parseArchiveJSONL(t, archive.Content)
+	require.Len(t, lines, 3)
+	for _, line := range lines {
+		assert.NotEmpty(t, line["processed_at"], "archived events must all be processed ones")
+	}
+}
+
+func TestEventsDeleteProcessedScopeWithNoProcessedEventsWritesNoArchive(t *testing.T) {
+	seedEventsFixtures(t, testDB)
+	resetArchives(t, testDB)
+	require.NoError(t, testDB.RawQuery("UPDATE event_streams SET processed_at = NULL").Exec())
+	app := newEventsTestApp(testDB, true)
+
+	rec := postEventsForm(t, app, "/events/delete", url.Values{
+		"scope":        {"processed"},
+		"confirmation": {"DELETE PROCESSED"},
+	})
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, 4, countEvents(t, testDB, ""), "nothing to delete")
+	assert.Equal(t, 0, countArchives(t, testDB), "an empty match must not create an archive row")
+}
+
 func TestEventsDeleteNothingMatchedWritesNoArchive(t *testing.T) {
 	seedEventsFixtures(t, testDB)
 	resetArchives(t, testDB)
