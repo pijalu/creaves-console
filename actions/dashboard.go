@@ -28,17 +28,20 @@ func DashboardIndex(c buffalo.Context) error {
 		return err
 	}
 	stats["total_animals"] = animalCount
-	statusCounts := []struct {
-		Status string `db:"current_status"`
-		Count  int    `db:"count"`
-	}{}
 	where, args := ScopedWhere(scope, "")
-	if err = tx.RawQuery("SELECT current_status, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY current_status", args...).All(&statusCounts); err != nil {
+	// Outcome-based status counts (bugs.md: deceased count on the dashboard):
+	// the raw current_status grouping misses deceased animals whose outtake
+	// carries the negative/dead outcome under a released status. Reuse the
+	// exact classification of /reports so every screen shows the same
+	// deceased/released split.
+	outcome, err := tallyOutcomes(tx, where, args)
+	if err != nil {
 		return err
 	}
-	statusMap := make(map[string]int)
-	for _, x := range statusCounts {
-		statusMap[x.Status] = x.Count
+	statusMap := map[string]int{
+		"in_care":  outcome.InCare,
+		"released": outcome.Released,
+		"died":     outcome.Died,
 	}
 	stats["by_status"] = statusMap
 	instanceCounts := []struct {
@@ -506,6 +509,7 @@ func tallyStatusCounts(counts []statusCount) (inCare, released, died int) {
 // outcomeTally holds the outcome-based released/died counts plus the
 // positive/neutral/negative breakdown.
 type outcomeTally struct {
+	InCare   int `db:"in_care"`
 	Released int `db:"released"`
 	Died     int `db:"died"`
 	Positive int `db:"positive"`
@@ -520,6 +524,7 @@ func tallyOutcomes(tx *pop.Connection, where string, args []interface{}) (outcom
 	var rows []outcomeTally
 	// COALESCE guards the empty-register case: SUM over zero rows is NULL.
 	err := tx.RawQuery(`SELECT
+		COALESCE(SUM(CASE WHEN current_status = 'in_care' THEN 1 ELSE 0 END), 0) as in_care,
 		COALESCE(SUM(CASE WHEN `+sqlOutcomeReleased+` THEN 1 ELSE 0 END), 0) as released,
 		COALESCE(SUM(CASE WHEN `+sqlOutcomeDied+` THEN 1 ELSE 0 END), 0) as died,
 		COALESCE(SUM(CASE WHEN outtake_rating > 0 AND (outtake_dead IS NULL OR outtake_dead = 0) THEN 1 ELSE 0 END), 0) as positive,
