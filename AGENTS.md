@@ -268,6 +268,7 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
 | `animal_status_changed` | Status update (e.g. in_care → under_treatment) |
 | `animal_released` | Animal released back to wild |
 | `animal_died` | Animal died in care |
+| `animal_deleted` | Animal destroyed in creaves (error outtake); receiver deletes the consolidated row and the animal's event history |
 | `animal_state` | Full current-state resync snapshot (replace semantics) |
 
 ### Payload Structure (the `payload` field)
