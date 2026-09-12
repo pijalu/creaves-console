@@ -18,6 +18,7 @@ var EventTypes = []EventType{
 	EventTypeAnimalStatusChanged,
 	EventTypeAnimalReleased,
 	EventTypeAnimalDied,
+	EventTypeAnimalDeleted,
 	EventTypeAnimalState,
 }
 
@@ -29,7 +30,10 @@ const (
 	EventTypeAnimalStatusChanged EventType = "animal_status_changed"
 	EventTypeAnimalReleased      EventType = "animal_released"
 	EventTypeAnimalDied          EventType = "animal_died"
-	EventTypeAnimalState         EventType = "animal_state"
+	// EventTypeAnimalDeleted marks a destroyed (erroneous) source record: the
+	// consolidated row and event history are removed, NOT marked deceased.
+	EventTypeAnimalDeleted EventType = "animal_deleted"
+	EventTypeAnimalState   EventType = "animal_state"
 )
 
 // EventStream represents an event imported from a source instance

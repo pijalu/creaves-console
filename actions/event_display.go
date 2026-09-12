@@ -29,6 +29,9 @@ var eventTypeLabels = map[string]map[string]string{
 	"animal_died": {
 		"en-US": "Died", "fr": "Décédé", "de": "Verstorben", "nl": "Overleden",
 	},
+	"animal_deleted": {
+		"en-US": "Deleted", "fr": "Supprimé", "de": "Gelöscht", "nl": "Verwijderd",
+	},
 	"animal_state": {
 		"en-US": "State snapshot", "fr": "Instantané d'état", "de": "Zustands-Snapshot", "nl": "Statussnapshot",
 	},
@@ -40,6 +43,7 @@ var eventTypeBadgeClasses = map[string]string{
 	"animal_status_changed": "warning",
 	"animal_released":       "success",
 	"animal_died":           "danger",
+	"animal_deleted":        "dark",
 	"animal_state":          "secondary",
 }
 

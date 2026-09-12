@@ -125,17 +125,29 @@ func (ep *EventProcessor) ProcessEventsBatch(limit int) (int, bool, error) {
 }
 
 func (ep *EventProcessor) processEvent(event *models.EventStream) error {
-	consolidated, isNew, err := ep.findOrCreateConsolidatedAnimal(event.InstanceID, event.AnimalID)
-	if err != nil {
-		return err
-	}
-
 	payload, err := event.GetPayload()
 	if err != nil {
 		return err
 	}
+
+	// Destroyed animals are deletions, not states (bugs.md "Delete show as
+	// deceased in console"): an explicit animal_deleted event, or any event
+	// whose outtake carries the producer's error flag (the destroy flow
+	// attaches the error outtake type), removes the animal from the
+	// consolidated view. The row AND the animal's event history are deleted:
+	// keeping the events would make the event-log checksum include the animal
+	// forever and the redelivery recovery path (webhook.go existing()) would
+	// resurrect the row on the next resync.
+	if event.EventType == models.EventTypeAnimalDeleted || payload.Outtake.Error {
+		return ep.deleteConsolidatedAnimal(event)
+	}
+
 	// Content-addressed state events are no-ops when the latest snapshot already
 	// has the same producer-supplied hash, even when delivered under a new UUID.
+	consolidated, isNew, err := ep.findOrCreateConsolidatedAnimal(event.InstanceID, event.AnimalID)
+	if err != nil {
+		return err
+	}
 	if event.EventType != models.EventTypeAnimalState || payload.StateHash == "" ||
 		!consolidated.StateHash.Valid || consolidated.StateHash.String != payload.StateHash {
 		if err := consolidated.ApplyEvent(*event); err != nil {
@@ -157,6 +169,27 @@ func (ep *EventProcessor) processEvent(event *models.EventStream) error {
 		return errors.WithStack(err)
 	}
 
+	return nil
+}
+
+// deleteConsolidatedAnimal removes a destroyed animal from the consolidated
+// view: the consolidated row and every received event of that animal. The
+// event deletion keeps the event-log checksum aligned with the producer's
+// expected set (destroyed animals are excluded there) and prevents the
+// redelivery recovery path from resurrecting the row.
+func (ep *EventProcessor) deleteConsolidatedAnimal(event *models.EventStream) error {
+	if err := ep.tx.RawQuery(
+		"DELETE FROM consolidated_animals WHERE instance_id = ? AND animal_id = ?",
+		event.InstanceID, event.AnimalID,
+	).Exec(); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := ep.tx.RawQuery(
+		"DELETE FROM event_streams WHERE instance_id = ? AND animal_id = ?",
+		event.InstanceID, event.AnimalID,
+	).Exec(); err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 
