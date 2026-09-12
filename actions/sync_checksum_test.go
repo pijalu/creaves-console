@@ -378,3 +378,68 @@ func TestSyncManagementLocaleVariantsShowSyncColumns(t *testing.T) {
 		assert.Contains(t, string(body), "yearRows", "%s must render per-year breakdown", path)
 	}
 }
+
+// TestLatestEventStateHashes_YieldsUnquotedHashes pins the SQL extraction
+// contract behind the sync-divergence incident (bugs.md): the per-animal
+// state hash read out of the event payload must be the RAW string — never a
+// JSON-quoted text. MySQL's plain json_extract returns quoted JSON text
+// ('"hash"') for string members, which made every hash comparison fail
+// (Confirmés 0) and poisoned the stored-set checksum, while the SQLite-based
+// unit tests stayed green. The query must use the unquoting "->>" operator
+// (MySQL 8 and SQLite ≥3.38) so both dialects agree.
+func TestLatestEventStateHashes_YieldsUnquotedHashes(t *testing.T) {
+	seedSyncChecksumFixtures(t)
+
+	latest, err := latestEventStateHashes(testDB, "center-a")
+	require.NoError(t, err)
+
+	assert.Equal(t, "h1", latest[1])
+	assert.Equal(t, "h2", latest[2])
+	assert.Equal(t, "h5-new", latest[5])
+	_, has3 := latest[3]
+	assert.False(t, has3, "animals without a hashed state event must not appear")
+
+	// Cross-check: an unquoted value feeds a correct confirmation count
+	// (quoted '"h1"' vs stored 'h1' would never match — the incident).
+	status, err := ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+	assert.Equal(t, 2, status.Confirmed)
+}
+
+// TestInstanceSyncStatus_LegacyEventsWithoutStateHash pins the legacy-event
+// handling: animal_state events stored before the state_hash backfill carry
+// an empty state_hash and must be EXCLUDED from the event-log fingerprint —
+// they can neither confirm nor shadow a hashed state event. Animals known
+// only through legacy events still count as expected and stay unconfirmed
+// until the producer's force resync backfills a hash.
+func TestInstanceSyncStatus_LegacyEventsWithoutStateHash(t *testing.T) {
+	seedSyncChecksumFixtures(t)
+
+	now := time.Now().UTC()
+	legacyEvent := func(animalID int, hash string, at time.Time) {
+		e := &models.EventStream{
+			ID: uuid.Must(uuid.NewV4()), InstanceID: "center-a", AnimalID: animalID,
+			EventType: models.EventTypeAnimalState,
+			Payload:   stateHashPayload(t, hash),
+			ImportedAt: at, CreatedAt: at,
+		}
+		require.NoError(t, testDB.Create(e))
+	}
+	// Animal 6: only a legacy (hash-less) state event — expected, unconfirmed.
+	legacyEvent(6, "", now.Add(-time.Hour))
+	// Animal 1: a NEWER legacy event must not shadow the older hashed one.
+	legacyEvent(1, "", now)
+
+	status, err := ComputeInstanceSyncStatus(testDB, "center-a")
+	require.NoError(t, err)
+
+	// Expected now also counts animal 6 (5 = animals 1,2,3,5,6);
+	// confirmation is unchanged: animal 1's latest HASHED event is still h1.
+	assert.Equal(t, 5, status.ExpectedTotal)
+	assert.Equal(t, 2, status.Confirmed)
+	assert.Equal(t, 3, status.Unconfirmed)
+	assert.Equal(t,
+		StateSetChecksum([]string{"1|h1", "2|h2", "5|h5-new"}),
+		status.EventLogChecksum,
+		"legacy hash-less events must not enter the fingerprint")
+}

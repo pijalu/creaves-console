@@ -137,10 +137,15 @@ func ComputeInstanceSyncStatus(tx *pop.Connection, instanceID string) (*Instance
 // later events overwrite earlier ones).
 //
 // Implemented SQL-side (window function) so we don't ship every payload to
-// Go just to discard all but the newest per animal. json_extract/json_valid
-// exist in both MySQL 8 and SQLite, keeping tests and production aligned.
-// Semantics match the former Go loop: only events with a parseable payload
-// and a non-empty state_hash participate; per animal, the newest wins.
+// Go just to discard all but the newest per animal. The "->>" operator
+// (JSON_UNQUOTE(JSON_EXTRACT(...)) semantics) exists in both MySQL 8 and
+// SQLite ≥3.38 and — unlike plain json_extract — returns an UNQUOTED SQL
+// string for JSON string members in BOTH dialects: MySQL's json_extract
+// yields a quoted JSON text ('"abc"'), which silently broke the hash
+// comparison and the stored checksum in production while SQLite-based unit
+// tests stayed green (see bugs.md sync-divergence entry). Semantics match
+// the former Go loop: only events with a parseable payload and a non-empty
+// state_hash participate; per animal, the newest wins.
 func latestEventStateHashes(tx *pop.Connection, instanceID string) (map[int]string, error) {
 	type row struct {
 		AnimalID  int    `db:"animal_id"`
@@ -150,13 +155,13 @@ func latestEventStateHashes(tx *pop.Connection, instanceID string) (map[int]stri
 	if err := tx.RawQuery(
 		`SELECT animal_id, state_hash FROM (
 			SELECT animal_id,
-				json_extract(payload, '$.state_hash') AS state_hash,
+				payload ->> '$.state_hash' AS state_hash,
 				ROW_NUMBER() OVER (PARTITION BY animal_id ORDER BY created_at DESC) AS rn
 			FROM event_streams
 			WHERE instance_id = ? AND event_type = ?
 				AND json_valid(payload)
-				AND json_extract(payload, '$.state_hash') IS NOT NULL
-				AND json_extract(payload, '$.state_hash') <> ''
+				AND payload ->> '$.state_hash' IS NOT NULL
+				AND payload ->> '$.state_hash' <> ''
 		) t WHERE rn = 1`,
 		instanceID, models.EventTypeAnimalState,
 	).All(&rows); err != nil {
