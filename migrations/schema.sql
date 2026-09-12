@@ -97,7 +97,6 @@ CREATE TABLE `consolidated_animals` (
   KEY `consolidated_animals_entry_cause_idx` (`entry_cause`),
   KEY `consolidated_animals_animal_age_idx` (`animal_age`),
   KEY `consolidated_animals_outtake_type_idx` (`outtake_type`),
-  KEY `consolidated_animals_year_year_number_idx` (`year`,`year_number`),
   KEY `year_desc_number_asc_idx` (`year` DESC,`year_number`),
   KEY `consolidated_animals_discovery_postal_code_idx` (`discovery_postal_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -271,4 +270,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-10 19:15:20
+-- Dump completed on 2026-09-12 10:54:13

@@ -392,6 +392,22 @@ func TestWebhookAPIKeys_UpdateUpsertsNewInstance(t *testing.T) {
 		"update must register the new instance")
 }
 
+func TestWebhookAPIKeys_UpdateActiveCheckboxSubmission(t *testing.T) {
+	tx := setupTest(t)
+	app := newAdminTestApp(tx, true)
+
+	_, stored := seedAPIKey(t, tx, "inst-seed")
+	req := httptest.NewRequest("PUT", "/webhook_api_keys/"+stored.ID.String(), strings.NewReader("Name=Key&Active=false&Active=true"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	updated := &models.WebhookAPIKey{}
+	require.NoError(t, tx.Find(updated, stored.ID))
+	assert.True(t, updated.Active, "checked active checkbox must persist when hidden false field is also submitted")
+}
+
 func TestWebhookAPIKeys_UpdateJSON(t *testing.T) {
 	tx := setupTest(t)
 	app := newAdminTestApp(tx, true)

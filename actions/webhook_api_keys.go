@@ -249,6 +249,18 @@ func (v WebhookAPIKeysResource) Update(c buffalo.Context) error {
 	if err := c.Bind(key); err != nil {
 		return errors.WithStack(err)
 	}
+	// Checkbox forms submit a hidden false value alongside the checked true
+	// value. Buffalo's binder may keep only the first value, so preserve the
+	// checked state when any submitted Active value is true.
+	if values, ok := c.Request().Form["Active"]; ok {
+		key.Active = false
+		for _, value := range values {
+			if value == "true" {
+				key.Active = true
+				break
+			}
+		}
+	}
 	if key.InstanceID == "" {
 		key.InstanceID = keptInstanceID
 	}
