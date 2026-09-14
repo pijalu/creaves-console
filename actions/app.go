@@ -129,6 +129,14 @@ func App() *buffalo.App {
 		}
 
 		app.ServeFiles("/", http.FS(public.FS()))
+
+		// Pre-build the register reference caches in the background so the
+		// first user does not pay the cold-cache cost (warmup.go). Skipped in
+		// tests: App() is built per test and the goroutine would outlive the
+		// test database.
+		if ENV != "test" {
+			go warmupCaches()
+		}
 	}
 
 	return app

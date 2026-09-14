@@ -77,6 +77,7 @@ func EventsDeleteCreate(c buffalo.Context) error {
 	// Deleting events can precede a consolidated purge; drop cached
 	// dropdown data so removed values cannot linger (refcache.go).
 	refCacheInvalidateAll()
+	dataCacheInvalidateAll()
 
 	if deleted == 0 {
 		c.Flash().Add("warning", "No events matched; nothing was deleted or archived")

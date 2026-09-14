@@ -279,7 +279,17 @@ func runAnnualStatQuery(tx *pop.Connection, q annualStatQuery, year int, scope R
 }
 
 // runAnnualStats computes all 12 statistics tables for year and scope.
+//
+// Each table costs one grouped scan + one total scan of the year's slice of
+// consolidated_animals (24 scans per render). Results are immutable enough
+// for an internal report (they only change when new events are ingested),
+// so they are served from the short-TTL data cache (datacache.go), keyed by
+// year+scope+language; ingest batch boundaries invalidate the cache.
 func runAnnualStats(tx *pop.Connection, year int, scope ReportScope, lang string) ([]annualStatSection, error) {
+	cacheKey := fmt.Sprintf("%d|%s|%s", year, scope.InstanceID, lang)
+	if cached, ok := cachedAnnualStats(cacheKey); ok {
+		return cached, nil
+	}
 	queries := annualStatQueries()
 	titles := annualSectionTitles(lang)
 	sections := make([]annualStatSection, 0, len(queries))
@@ -296,6 +306,7 @@ func runAnnualStats(tx *pop.Connection, year int, scope ReportScope, lang string
 		sec.Title = titles[q.id]
 		sections = append(sections, sec)
 	}
+	storeAnnualStats(cacheKey, sections)
 	return sections, nil
 }
 

@@ -14,6 +14,11 @@ import (
 // Handlers for the ported Creaves export reports (bugs.md item 3):
 // online HTML view + CSV download, scoped to all instances (default) or a
 // single instance through reportScope like every other console report.
+//
+// Known cost (performance review, accepted): these exports intentionally
+// scan the full scoped consolidated_animals set and evaluate per-row date
+// expressions — they are on-demand, admin-triggered exports, so no
+// caching/result cap is applied. Do not call them from hot paths.
 
 // dfPlaceholderRe matches a {df:column:format} placeholder.
 var dfPlaceholderRe = regexp.MustCompile(`\{df:([a-z_]+):([^}]+)\}`)

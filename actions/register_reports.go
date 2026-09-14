@@ -133,6 +133,7 @@ func RegisterIndex(c buffalo.Context) error {
 		if err := q.Order("year_number desc").All(animals); err != nil {
 			return err
 		}
+		models.PreloadTranslations(animals)
 		c.Set("pagination", q.Paginator)
 	}
 	c.Set("years", data.Years)
@@ -161,6 +162,7 @@ func RegisterExportCSV(c buffalo.Context) error {
 	if err := data.registerBaseQuery().Order("year_number desc").All(animals); err != nil {
 		return err
 	}
+	models.PreloadTranslations(animals)
 
 	lang := requestUILang(c)
 	header := append([]string{"Instance"}, registerCSVHeader(lang)...)
@@ -275,6 +277,9 @@ func loadSnapshotReportData(c buffalo.Context) (snapshotReportData, error) {
 		if err := tx.RawQuery(q, qargs...).All(animals); err != nil {
 			return nil, err
 		}
+		// Decode each row's Translations blob once (snapshot renders up to
+		// registerSnapshotLimit rows x 4-5 localized cells each).
+		models.PreloadTranslations(animals)
 		return animals, nil
 	}
 	return data, nil

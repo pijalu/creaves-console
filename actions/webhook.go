@@ -127,6 +127,12 @@ func WebhookEventsHandler(c buffalo.Context) error {
 	for i := range payload.Events {
 		ing.event(&payload.Events[i])
 	}
+	// Batch boundary: consolidated data changed — drop cached aggregates
+	// (dashboard, annual stats, sync checksums; datacache.go) once for the
+	// whole batch instead of once per event.
+	if ing.processedCount > 0 {
+		dataCacheInvalidateAll()
+	}
 
 	response := map[string]interface{}{
 		"processed":     ing.processedCount,

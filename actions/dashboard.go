@@ -23,50 +23,34 @@ func DashboardIndex(c buffalo.Context) error {
 		return err
 	}
 	stats := make(map[string]interface{})
-	animalCount, err := CountConsolidatedAnimals(tx, scope.InstanceID)
-	if err != nil {
-		return err
+	// The dashboard counters are full-table aggregates over
+	// consolidated_animals / event_streams: serve them from the short-TTL
+	// data cache (datacache.go) so repeated page loads don't re-scan.
+	agg, ok := cachedDashboardAggregate(scope.InstanceID)
+	if !ok {
+		agg, err = loadDashboardAggregate(tx, scope)
+		if err != nil {
+			return err
+		}
+		storeDashboardAggregate(scope.InstanceID, agg)
 	}
-	stats["total_animals"] = animalCount
-	where, args := ScopedWhere(scope, "")
+	stats["total_animals"] = agg.TotalAnimals
 	// Outcome-based status counts (bugs.md: deceased count on the dashboard):
 	// the raw current_status grouping misses deceased animals whose outtake
 	// carries the negative/dead outcome under a released status. Reuse the
 	// exact classification of /reports so every screen shows the same
 	// deceased/released split.
-	outcome, err := tallyOutcomes(tx, where, args)
-	if err != nil {
-		return err
+	stats["by_status"] = map[string]int{
+		"in_care":  agg.Outcome.InCare,
+		"released": agg.Outcome.Released,
+		"died":     agg.Outcome.Died,
 	}
-	statusMap := map[string]int{
-		"in_care":  outcome.InCare,
-		"released": outcome.Released,
-		"died":     outcome.Died,
-	}
-	stats["by_status"] = statusMap
-	instanceCounts := []struct {
-		InstanceID string `db:"instance_id"`
-		Count      int    `db:"count"`
-	}{}
-	if err = tx.RawQuery("SELECT instance_id, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY instance_id", args...).All(&instanceCounts); err != nil {
-		return err
-	}
-	instanceMap := make(map[string]int)
-	for _, x := range instanceCounts {
-		instanceMap[x.InstanceID] = x.Count
-	}
-	stats["by_instance"] = instanceMap
-	eventCount, err := CountEventStreams(tx, scope.InstanceID)
-	if err != nil {
-		return err
-	}
-	stats["total_events"] = eventCount
-	if err := dashboardEventStats(tx, scope, stats); err != nil {
-		return err
-	}
-	if err := dashboardKeyStats(tx, scope, stats); err != nil {
-		return err
-	}
+	stats["by_instance"] = agg.ByInstance
+	stats["total_events"] = agg.TotalEvents
+	stats["unprocessed_events"] = agg.Unprocessed
+	stats["unique_instances"] = agg.UniqueInsts
+	stats["total_webhook_keys"] = agg.TotalKeys
+	stats["active_webhook_keys"] = agg.ActiveKeys
 	// Dropdown options: always list ALL instances so the user can switch scope.
 	instances, err := consolidatedInstanceOptions(tx)
 	if err != nil {
@@ -76,6 +60,46 @@ func DashboardIndex(c buffalo.Context) error {
 	c.Set("stats", stats)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("dashboard/index.plush.html"))
+}
+
+// loadDashboardAggregate runs every dashboard counter query for one scope.
+// Kept separate from DashboardIndex so the result can be cached as a whole.
+func loadDashboardAggregate(tx *pop.Connection, scope ReportScope) (dashboardAggregate, error) {
+	agg := dashboardAggregate{}
+	var err error
+	if agg.TotalAnimals, err = CountConsolidatedAnimals(tx, scope.InstanceID); err != nil {
+		return agg, err
+	}
+	where, args := ScopedWhere(scope, "")
+	if agg.Outcome, err = tallyOutcomes(tx, where, args); err != nil {
+		return agg, err
+	}
+	instanceCounts := []struct {
+		InstanceID string `db:"instance_id"`
+		Count      int    `db:"count"`
+	}{}
+	if err = tx.RawQuery("SELECT instance_id, COUNT(*) as count FROM consolidated_animals "+where+" GROUP BY instance_id", args...).All(&instanceCounts); err != nil {
+		return agg, err
+	}
+	agg.ByInstance = make(map[string]int)
+	for _, x := range instanceCounts {
+		agg.ByInstance[x.InstanceID] = x.Count
+	}
+	if agg.TotalEvents, err = CountEventStreams(tx, scope.InstanceID); err != nil {
+		return agg, err
+	}
+	stats := map[string]interface{}{}
+	if err := dashboardEventStats(tx, scope, stats); err != nil {
+		return agg, err
+	}
+	if err := dashboardKeyStats(tx, scope, stats); err != nil {
+		return agg, err
+	}
+	agg.Unprocessed = stats["unprocessed_events"].(int)
+	agg.UniqueInsts = stats["unique_instances"].(int)
+	agg.TotalKeys = stats["total_webhook_keys"].(int)
+	agg.ActiveKeys = stats["active_webhook_keys"].(int)
+	return agg, nil
 }
 
 // dashboardEventStats fills unprocessed/total event counts and unique instance count.
@@ -164,6 +188,8 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 	if err := applyConsolidatedSort(q, c).All(animals); err != nil {
 		return err
 	}
+	// Decode each row's Translations blob once instead of per rendered cell.
+	models.PreloadTranslations(animals)
 
 	// Get filter options — served from the register reference cache
 	// (refcache.go); builders run only on cold cache or invalidation.

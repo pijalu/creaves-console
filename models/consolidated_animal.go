@@ -84,6 +84,36 @@ type ConsolidatedAnimal struct {
 	EventCount          int          `json:"event_count" db:"event_count"`
 	CreatedAt           time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt           time.Time    `json:"updated_at" db:"updated_at"`
+
+	// LocalizedTranslations holds the Translations blob decoded once for a
+	// whole result set (PreloadTranslations). Read-only after preload; never
+	// persisted (db:"-"). LocalizedField consults it first and falls back
+	// to an on-demand decode when the row was not preloaded.
+	LocalizedTranslations map[string]map[string]string `json:"-" db:"-"`
+}
+
+// PreloadTranslations decodes the Translations JSON blob once so repeated
+// LocalizedField calls on the same row (4-5 per rendered table row) do not
+// re-unmarshal the same document. Call on every row of list/report pages.
+func (c *ConsolidatedAnimal) PreloadTranslations() {
+	if !c.Translations.Valid || c.Translations.String == "" {
+		return
+	}
+	var translations map[string]map[string]string
+	if err := json.Unmarshal([]byte(c.Translations.String), &translations); err != nil {
+		return
+	}
+	c.LocalizedTranslations = translations
+}
+
+// PreloadTranslations decodes the Translations blob of every row once.
+func PreloadTranslations(animals *ConsolidatedAnimals) {
+	if animals == nil {
+		return
+	}
+	for i := range *animals {
+		(*animals)[i].PreloadTranslations()
+	}
 }
 
 func (c ConsolidatedAnimal) String() string {
@@ -127,6 +157,13 @@ func (c ConsolidatedAnimal) LocalizedField(lang, field string) string {
 		if c.OuttakeDead.Valid {
 			canonical = strconv.FormatBool(c.OuttakeDead.Bool)
 		}
+	}
+	// Fast path: translations decoded once by PreloadTranslations.
+	if c.LocalizedTranslations != nil {
+		if values, ok := c.LocalizedTranslations[lang]; ok && values[field] != "" {
+			return values[field]
+		}
+		return canonical
 	}
 	if !c.Translations.Valid {
 		return canonical

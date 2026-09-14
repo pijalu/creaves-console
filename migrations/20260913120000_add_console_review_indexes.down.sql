@@ -1,0 +1,10 @@
+ALTER TABLE event_streams DROP INDEX event_streams_instance_type_created_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_outtake_rating_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_entry_cause_nature_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_entry_cause_detail_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_native_status_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_subside_group_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_agw_group_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_year_species_class_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_outtake_date_idx;
+ALTER TABLE consolidated_animals DROP INDEX consolidated_animals_intake_date_idx;

@@ -71,6 +71,10 @@ func (ep *EventProcessor) ProcessUnprocessedEvents() (int, error) {
 		}
 	}
 
+	if processedCount > 0 {
+		dataCacheInvalidateAll()
+	}
+
 	if firstErr != nil {
 		return processedCount, errors.Wrapf(firstErr,
 			"failed to process event %s (skipped %d unprocessable event(s): %s)",
@@ -88,6 +92,7 @@ func (ep *EventProcessor) ProcessAllEvents() (int, error) {
 	// Rebuild wipes consolidated rows: cached dropdown values may no longer
 	// exist. Drop the register reference cache before reprocessing.
 	refCacheInvalidateAll()
+	dataCacheInvalidateAll()
 
 	if err := ep.tx.RawQuery("UPDATE event_streams SET processed_at = NULL").Exec(); err != nil {
 		return 0, errors.WithStack(err)

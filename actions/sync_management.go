@@ -59,9 +59,16 @@ func SyncManagementIndex(c buffalo.Context) error {
 		if err != nil {
 			return err
 		}
-		status, err := ComputeInstanceSyncStatus(tx, inst.InstanceID)
-		if err != nil {
-			return err
+		// The sync status derives from window-function + JSON extraction over
+		// the instance's FULL event log: serve repeat page loads from the
+		// data cache (datacache.go); ingest batch boundaries invalidate it.
+		status, ok := cachedSyncStatus(inst.InstanceID)
+		if !ok {
+			status, err = ComputeInstanceSyncStatus(tx, inst.InstanceID)
+			if err != nil {
+				return err
+			}
+			storeSyncStatus(inst.InstanceID, status)
 		}
 		rows = append(rows, instanceAnimalsRow{
 			InstanceID:  inst.InstanceID,

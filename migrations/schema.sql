@@ -98,7 +98,16 @@ CREATE TABLE `consolidated_animals` (
   KEY `consolidated_animals_animal_age_idx` (`animal_age`),
   KEY `consolidated_animals_outtake_type_idx` (`outtake_type`),
   KEY `year_desc_number_asc_idx` (`year` DESC,`year_number`),
-  KEY `consolidated_animals_discovery_postal_code_idx` (`discovery_postal_code`)
+  KEY `consolidated_animals_discovery_postal_code_idx` (`discovery_postal_code`),
+  KEY `consolidated_animals_intake_date_idx` (`intake_date`),
+  KEY `consolidated_animals_outtake_date_idx` (`outtake_date`),
+  KEY `consolidated_animals_year_species_class_idx` (`year`,`species_class`),
+  KEY `consolidated_animals_year_agw_group_idx` (`year`,`species_agw_group`),
+  KEY `consolidated_animals_year_subside_group_idx` (`year`,`species_subside_group`),
+  KEY `consolidated_animals_year_native_status_idx` (`year`,`species_native_status`),
+  KEY `consolidated_animals_year_entry_cause_detail_idx` (`year`,`entry_cause_detail`),
+  KEY `consolidated_animals_year_entry_cause_nature_idx` (`year`,`entry_cause_nature`),
+  KEY `consolidated_animals_year_outtake_rating_idx` (`year`,`outtake_rating`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -163,7 +172,6 @@ CREATE TABLE `event_streams` (
   `payload` json DEFAULT NULL,
   `source_db` varchar(255) NOT NULL,
   `imported_at` datetime NOT NULL,
-  `processed_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `resync_run_id` char(36) DEFAULT NULL,
@@ -172,7 +180,8 @@ CREATE TABLE `event_streams` (
   KEY `event_streams_processed_at_idx` (`processed_at`),
   KEY `event_streams_source_db_idx` (`source_db`),
   KEY `event_streams_imported_at_idx` (`imported_at`),
-  KEY `event_streams_instance_id_imported_at_idx` (`instance_id`,`imported_at`)
+  KEY `event_streams_instance_id_imported_at_idx` (`instance_id`,`imported_at`),
+  KEY `event_streams_instance_type_created_idx` (`instance_id`,`event_type`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

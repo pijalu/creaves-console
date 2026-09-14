@@ -88,10 +88,11 @@ func AuthDestroy(c buffalo.Context) error {
 func SetCurrentUser(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
 		if uid := c.Session().Get("current_user_id"); uid != nil {
-			u := &models.User{}
 			tx := c.Value("tx").(*pop.Connection)
-			err := tx.Find(u, uid)
-			if err != nil {
+			// Served from the short-TTL user cache (usercache.go): one Find
+			// per user per minute instead of one per authenticated request.
+			u, found, err := cachedUserByID(tx, fmt.Sprintf("%v", uid))
+			if err != nil || !found {
 				c.Session().Delete("current_user_id")
 				c.Session().Set("redirectURL", c.Request().URL.String())
 				return next(c)
@@ -313,6 +314,8 @@ func (v UsersResource) Update(c buffalo.Context) error {
 		}).Respond(c)
 	}
 
+	userCacheInvalidate(user.ID.String())
+
 	return responder.Wants("html", func(c buffalo.Context) error {
 		c.Flash().Add("success", "User updated successfully")
 		return c.Redirect(http.StatusSeeOther, "/users/%v", user.ID)
@@ -354,6 +357,8 @@ func (v UsersResource) Destroy(c buffalo.Context) error {
 	if err := tx.Destroy(user); err != nil {
 		return errors.WithStack(err)
 	}
+
+	userCacheInvalidate(user.ID.String())
 
 	return responder.Wants("html", func(c buffalo.Context) error {
 		c.Flash().Add("success", "User deleted successfully")
