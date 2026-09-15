@@ -172,6 +172,7 @@ CREATE TABLE `event_streams` (
   `payload` json DEFAULT NULL,
   `source_db` varchar(255) NOT NULL,
   `imported_at` datetime NOT NULL,
+  `processed_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `resync_run_id` char(36) DEFAULT NULL,
@@ -279,4 +280,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-12 10:54:13
+-- Dump completed on 2026-09-14 10:47:37
