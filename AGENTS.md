@@ -308,7 +308,9 @@ Keys are stored as **bcrypt hashes** — the raw key is shown only once on creat
   "outtake": {
     "id": "uuid", "date": "2024/03/01 09:00",
     "type": "Released to Wild", "location": "...", "note": "...",
-    "rating": 1, "dead": false, "error": false
+    "rating": 1, "dead": false, "error": false,
+    "precise_location": "...", "stay_duration": 42,
+    "corpse_destination": "...", "corpse_destination_at": "2024/03/02 08:30"
   },
   "initial_status": "in_care",
   "current_status": "in_care",
@@ -407,6 +409,10 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `outtake_rating` | int NULL | From outtake type definition |
 | `outtake_dead` | bool NULL | From outtake type definition |
 | `outtake_error` | bool NULL | Outtake-type "erroneous record" flag (Annexe reports exclude error=true) |
+| `outtake_precise_location` | varchar NULL | Free-text precise release location (BUG-R3) |
+| `outtake_stay_duration` | int NULL | Days in care at outtake time (BUG-R3) |
+| `outtake_corpse_destination`, `outtake_corpse_destination_at` | varchar/datetime NULL | Corpse disposal for dead outcomes (BUG-R3) |
+| `ready_for_release` | bool NULL | Tri-state animal flag: true/false/NULL=unknown (BUG-R3) |
 | `last_event_at` | datetime | |
 | `event_count` | int | Number of events applied |
 | `created_at`, `updated_at` | datetime | |

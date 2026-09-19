@@ -86,6 +86,11 @@ CREATE TABLE `consolidated_animals` (
   `discovery_country` varchar(255) DEFAULT NULL,
   `discovery_cantonnement` varchar(255) DEFAULT NULL,
   `discovery_direction` varchar(255) DEFAULT NULL,
+  `ready_for_release` tinyint(1) DEFAULT NULL,
+  `outtake_precise_location` varchar(255) DEFAULT NULL,
+  `outtake_stay_duration` int DEFAULT NULL,
+  `outtake_corpse_destination` varchar(255) DEFAULT NULL,
+  `outtake_corpse_destination_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `consolidated_animals_instance_id_animal_id_idx` (`instance_id`,`animal_id`),
   KEY `consolidated_animals_instance_id_idx` (`instance_id`),
@@ -280,4 +285,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-14 10:47:37
+-- Dump completed on 2026-09-19 22:16:44

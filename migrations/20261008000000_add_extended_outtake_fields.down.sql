@@ -1,0 +1,5 @@
+ALTER TABLE consolidated_animals DROP COLUMN outtake_corpse_destination_at;
+ALTER TABLE consolidated_animals DROP COLUMN outtake_corpse_destination;
+ALTER TABLE consolidated_animals DROP COLUMN outtake_stay_duration;
+ALTER TABLE consolidated_animals DROP COLUMN outtake_precise_location;
+ALTER TABLE consolidated_animals DROP COLUMN ready_for_release;

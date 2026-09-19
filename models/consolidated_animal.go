@@ -49,10 +49,10 @@ type ConsolidatedAnimal struct {
 	DiscoveryCountry      nulls.String `json:"discovery_country" db:"discovery_country"`
 	DiscoveryCantonnement nulls.String `json:"discovery_cantonnement" db:"discovery_cantonnement"`
 	DiscoveryDirection    nulls.String `json:"discovery_direction" db:"discovery_direction"`
-	EntryCause          nulls.String `json:"entry_cause" db:"entry_cause"`
-	EntryCauseDetail    nulls.String `json:"entry_cause_detail" db:"entry_cause_detail"`
-	EntryCauseNature    nulls.String `json:"entry_cause_nature" db:"entry_cause_nature"`
-	EntryCauseID        nulls.String `json:"entry_cause_id" db:"entry_cause_id"`
+	EntryCause            nulls.String `json:"entry_cause" db:"entry_cause"`
+	EntryCauseDetail      nulls.String `json:"entry_cause_detail" db:"entry_cause_detail"`
+	EntryCauseNature      nulls.String `json:"entry_cause_nature" db:"entry_cause_nature"`
+	EntryCauseID          nulls.String `json:"entry_cause_id" db:"entry_cause_id"`
 	// Discoverer contact + donation (bugs.md item 3) for the discoverer and
 	// donation register exports.
 	DiscovererFirstname  nulls.String `json:"discoverer_firstname" db:"discoverer_firstname"`
@@ -65,25 +65,31 @@ type ConsolidatedAnimal struct {
 	DiscovererPhone      nulls.String `json:"discoverer_phone" db:"discoverer_phone"`
 	DiscovererNote       nulls.String `json:"discoverer_note" db:"discoverer_note"`
 	DiscovererDonation   nulls.String `json:"discoverer_donation" db:"discoverer_donation"`
-	CurrentStatus       string       `json:"current_status" db:"current_status"`
-	IntakeDate          nulls.Time   `json:"intake_date" db:"intake_date"`
-	IntakeGeneral       nulls.String `json:"intake_general" db:"intake_general"`
-	IntakeWounds        nulls.String `json:"intake_wounds" db:"intake_wounds"`
-	IntakeParasites     nulls.String `json:"intake_parasites" db:"intake_parasites"`
-	IntakeRemarks       nulls.String `json:"intake_remarks" db:"intake_remarks"`
-	OuttakeDate         nulls.Time   `json:"outtake_date" db:"outtake_date"`
-	OuttakeType         nulls.String `json:"outtake_type" db:"outtake_type"`
-	OuttakeLocation     nulls.String `json:"outtake_location" db:"outtake_location"`
-	OuttakeRating       nulls.Int    `json:"outtake_rating" db:"outtake_rating"`
-	OuttakeDead         nulls.Bool   `json:"outtake_dead" db:"outtake_dead"`
-	OuttakeError        nulls.Bool   `json:"outtake_error" db:"outtake_error"`
-	Translations        nulls.String `json:"translations" db:"translations"`
-	StateHash           nulls.String `json:"state_hash" db:"state_hash"`
-	LastStateAt         nulls.Time   `json:"last_state_at" db:"last_state_at"`
-	LastEventAt         time.Time    `json:"last_event_at" db:"last_event_at"`
-	EventCount          int          `json:"event_count" db:"event_count"`
-	CreatedAt           time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time    `json:"updated_at" db:"updated_at"`
+	CurrentStatus        string       `json:"current_status" db:"current_status"`
+	IntakeDate           nulls.Time   `json:"intake_date" db:"intake_date"`
+	IntakeGeneral        nulls.String `json:"intake_general" db:"intake_general"`
+	IntakeWounds         nulls.String `json:"intake_wounds" db:"intake_wounds"`
+	IntakeParasites      nulls.String `json:"intake_parasites" db:"intake_parasites"`
+	IntakeRemarks        nulls.String `json:"intake_remarks" db:"intake_remarks"`
+	OuttakeDate          nulls.Time   `json:"outtake_date" db:"outtake_date"`
+	OuttakeType          nulls.String `json:"outtake_type" db:"outtake_type"`
+	OuttakeLocation      nulls.String `json:"outtake_location" db:"outtake_location"`
+	OuttakeRating        nulls.Int    `json:"outtake_rating" db:"outtake_rating"`
+	OuttakeDead          nulls.Bool   `json:"outtake_dead" db:"outtake_dead"`
+	OuttakeError         nulls.Bool   `json:"outtake_error" db:"outtake_error"`
+	// Extended outtake details (BUG-R3, additive contract extension).
+	OuttakePreciseLocation     nulls.String `json:"outtake_precise_location" db:"outtake_precise_location"`
+	OuttakeStayDuration        nulls.Int    `json:"outtake_stay_duration" db:"outtake_stay_duration"`
+	OuttakeCorpseDestination   nulls.String `json:"outtake_corpse_destination" db:"outtake_corpse_destination"`
+	OuttakeCorpseDestinationAt nulls.Time   `json:"outtake_corpse_destination_at" db:"outtake_corpse_destination_at"`
+	ReadyForRelease            nulls.Bool   `json:"ready_for_release" db:"ready_for_release"`
+	Translations               nulls.String `json:"translations" db:"translations"`
+	StateHash                  nulls.String `json:"state_hash" db:"state_hash"`
+	LastStateAt                nulls.Time   `json:"last_state_at" db:"last_state_at"`
+	LastEventAt                time.Time    `json:"last_event_at" db:"last_event_at"`
+	EventCount                 int          `json:"event_count" db:"event_count"`
+	CreatedAt                  time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt                  time.Time    `json:"updated_at" db:"updated_at"`
 
 	// LocalizedTranslations holds the Translations blob decoded once for a
 	// whole result set (PreloadTranslations). Read-only after preload; never
@@ -238,6 +244,9 @@ func (c *ConsolidatedAnimal) applyState(payload EventPayload, eventTime time.Tim
 	c.IntakeDate, c.IntakeGeneral, c.IntakeWounds, c.IntakeParasites, c.IntakeRemarks = nulls.Time{}, nulls.String{}, nulls.String{}, nulls.String{}, nulls.String{}
 	c.OuttakeDate, c.OuttakeType, c.OuttakeLocation = nulls.Time{}, nulls.String{}, nulls.String{}
 	c.OuttakeRating, c.OuttakeDead, c.OuttakeError = nulls.Int{}, nulls.Bool{}, nulls.Bool{}
+	c.OuttakePreciseLocation, c.OuttakeStayDuration = nulls.String{}, nulls.Int{}
+	c.OuttakeCorpseDestination, c.OuttakeCorpseDestinationAt = nulls.String{}, nulls.Time{}
+	c.ReadyForRelease = nulls.Bool{}
 	previousCount := c.EventCount
 	c.CurrentStatus = ""
 	c.UpdateFromPayload(payload, EventTypeAnimalState, eventTime)
@@ -274,10 +283,31 @@ func (c *ConsolidatedAnimal) applyOuttake(payload EventPayload) {
 	c.OuttakeRating = nulls.NewInt(payload.Outtake.Rating)
 	c.OuttakeDead = nulls.NewBool(payload.Outtake.Dead)
 	c.OuttakeError = nulls.NewBool(payload.Outtake.Error)
+	c.applyExtendedOuttakeFields(payload)
 	if payload.Outtake.Rating < 0 || payload.Outtake.Dead {
 		c.CurrentStatus = "died"
 	} else if c.CurrentStatus != "died" {
 		c.CurrentStatus = "released"
+	}
+}
+
+// applyExtendedOuttakeFields maps the BUG-R3 extended outtake details
+// (precise location, stay duration, corpse disposal). Called only when an
+// outtake block is present; each field is optional.
+func (c *ConsolidatedAnimal) applyExtendedOuttakeFields(payload EventPayload) {
+	if payload.Outtake.PreciseLocation != "" {
+		c.OuttakePreciseLocation = nulls.NewString(payload.Outtake.PreciseLocation)
+	}
+	if payload.Outtake.StayDuration != nil {
+		c.OuttakeStayDuration = nulls.NewInt(*payload.Outtake.StayDuration)
+	}
+	if payload.Outtake.CorpseDestination != "" {
+		c.OuttakeCorpseDestination = nulls.NewString(payload.Outtake.CorpseDestination)
+	}
+	if payload.Outtake.CorpseDestinationAt != "" {
+		if dt, err := time.Parse(DateTimeFormat, payload.Outtake.CorpseDestinationAt); err == nil {
+			c.OuttakeCorpseDestinationAt = nulls.NewTime(dt)
+		}
 	}
 }
 
@@ -339,6 +369,11 @@ func (c *ConsolidatedAnimal) UpdateFromPayload(payload EventPayload, eventType E
 	}
 	if payload.Animal.AnimalAge != "" {
 		c.AnimalAge = nulls.NewString(payload.Animal.AnimalAge)
+	}
+	// ReadyForRelease is a *bool tri-state: a non-nil value is authoritative
+	// (true or false); nil means "producer did not send it" — keep existing.
+	if payload.Animal.ReadyForRelease != nil {
+		c.ReadyForRelease = nulls.NewBool(*payload.Animal.ReadyForRelease)
 	}
 
 	// Update discovery info

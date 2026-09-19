@@ -486,3 +486,97 @@ func TestApplyEvent_AllLocalesRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// BUG-R3: the extended outtake block (precise location, stay duration, corpse
+// destination) and the animal ready_for_release flag added to the webhook
+// contract must be mapped onto the consolidated row, and a state snapshot
+// without them must clear previously stored values.
+func TestApplyEvent_ExtendedOuttakeFieldsR3(t *testing.T) {
+	stay := 42
+	ready := true
+	payload := EventPayload{
+		Animal: AnimalPayload{Species: "Fox", ReadyForRelease: &ready},
+		Outtake: OuttakePayload{
+			Date:                "2026/10/01 10:00",
+			Type:                "Release",
+			Location:            "Forest",
+			Rating:              3,
+			PreciseLocation:     "48.8566, 2.3522 - clearing",
+			StayDuration:        &stay,
+			CorpseDestination:   "Incinerator",
+			CorpseDestinationAt: "2026/10/02 08:30",
+		},
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := newConsolidatedAnimal()
+	if err := c.ApplyEvent(EventStream{EventType: EventTypeAnimalReleased, Payload: raw, CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !c.OuttakePreciseLocation.Valid || c.OuttakePreciseLocation.String != "48.8566, 2.3522 - clearing" {
+		t.Errorf("precise location not mapped: %+v", c.OuttakePreciseLocation)
+	}
+	if !c.OuttakeStayDuration.Valid || c.OuttakeStayDuration.Int != 42 {
+		t.Errorf("stay duration not mapped: %+v", c.OuttakeStayDuration)
+	}
+	if !c.OuttakeCorpseDestination.Valid || c.OuttakeCorpseDestination.String != "Incinerator" {
+		t.Errorf("corpse destination not mapped: %+v", c.OuttakeCorpseDestination)
+	}
+	if !c.OuttakeCorpseDestinationAt.Valid {
+		t.Errorf("corpse destination at not mapped: %+v", c.OuttakeCorpseDestinationAt)
+	}
+	if !c.ReadyForRelease.Valid || !c.ReadyForRelease.Bool {
+		t.Errorf("ready_for_release not mapped: %+v", c.ReadyForRelease)
+	}
+}
+
+// A state snapshot that omits the extended fields must reset them, exactly
+// like the legacy outtake columns (applyState clears, then UpdateFromPayload).
+func TestApplyStateClearsExtendedOuttakeFieldsR3(t *testing.T) {
+	c := newConsolidatedAnimal()
+	c.OuttakePreciseLocation = nulls.NewString("old")
+	c.OuttakeStayDuration = nulls.NewInt(7)
+	c.OuttakeCorpseDestination = nulls.NewString("old")
+	c.ReadyForRelease = nulls.NewBool(true)
+
+	payload := EventPayload{Animal: AnimalPayload{Species: "Fox"}}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.ApplyEvent(EventStream{EventType: EventTypeAnimalState, Payload: raw, CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+
+	if c.OuttakePreciseLocation.Valid || c.OuttakeStayDuration.Valid ||
+		c.OuttakeCorpseDestination.Valid || c.OuttakeCorpseDestinationAt.Valid ||
+		c.ReadyForRelease.Valid {
+		t.Errorf("state snapshot must clear extended outtake fields: %+v", c)
+	}
+}
+
+// ready_for_release=false is a real value (explicitly not ready) and must not
+// be confused with "field absent" — the producer sends a *bool pointer.
+func TestReadyForReleaseExplicitFalseR3(t *testing.T) {
+	notReady := false
+	payload := EventPayload{Animal: AnimalPayload{ReadyForRelease: &notReady}}
+
+	c := newConsolidatedAnimal()
+	c.UpdateFromPayload(payload, EventTypeAnimalState, time.Now())
+
+	if !c.ReadyForRelease.Valid || c.ReadyForRelease.Bool {
+		t.Errorf("explicit false must be stored as valid false: %+v", c.ReadyForRelease)
+	}
+
+	// Absent flag must keep the previous value.
+	c2 := newConsolidatedAnimal()
+	c2.ReadyForRelease = nulls.NewBool(true)
+	c2.UpdateFromPayload(EventPayload{}, EventTypeAnimalState, time.Now())
+	if !c2.ReadyForRelease.Valid || !c2.ReadyForRelease.Bool {
+		t.Errorf("absent flag must keep previous value: %+v", c2.ReadyForRelease)
+	}
+}

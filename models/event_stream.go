@@ -75,23 +75,28 @@ type AnimalPayload struct {
 	SpeciesOrder    string `json:"species_order,omitempty"`
 	SpeciesGame     bool   `json:"species_game,omitempty"`
 	SpeciesHuntable bool   `json:"species_huntable,omitempty"`
+
+	// ReadyForRelease is a tri-state pointer (true/false/unset): the producer
+	// sends it whenever the animal row carries a value, and the console must
+	// be able to distinguish "explicitly not ready" from "unknown".
+	ReadyForRelease *bool `json:"ready_for_release,omitempty"`
 }
 
 // DiscoveryPayload represents the complete discovery information in an event
 type DiscoveryPayload struct {
-	ID                   string `json:"id,omitempty"`
-	Location             string `json:"location,omitempty"`
-	PostalCode           string `json:"postal_code,omitempty"`
-	City                 string `json:"city,omitempty"`
-	Date                 string `json:"date,omitempty"`
-	EntryCauseID         string `json:"entry_cause_id,omitempty"`
-	EntryCause           string `json:"entry_cause,omitempty"`
-	EntryCauseDetail     string `json:"entry_cause_detail,omitempty"`
-	EntryCauseNature     string `json:"entry_cause_nature,omitempty"`
-	Reason               string `json:"reason,omitempty"`
-	Note                 string `json:"note,omitempty"`
-	ReturnHabitat        bool   `json:"return_habitat,omitempty"`
-	InGarden             bool   `json:"in_garden,omitempty"`
+	ID               string `json:"id,omitempty"`
+	Location         string `json:"location,omitempty"`
+	PostalCode       string `json:"postal_code,omitempty"`
+	City             string `json:"city,omitempty"`
+	Date             string `json:"date,omitempty"`
+	EntryCauseID     string `json:"entry_cause_id,omitempty"`
+	EntryCause       string `json:"entry_cause,omitempty"`
+	EntryCauseDetail string `json:"entry_cause_detail,omitempty"`
+	EntryCauseNature string `json:"entry_cause_nature,omitempty"`
+	Reason           string `json:"reason,omitempty"`
+	Note             string `json:"note,omitempty"`
+	ReturnHabitat    bool   `json:"return_habitat,omitempty"`
+	InGarden         bool   `json:"in_garden,omitempty"`
 	// Locality hierarchy resolved on the creaves side from the discovery
 	// city (localities reference table, stat_communes export join). Empty
 	// when the city is unknown to the producing instance's reference data.
@@ -111,7 +116,7 @@ type DiscoveryPayload struct {
 	DiscovererPhone      string `json:"discoverer_phone,omitempty"`
 	DiscovererNote       string `json:"discoverer_note,omitempty"`
 	// Donation amount (free-form, e.g. "10,00") for the donation register.
-	DiscovererDonation   string `json:"discoverer_donation,omitempty"`
+	DiscovererDonation string `json:"discoverer_donation,omitempty"`
 }
 
 // IntakePayload represents the complete intake information in an event
@@ -140,6 +145,14 @@ type OuttakePayload struct {
 	// producer always serializes it (contract v2), and false is a real value
 	// the Annexe reports filter on.
 	Error bool `json:"error"`
+
+	// Extended outtake details (BUG-R3): precise free-text release location,
+	// days in care, and corpse disposal for dead outcomes. All optional and
+	// additive — older producers simply omit them.
+	PreciseLocation     string `json:"precise_location,omitempty"`
+	StayDuration        *int   `json:"stay_duration,omitempty"`
+	CorpseDestination   string `json:"corpse_destination,omitempty"`
+	CorpseDestinationAt string `json:"corpse_destination_at,omitempty"`
 }
 
 // EventPayload represents the complete structured event payload with all entities
