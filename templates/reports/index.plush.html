@@ -9,6 +9,15 @@
                     <% } %>
                 </select>
             </div>
+            <div class="form-group mr-2">
+                <label for="year" class="mr-2">Year:</label>
+                <select name="year" id="year" class="form-control" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    <%= for (y) in years { %>
+                        <option value="<%= y.Year %>" <%= if (y.Selected) { %>selected<% } %>><%= y.Year %></option>
+                    <% } %>
+                </select>
+            </div>
             <noscript><button class="btn btn-primary">Apply</button></noscript>
         </form>
         <h1><i class="fas fa-chart-bar"></i> Reports</h1>

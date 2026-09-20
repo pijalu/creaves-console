@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
@@ -28,7 +29,10 @@ var colPlaceholderRe = regexp.MustCompile(`\{(year|dow):([a-z_]+)\}`)
 
 // buildExportSQL substitutes the placeholders of q for the given scope and
 // dialect and returns the final SQL plus the scope argument (if any).
-func buildExportSQL(q exportQuery, scope ReportScope, dialect string) (string, []interface{}) {
+// When year > 0 and the query declares a YearColumn, the final SQL is
+// wrapped as a subquery filtering on that aliased year column; the year is
+// bound as a parameter, never interpolated.
+func buildExportSQL(q exportQuery, scope ReportScope, dialect string, year int) (string, []interface{}) {
 	sql := q.SQL
 
 	// Date-format placeholders {df:col:fmt} -> dialect-specific expression.
@@ -65,7 +69,24 @@ func buildExportSQL(q exportQuery, scope ReportScope, dialect string) (string, [
 		sql = strings.ReplaceAll(sql, "{scopeAnd}", "AND a.instance_id = ?")
 		args = []interface{}{scope.InstanceID}
 	}
+
+	// Optional year filter: wrap and filter on the aliased year column.
+	if year > 0 && q.YearColumn != "" {
+		sql = "SELECT * FROM (" + strings.TrimSpace(sql) + ") AS year_filter WHERE year_filter.`" + q.YearColumn + "` = ?"
+		args = append(args, year)
+	}
 	return sql, args
+}
+
+// parseExportYear reads an optional "year" request parameter. It returns 0
+// (no filter) when the parameter is absent, empty, or not a plausible
+// 4-digit year.
+func parseExportYear(c buffalo.Context) int {
+	y, err := strconv.Atoi(strings.TrimSpace(c.Param("year")))
+	if err != nil || y < 1900 || y > 2100 {
+		return 0
+	}
+	return y
 }
 
 // dateFormatExpr renders a dialect-specific date-formatting expression.
@@ -146,9 +167,10 @@ func exportQueryStore(tx *pop.Connection) (exportQueryer, error) {
 }
 
 // runExportQuery executes the report and returns columns + rows as strings
-// (NULL rendered as "").
-func runExportQuery(tx *pop.Connection, q exportQuery, scope ReportScope) ([]string, [][]string, error) {
-	sqlStr, args := buildExportSQL(q, scope, tx.Dialect.Name())
+// (NULL rendered as ""). year > 0 restricts the report to that year when
+// the query declares a YearColumn.
+func runExportQuery(tx *pop.Connection, q exportQuery, scope ReportScope, year int) ([]string, [][]string, error) {
+	sqlStr, args := buildExportSQL(q, scope, tx.Dialect.Name(), year)
 	store, err := exportQueryStore(tx)
 	if err != nil {
 		return nil, nil, err
@@ -187,24 +209,26 @@ func runExportQuery(tx *pop.Connection, q exportQuery, scope ReportScope) ([]str
 }
 
 // exportReportContext resolves scope, finds the query, and runs it.
-func exportReportContext(c buffalo.Context) (*exportQuery, ReportScope, []string, [][]string, error) {
+// Returns the parsed year filter (0 = all years) alongside.
+func exportReportContext(c buffalo.Context) (*exportQuery, ReportScope, int, []string, [][]string, error) {
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
-		return nil, ReportScope{}, nil, nil, fmt.Errorf("no transaction found")
+		return nil, ReportScope{}, 0, nil, nil, fmt.Errorf("no transaction found")
 	}
 	scope, err := reportScope(c, tx)
 	if err != nil {
-		return nil, scope, nil, nil, err
+		return nil, scope, 0, nil, nil, err
 	}
 	q := findExportQuery(c.Param("query"))
 	if q == nil {
-		return nil, scope, nil, nil, c.Error(http.StatusNotFound, fmt.Errorf("unknown export query: %s", c.Param("query")))
+		return nil, scope, 0, nil, nil, c.Error(http.StatusNotFound, fmt.Errorf("unknown export query: %s", c.Param("query")))
 	}
-	cols, rows, err := runExportQuery(tx, *q, scope)
+	year := parseExportYear(c)
+	cols, rows, err := runExportQuery(tx, *q, scope, year)
 	if err != nil {
-		return nil, scope, nil, nil, err
+		return nil, scope, year, nil, nil, err
 	}
-	return q, scope, cols, rows, nil
+	return q, scope, year, cols, rows, nil
 }
 
 // ExportReportsIndex lists all ported reports with links to the online view
@@ -230,7 +254,7 @@ func ExportReportsIndex(c buffalo.Context) error {
 
 // ExportReportView renders the online (sortable/filterable) HTML view.
 func ExportReportView(c buffalo.Context) error {
-	q, scope, cols, rows, err := exportReportContext(c)
+	q, scope, year, cols, rows, err := exportReportContext(c)
 	if err != nil {
 		return err
 	}
@@ -242,6 +266,7 @@ func ExportReportView(c buffalo.Context) error {
 		return err
 	}
 	c.Set("query", q)
+	c.Set("year", year)
 	c.Set("cols", cols)
 	c.Set("rows", rows)
 	c.Set("instances", instances)
@@ -252,7 +277,7 @@ func ExportReportView(c buffalo.Context) error {
 
 // ExportReportCSV streams the report as a CSV download.
 func ExportReportCSV(c buffalo.Context) error {
-	q, scope, cols, rows, err := exportReportContext(c)
+	q, scope, year, cols, rows, err := exportReportContext(c)
 	if err != nil {
 		return err
 	}
@@ -262,6 +287,9 @@ func ExportReportCSV(c buffalo.Context) error {
 	filename := fmt.Sprintf("%s.csv", q.Name)
 	if !scope.IsGlobal() {
 		filename = fmt.Sprintf("%s-%s.csv", q.Name, scope.InstanceID)
+	}
+	if year > 0 && q.YearColumn != "" {
+		filename = strings.TrimSuffix(filename, ".csv") + fmt.Sprintf("-%d.csv", year)
 	}
 	return writeCSV(c, filename, cols, rows)
 }

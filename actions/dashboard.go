@@ -573,10 +573,11 @@ func ReportsIndex(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
-	where, args := ScopedWhere(scope, "")
+	year := parseReportYear(c)
+	where, args := ScopedWhereYear(scope, "", year)
 	stats := make(map[string]interface{})
-	totalAnimals, err := CountConsolidatedAnimals(tx, scope.InstanceID)
-	if err != nil {
+	var totalAnimals int
+	if err = tx.RawQuery("SELECT COUNT(*) FROM consolidated_animals "+where, args...).First(&totalAnimals); err != nil {
 		return err
 	}
 	stats["total_animals"] = totalAnimals
@@ -611,7 +612,7 @@ func ReportsIndex(c buffalo.Context) error {
 		Species string `db:"species"`
 		Count   int    `db:"count"`
 	}{}
-	speciesWhere, speciesArgs := ScopedWhere(scope, "WHERE species IS NOT NULL")
+	speciesWhere, speciesArgs := ScopedWhereYear(scope, "WHERE species IS NOT NULL", year)
 	if err = tx.RawQuery("SELECT species, COUNT(*) as count FROM consolidated_animals "+speciesWhere+" GROUP BY species ORDER BY count DESC LIMIT 20", speciesArgs...).All(&speciesCounts); err != nil {
 		return err
 	}
@@ -620,7 +621,7 @@ func ReportsIndex(c buffalo.Context) error {
 		City  string `db:"city"`
 		Count int    `db:"count"`
 	}{}
-	cityWhere, cityArgs := ScopedWhere(scope, "WHERE discovery_city IS NOT NULL")
+	cityWhere, cityArgs := ScopedWhereYear(scope, "WHERE discovery_city IS NOT NULL", year)
 	if err = tx.RawQuery("SELECT discovery_city as city, COUNT(*) as count FROM consolidated_animals "+cityWhere+" GROUP BY discovery_city ORDER BY count DESC LIMIT 20", cityArgs...).All(&cityCounts); err != nil {
 		return err
 	}
@@ -629,7 +630,7 @@ func ReportsIndex(c buffalo.Context) error {
 		AnimalType string `db:"animal_type"`
 		Count      int    `db:"count"`
 	}{}
-	typeWhere, typeArgs := ScopedWhere(scope, "WHERE animal_type IS NOT NULL")
+	typeWhere, typeArgs := ScopedWhereYear(scope, "WHERE animal_type IS NOT NULL", year)
 	if err = tx.RawQuery("SELECT animal_type, COUNT(*) as count FROM consolidated_animals "+typeWhere+" GROUP BY animal_type ORDER BY count DESC", typeArgs...).All(&typeCounts); err != nil {
 		return err
 	}
@@ -638,7 +639,13 @@ func ReportsIndex(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	years, err := reportYearOptions(tx, scope, year)
+	if err != nil {
+		return err
+	}
 	c.Set("stats", stats)
+	c.Set("years", years)
+	c.Set("selectedYear", year)
 	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/index.plush.html"))
@@ -658,6 +665,7 @@ func ReportsByLocation(c buffalo.Context) error {
 	if groupBy == "" {
 		groupBy = "city"
 	}
+	year := parseReportYear(c)
 
 	// Filter out rows missing the grouping column so grouped values are
 	// never NULL (plain string scan targets).
@@ -665,7 +673,7 @@ func ReportsByLocation(c buffalo.Context) error {
 	if groupBy == "postal_code" {
 		locationBase = "WHERE discovery_postal_code IS NOT NULL"
 	}
-	whereLocation, locationArgs := ScopedWhere(scope, locationBase)
+	whereLocation, locationArgs := ScopedWhereYear(scope, locationBase, year)
 
 	var results []struct {
 		Location   string `db:"location"`
@@ -716,6 +724,12 @@ func ReportsByLocation(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	years, err := reportYearOptions(tx, scope, year)
+	if err != nil {
+		return err
+	}
+	c.Set("years", years)
+	c.Set("selectedYear", year)
 	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_location.plush.html"))
@@ -779,7 +793,17 @@ func ReportsByType(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
-	whereType, typeArgs := ScopedWhere(scope, "WHERE animal_type IS NOT NULL")
+	year := parseReportYear(c)
+	whereType, typeArgs := ScopedWhereYear(scope, "WHERE animal_type IS NOT NULL", year)
+	// The localized label lookup must see the same year slice as the
+	// grouped query (its base WHERE is combined with the scope internally,
+	// so the year predicate goes into the args list).
+	labelWhere := "WHERE animal_type IS NOT NULL"
+	var labelArgs []interface{}
+	if year > 0 {
+		labelWhere += " AND year = ?"
+		labelArgs = append(labelArgs, year)
+	}
 	var results []struct {
 		AnimalType string `db:"animal_type"`
 		Count      int    `db:"count"`
@@ -803,7 +827,7 @@ func ReportsByType(c buffalo.Context) error {
 	if err := tx.RawQuery(query, typeArgs...).All(&results); err != nil {
 		return err
 	}
-	labels, err := localizedGroupLabels(tx, scope, "animal_type", requestUILang(c), "WHERE animal_type IS NOT NULL", nil)
+	labels, err := localizedGroupLabels(tx, scope, "animal_type", requestUILang(c), labelWhere, labelArgs)
 	if err != nil {
 		return err
 	}
@@ -813,6 +837,12 @@ func ReportsByType(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	years, err := reportYearOptions(tx, scope, year)
+	if err != nil {
+		return err
+	}
+	c.Set("years", years)
+	c.Set("selectedYear", year)
 	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("reports/by_type.plush.html"))

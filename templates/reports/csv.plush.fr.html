@@ -35,7 +35,13 @@
                 <p>Registre complet des animaux (entrées, découvertes, sorties) en classeur Excel avec tableaux croisés dynamiques.</p>
             </div>
             <div class="card-footer">
-                <a href="/export/excel?query=registre_detail&amp;instance_id=<%= instanceID %>" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</a>
+                <form method="get" action="/export/excel" class="form-inline">
+                    <input type="hidden" name="query" value="registre_detail">
+                    <input type="hidden" name="instance_id" value="<%= instanceID %>">
+                    <label for="year-registre_detail" class="mr-2 mb-0">Année:</label>
+                    <input type="number" name="year" id="year-registre_detail" class="form-control form-control-sm mr-2" style="width: 6.5rem;" min="1900" max="2100" step="1" placeholder="Toutes">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</button>
+                </form>
             </div>
         </div>
     </div>
@@ -48,7 +54,13 @@
                 <p>Entrées par commune de découverte en classeur Excel avec tableaux croisés dynamiques.</p>
             </div>
             <div class="card-footer">
-                <a href="/export/excel?query=stat_communes&amp;instance_id=<%= instanceID %>" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</a>
+                <form method="get" action="/export/excel" class="form-inline">
+                    <input type="hidden" name="query" value="stat_communes">
+                    <input type="hidden" name="instance_id" value="<%= instanceID %>">
+                    <label for="year-stat_communes" class="mr-2 mb-0">Année:</label>
+                    <input type="number" name="year" id="year-stat_communes" class="form-control form-control-sm mr-2" style="width: 6.5rem;" min="1900" max="2100" step="1" placeholder="Toutes">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-download"></i> Télécharger l'Excel</button>
+                </form>
             </div>
         </div>
     </div>

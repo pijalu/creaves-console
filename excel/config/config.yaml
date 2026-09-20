@@ -19,6 +19,7 @@ queries:
     description: REGISTRE DÉTAILLÉ (consolidé)
     template: registre.xlsx
     sheet: animals
+    year_column: "année"
     query: SELECT
             a.animal_id AS "ID",
             a.year AS "année",
@@ -60,6 +61,7 @@ queries:
     description: Statistique Communes (consolidé)
     template: stats_communes.xlsx
     sheet: bdd
+    year_column: "Année"
     query: SELECT
             a.year AS "Année",
             a.year_number AS "N°",

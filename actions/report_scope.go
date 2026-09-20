@@ -3,6 +3,8 @@ package actions
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"creaves-console/models"
 	"github.com/gobuffalo/buffalo"
@@ -35,6 +37,50 @@ func ScopedWhere(scope ReportScope, base string) (string, []interface{}) {
 		return "WHERE instance_id = ?", []interface{}{scope.InstanceID}
 	}
 	return base + " AND instance_id = ?", []interface{}{scope.InstanceID}
+}
+
+// ScopedWhereYear appends instance and optional year predicates to an
+// existing WHERE fragment ("" or "WHERE ..."). year <= 0 adds no predicate.
+// Used by the report pages so every report can run for a specific year
+// (bugs.md bug 4).
+func ScopedWhereYear(scope ReportScope, base string, year int) (string, []interface{}) {
+	where, args := ScopedWhere(scope, base)
+	if year > 0 {
+		if where == "" {
+			where = "WHERE year = ?"
+		} else {
+			where += " AND year = ?"
+		}
+		args = append(args, year)
+	}
+	return where, args
+}
+
+// parseReportYear reads the optional "year" request parameter shared by all
+// report pages. Returns 0 (no filter) when absent/invalid.
+func parseReportYear(c buffalo.Context) int {
+	y, err := strconv.Atoi(strings.TrimSpace(c.Param("year")))
+	if err != nil || y < 1900 || y > 2100 {
+		return 0
+	}
+	return y
+}
+
+// reportYearOptions builds the year dropdown entries for a report page:
+// every distinct year present in consolidated_animals for the scope.
+func reportYearOptions(tx *pop.Connection, scope ReportScope, selected int) ([]yearOption, error) {
+	var yearsRows []struct {
+		Year int `db:"year"`
+	}
+	yearWhere, yearArgs := ScopedWhere(scope, "")
+	if err := tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals "+yearWhere+" ORDER BY year DESC", yearArgs...).All(&yearsRows); err != nil {
+		return nil, err
+	}
+	years := make([]yearOption, 0, len(yearsRows))
+	for _, y := range yearsRows {
+		years = append(years, yearOption{Year: y.Year, Selected: y.Year == selected})
+	}
+	return years, nil
 }
 
 // yearOption is one entry of a year dropdown.

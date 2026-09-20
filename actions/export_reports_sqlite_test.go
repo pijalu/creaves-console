@@ -402,3 +402,172 @@ func TestExportReports_AnnexeReports(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	assert.Contains(t, rec.Body.String(), "3 row(s)")
 }
+
+// seedExportYearFixture reseeds consolidated_animals with a two-year spread:
+// center-a has 2 animals in 2023 and 1 in 2024 (animal ids restart per year,
+// mirroring the real per-year numbering).
+func seedExportYearFixture(t *testing.T, tx *pop.Connection) {
+	t.Helper()
+	seedExcelInstances(t, tx) // 5 animals, all year 2024
+	require.NoError(t, tx.RawQuery("DELETE FROM consolidated_animals").Exec())
+
+	now := time.Now().UTC()
+	add := func(instanceID string, year, yearNumber int) {
+		require.NoError(t, tx.Create(&models.ConsolidatedAnimal{
+			ID: uuid.Must(uuid.NewV4()), InstanceID: instanceID,
+			AnimalID: yearNumber, Year: year, YearNumber: yearNumber,
+			Species:       nulls.NewString("Hérisson"),
+			IntakeDate:    nulls.NewTime(time.Date(year, 3, 10, 0, 0, 0, 0, time.UTC)),
+			CurrentStatus: "released",
+			LastEventAt:   now,
+		}))
+	}
+	add("center-a", 2023, 1)
+	add("center-a", 2023, 2)
+	add("center-a", 2024, 1)
+}
+
+// TestExportReports_YearFilter covers bugs.md bug 4: every export report
+// accepts an optional ?year= parameter that restricts rows to that year via
+// a subquery on the report's year column (YearColumn).
+func TestExportReports_YearFilter(t *testing.T) {
+	tx := setupTest(t)
+	seedExportYearFixture(t, tx)
+	app := newExportReportsTestApp(tx, true)
+
+	// Unfiltered: all 3 animals.
+	rec := getExport(t, app, "/export/reports/view?query=register")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	assert.Contains(t, rec.Body.String(), "3 row(s)")
+	assert.NotContains(t, rec.Body.String(), "badge badge-info", "no year badge without filter")
+
+	// year=2023: only the two 2023 animals; badge + reset link shown; the
+	// year picker input is rendered (register has a year column).
+	rec = getExport(t, app, "/export/reports/view?query=register&year=2023")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body := rec.Body.String()
+	assert.Contains(t, body, "2 row(s)")
+	assert.Contains(t, body, `badge badge-info`)
+	assert.Contains(t, body, `name="year"`)
+	assert.Contains(t, body, `value="2023"`)
+
+	// year=2024: only the single 2024 animal.
+	rec = getExport(t, app, "/export/reports/view?query=register&year=2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	assert.Contains(t, rec.Body.String(), "1 row(s)")
+
+	// CSV: year filter restricts rows and is reflected in the filename.
+	rec = getExport(t, app, "/export/reports/export.csv?query=register&year=2023")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="register-2023.csv"`)
+	lines := strings.Split(strings.TrimPrefix(strings.TrimSpace(rec.Body.String()), "\ufeff"), "\n")
+	assert.Len(t, lines, 3, "1 header + 2 data rows")
+
+	// Invalid/out-of-range years are ignored (no filter, plain filename).
+	for _, bad := range []string{"abc", "0", "1899", "2101", "-5"} {
+		rec = getExport(t, app, "/export/reports/export.csv?query=register&year="+bad)
+		require.Equal(t, http.StatusOK, rec.Code, "year=%s: %.300s", bad, rec.Body.Bytes())
+		assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="register.csv"`, "year=%s must be ignored", bad)
+	}
+}
+
+// TestExportReports_YearFilterAllQueries runs every registered export query
+// with a year filter to guarantee the subquery wrapping produces valid SQL
+// for all dialect placeholders and both année/Année alias casings.
+func TestExportReports_YearFilterAllQueries(t *testing.T) {
+	tx := setupTest(t)
+	seedExportYearFixture(t, tx)
+	app := newExportReportsTestApp(tx, true)
+
+	for _, q := range exportQueries {
+		rec := getExport(t, app, "/export/reports/export.csv?query="+q.Name+"&year=2024")
+		require.Equal(t, http.StatusOK, rec.Code, "query %q with year failed: %.300s", q.Name, rec.Body.Bytes())
+		if q.YearColumn != "" {
+			assert.Contains(t, rec.Header().Get("Content-Disposition"), "-2024.csv", "query %q filename must carry the year", q.Name)
+		}
+
+		// And combined with an instance scope.
+		rec = getExport(t, app, "/export/reports/export.csv?query="+q.Name+"&instance_id=center-a&year=2023")
+		require.Equal(t, http.StatusOK, rec.Code, "scoped query %q with year failed: %.300s", q.Name, rec.Body.Bytes())
+	}
+}
+
+// TestExportReports_IndexYearInputs checks the reports hub renders a year
+// input per row (queries all expose a year column).
+func TestExportReports_IndexYearInputs(t *testing.T) {
+	tx := setupTest(t)
+	seedExcelInstances(t, tx)
+	app := newExportReportsTestApp(tx, true)
+
+	rec := getExport(t, app, "/export/reports")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body := rec.Body.String()
+	assert.Contains(t, body, `class="form-control form-control-sm export-year"`)
+	assert.Contains(t, body, `data-base="/export/reports/view?query=register`)
+}
+
+// TestReportsIndex_YearFilter covers the dashboard reports page: ?year=
+// restricts all stats and renders the year dropdown with the selected year.
+func TestReportsIndex_YearFilter(t *testing.T) {
+	tx := setupTest(t)
+	seen := time.Now().UTC()
+	require.NoError(t, tx.Create(&models.CreavesInstance{
+		ID: uuid.Must(uuid.NewV4()), InstanceID: "center-a", Name: "Center A",
+		FirstSeenAt: seen, LastSeenAt: seen,
+	}))
+	add := func(year, animalID int, status string) {
+		require.NoError(t, tx.Create(&models.ConsolidatedAnimal{
+			ID: uuid.Must(uuid.NewV4()), InstanceID: "center-a", AnimalID: animalID,
+			Year: year, CurrentStatus: status,
+		}))
+	}
+	add(2023, 1, "in_care")
+	add(2023, 2, "released")
+	add(2024, 3, "in_care")
+
+	app := buffalo.New(buffalo.Options{Env: "test"})
+	app.Use(func(next buffalo.Handler) buffalo.Handler {
+		return func(c buffalo.Context) error {
+			c.Set("tx", tx)
+			return next(c)
+		}
+	})
+	app.GET("/reports", ReportsIndex)
+	app.GET("/reports/by_location", ReportsByLocation)
+	app.GET("/reports/by_type", ReportsByType)
+
+	get := func(url string) string {
+		req := httptest.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code, "GET %s -> %d: %s", url, rec.Code, rec.Body.String())
+		return rec.Body.String()
+	}
+	stat := func(label string) string {
+		return `<div class="stat-number">` + label + `</div>`
+	}
+
+	// Unfiltered: 3 animals. Year dropdown present with both years.
+	body := get("/reports")
+	require.Contains(t, body, stat("3"), "unfiltered total")
+	require.Contains(t, body, `name="year"`, "year dropdown must render")
+
+	// year=2023: 2 animals (1 in care, 1 released).
+	body = get("/reports?year=2023")
+	require.Contains(t, body, stat("2"), "year=2023 total")
+	require.Contains(t, body, stat("1"), "year=2023 in_care/released")
+
+	// year=2024: single animal.
+	body = get("/reports?year=2024")
+	require.Contains(t, body, stat("1"), "year=2024 total")
+
+	// Invalid year ignored.
+	body = get("/reports?year=notayear")
+	require.Contains(t, body, stat("3"), "invalid year must be ignored")
+
+	// by_location / by_type accept the year parameter too.
+	body = get("/reports/by_location?year=2023")
+	require.Contains(t, body, `name="year"`)
+	body = get("/reports/by_type?year=2023")
+	require.Contains(t, body, `name="year"`)
+}

@@ -24,6 +24,7 @@
             <thead class="thead-dark">
                 <tr>
                     <th>Report</th>
+                    <th>Year</th>
                     <th>Description</th>
                     <th class="text-right">Actions</th>
                 </tr>
@@ -32,14 +33,35 @@
                 <%= for (q) in queries { %>
                     <tr>
                         <td><code><%= q.Name %></code></td>
-                        <td><%= q.Description %></td>
+                        <td style="max-width: 110px;">
+                                <%= if (q.YearColumn != "") { %>
+                                <input type="number" class="form-control form-control-sm export-year" min="1900" max="2100" step="1" placeholder="Year" aria-label="Year">
+                                <% } %>
+                            </td>
+                            <td><%= q.Description %></td>
                         <td class="text-right">
-                            <a class="btn btn-sm btn-primary" href="/export/reports/view?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-table"></i> Online view</a>
-                            <a class="btn btn-sm btn-success" href="/export/reports/export.csv?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-download"></i> CSV</a>
+                            <a class="btn btn-sm btn-primary export-link" data-base="/export/reports/view?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>" href="/export/reports/view?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-table"></i> Online view</a>
+                            <a class="btn btn-sm btn-success export-link" data-base="/export/reports/export.csv?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>" href="/export/reports/export.csv?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-download"></i> CSV</a>
                         </td>
                     </tr>
                 <% } %>
             </tbody>
         </table>
+<script>
+document.querySelectorAll("tr").forEach(function (row) {
+    var input = row.querySelector(".export-year");
+    if (!input) { return; }
+    row.querySelectorAll("a.export-link").forEach(function (link) {
+        link.addEventListener("click", function () {
+            var year = parseInt(input.value, 10);
+            var href = link.getAttribute("data-base");
+            if (year >= 1900 && year <= 2100) {
+                href += "&year=" + year;
+            }
+            link.setAttribute("href", href);
+        });
+    });
+});
+</script>
     </div>
 </div>

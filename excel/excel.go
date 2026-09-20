@@ -40,6 +40,10 @@ type Queries struct {
 	Template    string `yaml:"template"`
 	Sheet       string `yaml:"sheet"`
 	Query       string `yaml:"query"`
+	// YearColumn is the alias of the year column in the SELECT list (e.g.
+	// "année"). When set, RunQuery accepts a year > 0 and filters the report
+	// on it. Empty means the report cannot be filtered by year.
+	YearColumn string `yaml:"year_column"`
 }
 
 // Config is the parsed config/config.yaml.
@@ -136,11 +140,24 @@ func queryStore(tx *pop.Connection) (queryer, error) {
 	return nil, fmt.Errorf("excel: pop connection exposes no raw query store")
 }
 
+// yearFilterSQL wraps a built export query so only rows of the given year
+// are returned, filtering on the aliased year column of the SELECT list.
+// Returns the query untouched when year <= 0 or yearColumn is empty. The
+// year is appended to args as a bind parameter, never interpolated.
+func yearFilterSQL(sqlStr, yearColumn string, year int, args []interface{}) (string, []interface{}) {
+	if year <= 0 || yearColumn == "" {
+		return sqlStr, args
+	}
+	wrapped := "SELECT * FROM (" + strings.TrimSpace(sqlStr) + ") AS year_filter WHERE year_filter.`" + yearColumn + "` = ?"
+	return wrapped, append(args, year)
+}
+
 // RunQuery executes the named export query against tx and writes the
 // resulting XLSX file (built on the embedded template, pivot caches fixed
 // up) to the response. instanceID scopes the export to one instance; an
-// empty instanceID exports all instances.
-func RunQuery(c buffalo.Context, tx *pop.Connection, query, instanceID string) error {
+// empty instanceID exports all instances. year > 0 restricts the export to
+// that year when the query declares a year_column.
+func RunQuery(c buffalo.Context, tx *pop.Connection, query, instanceID string, year int) error {
 	sqlQuery, err := config.getQuery(query)
 	if err != nil {
 		c.Logger().Debugf("Could not find query %s", query)
@@ -161,10 +178,12 @@ func RunQuery(c buffalo.Context, tx *pop.Connection, query, instanceID string) e
 	}
 	defer f.Close()
 
-	// Run the SQL query against the database and return the result set.
+	// Run the SQL query against the database and return the result set,
+	// restricted to the requested year when the query declares a year column.
 	sqlStr, args := scopeSQL(sqlQuery.Query, instanceID)
 	sqlStr = strings.ReplaceAll(sqlStr, "{stay}", stayExpr(tx.Dialect.Name()))
-	c.Logger().Debugf("Running query %s (scope instance=%q)", sqlQuery.Name, instanceID)
+	sqlStr, args = yearFilterSQL(sqlStr, sqlQuery.YearColumn, year, args)
+	c.Logger().Debugf("Running query %s (scope instance=%q, year=%d)", sqlQuery.Name, instanceID, year)
 	store, err := queryStore(tx)
 	if err != nil {
 		return err
@@ -187,6 +206,9 @@ func RunQuery(c buffalo.Context, tx *pop.Connection, query, instanceID string) e
 	filename := sqlQuery.Name
 	if instanceID != "" {
 		filename += "_" + instanceID
+	}
+	if year > 0 && sqlQuery.YearColumn != "" {
+		filename += fmt.Sprintf("_%d", year)
 	}
 	c.Response().Header().Add("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.xlsx"`, filename))
 

@@ -25,6 +25,10 @@ type exportQuery struct {
 	Description string
 	// SQL with the placeholders above.
 	SQL string
+	// YearColumn is the alias of the year column in the SELECT list (e.g.
+	// "Année"). When set, the report accepts a ?year= parameter and filters
+	// on it. Empty means the report cannot be filtered by year.
+	YearColumn string
 	// True when the report is aggregated (GROUP BY) — the online view then
 	// disables row-level filters that make no sense on aggregates.
 	Aggregate bool
@@ -34,6 +38,7 @@ type exportQuery struct {
 var exportQueries = []exportQuery{
 	{
 		Name: "register", Description: "Registre",
+		YearColumn: "Année",
 		SQL: `SELECT DISTINCT
 			a.year AS "Année", a.year_number AS "N°", a.species AS "Espèce",
 			a.ring AS "Identification",
@@ -52,6 +57,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "detail_register", Description: "Registre détaillé",
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.animal_id AS "ID", a.year_number AS "N°",
 			a.species AS "Espèce", a.animal_type AS "Type", a.cage AS "cage",
@@ -83,6 +89,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "dead_register", Description: "Registre des cadavres",
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.year_number AS "N°", a.species AS "Espèce",
 			a.ring AS "Identification",
@@ -96,6 +103,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "descoverer_register", Description: "Registre des découvreurs",
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.animal_id AS "ID", a.year_number AS "numéro annuel",
 			a.species AS "espèce",
@@ -112,6 +120,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "donation_register", Description: "Registre des dons",
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année",
 			a.discoverer_firstname AS "Prénom", a.discoverer_lastname AS "Nom",
@@ -126,6 +135,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "species_registre", Description: "Registre détaillé des espèces",
+		YearColumn: "Année",
 		SQL: `SELECT DISTINCT
 			a.year AS "Année", a.year_number AS "N°", a.species AS "Espèce",
 			a.species_family AS "Famille", a.species_order AS "Ordre",
@@ -144,6 +154,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "entry_age", Description: "Age à l'entrée", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.animal_age AS "Age à l'Entrée", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -153,6 +164,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "sortie_reason", Description: "Causes de sortie", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.outtake_type AS "Causes de sortie", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -162,6 +174,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "sortie_types", Description: "Types de sortie", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année",
 			CASE
@@ -177,6 +190,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_species", Description: "Nombre d'animaux accueillis selon l'espèce", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species AS "Espèce", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -186,6 +200,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "AGW_group", Description: "Nombre d'animaux accueillis selon le groupe du SPW CREAVES", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species_agw_group AS "CREAVES Groupe", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -195,6 +210,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_types", Description: "Nombre d'animaux accueillis selon le type", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.animal_type AS "Type", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -204,6 +220,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_family", Description: "Nombre d'animaux accueillis selon la famille", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species_family AS "Famille", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -213,6 +230,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_order", Description: "Nombre d'animaux accueillis selon l'ordre", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species_order AS "Ordre", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -222,6 +240,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_class", Description: "Nombre d'animaux accueillis selon la classe", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species_class AS "Classe", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -231,6 +250,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_game", Description: "Espèce gibier accueillie", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species AS "Espèce", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -240,6 +260,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "animals_huntable", Description: "Espèce chassable accueillie", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species AS "Espèce", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -249,6 +270,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "native_status", Description: "Statut d'indigénat", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.species_native_status AS "Statut", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -258,6 +280,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "entry_causes", Description: "Causes d'entrée", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.entry_cause AS "Cause", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -267,6 +290,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "entry_causes_detail", Description: "Causes d'entrée détail", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.entry_cause_nature AS "Nature de la cause",
 			a.entry_cause AS "Cause", a.entry_cause_detail AS "Cause détail",
@@ -278,6 +302,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "nature_entry_causes", Description: "Nature des causes d'entrée", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", a.entry_cause_nature AS "Nature des causes d'entrée",
 			COUNT(*) AS "Nombre"
@@ -288,6 +313,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "nombre", Description: "Nombre d'animaux dans l'année", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			a.year AS "Année", COUNT(*) AS "Nombre"
 			FROM consolidated_animals AS a
@@ -298,6 +324,7 @@ var exportQueries = []exportQuery{
 	// bugs.md item 4: date aggregates over the intake date.
 	{
 		Name: "entry_date_year", Description: "Nombre d'animaux accueillis selon le jour de l'année", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			{year:intake_date} AS "Année",
 			{df:intake_date:%Y %m %d} AS "Date d'Entrée",
@@ -309,6 +336,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "entry_day_week", Description: "Nombre d'animaux accueillis selon le jour de la semaine", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			{year:intake_date} AS "Année",
 			{dow:intake_date} AS "numéro jour de la semaine - (1=dimanche)",
@@ -320,6 +348,7 @@ var exportQueries = []exportQuery{
 	},
 	{
 		Name: "day_to_month", Description: "Nombre d'animaux accueillis selon le mois", Aggregate: true,
+		YearColumn: "Année",
 		SQL: `SELECT
 			{year:intake_date} AS "Année",
 			{df:intake_date:%m} AS "Mois d'Entrée",
@@ -338,6 +367,7 @@ var exportQueries = []exportQuery{
 	{
 		Name:        "Annexe_2A_2024",
 		Description: "Annexe 2A 2024 — détail par groupe subside",
+		YearColumn:  "année",
 		SQL: `SELECT DISTINCT
 			a.animal_id AS "ID",
 			a.year AS "année",
@@ -367,6 +397,7 @@ var exportQueries = []exportQuery{
 	{
 		Name: "Annexe_2B_2024", Aggregate: true,
 		Description: "Annexe 2B 2024 — nombre par année et groupe subside",
+		YearColumn:  "Année",
 		SQL: `SELECT
 			a.year AS "Année",
 			CASE
@@ -383,6 +414,7 @@ var exportQueries = []exportQuery{
 	{
 		Name: "Annexe_2024", Aggregate: true,
 		Description: "Annexe au rapport 2024 — nombre par année et groupe",
+		YearColumn:  "année",
 		SQL: `SELECT
 			a.year AS "année",
 			CASE

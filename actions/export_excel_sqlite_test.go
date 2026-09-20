@@ -288,6 +288,61 @@ func TestReportsCSVIndex_RendersExcelLinks(t *testing.T) {
 	app.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body := rec.Body.String()
-	assert.Contains(t, body, `/export/excel?query=registre_detail&amp;instance_id=center-a`)
-	assert.Contains(t, body, `/export/excel?query=stat_communes&amp;instance_id=center-a`)
+	// Each Excel card is a GET form carrying query + instance_id as hidden
+	// fields, with a year input (bugs.md bug 4).
+	for _, query := range []string{"registre_detail", "stat_communes"} {
+		assert.Contains(t, body, `<form method="get" action="/export/excel"`)
+		assert.Contains(t, body, `<input type="hidden" name="query" value="`+query+`">`)
+		assert.Contains(t, body, `<input type="number" name="year" id="year-`+query+`"`)
+	}
+	assert.Equal(t, 2, strings.Count(body, `<input type="hidden" name="instance_id" value="center-a">`),
+		"both Excel forms must carry the selected instance")
+}
+
+// TestExportExcel_YearFilter covers bugs.md bug 4 for the Excel exports:
+// ?year= restricts the workbook rows to that year (subquery on the
+// configured year column) and is reflected in the filename.
+func TestExportExcel_YearFilter(t *testing.T) {
+	tx := setupTest(t)
+	seedExcelInstances(t, tx) // 5 animals, all year 2024
+	// Move two center-a animals to 2023 so the filter is observable.
+	require.NoError(t, tx.RawQuery(
+		"UPDATE consolidated_animals SET year = 2023 WHERE instance_id = 'center-a' AND animal_id IN (1, 2)").Exec())
+	app := newExcelTestApp(tx, true)
+
+	// Unfiltered: 5 rows, plain filename.
+	rec := downloadExcel(t, app, "/export/excel?query=registre_detail")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="registre_detail.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "animals", "AG", 5)
+
+	// year=2024: 3 remaining rows, year-suffixed filename.
+	rec = downloadExcel(t, app, "/export/excel?query=registre_detail&year=2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="registre_detail_2024.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "animals", "AG", 3)
+
+	// year=2023: the 2 moved rows.
+	rec = downloadExcel(t, app, "/export/excel?query=registre_detail&year=2023")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="registre_detail_2023.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "animals", "AG", 2)
+
+	// Combined with an instance scope: center-a has 1 row left in 2024.
+	rec = downloadExcel(t, app, "/export/excel?query=registre_detail&instance_id=center-a&year=2024")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="registre_detail_center-a_2024.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "animals", "AG", 1)
+
+	// Invalid year ignored: no filter, plain filename.
+	rec = downloadExcel(t, app, "/export/excel?query=registre_detail&year=abc")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="registre_detail.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "animals", "AG", 5)
+
+	// stat_communes (YearColumn "Année", different casing) honors it too.
+	rec = downloadExcel(t, app, "/export/excel?query=stat_communes&year=2023")
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.200s", rec.Body.Bytes())
+	assert.Contains(t, rec.Header().Get("Content-Disposition"), `filename="stat_communes_2023.xlsx"`)
+	assertPivotCache(t, xlsxParts(t, rec.Body.Bytes()), "bdd", "N", 2)
 }
