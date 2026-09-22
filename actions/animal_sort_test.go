@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/nulls"
-	"github.com/gobuffalo/plush/v4"
+	"github.com/gobuffalo/plush/v5"
 	"github.com/stretchr/testify/assert"
 
 	"creaves-console/models"

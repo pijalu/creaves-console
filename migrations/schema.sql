@@ -1,4 +1,4 @@
--- MySQL dump 10.13  Distrib 8.4.11, for macos26.6 (arm64)
+-- MySQL dump 10.13  Distrib 8.4.11, for macos27.0 (arm64)
 --
 -- Host: localhost    Database: consolidation
 -- ------------------------------------------------------
@@ -285,4 +285,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-20 16:04:15
+-- Dump completed on 2026-09-22 20:35:23

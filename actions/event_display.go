@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gobuffalo/plush/v4"
+	"github.com/gobuffalo/plush/v5"
 )
 
 // eventTypeLabels maps raw event type codes to localized UI labels.

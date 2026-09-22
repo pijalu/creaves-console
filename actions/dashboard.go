@@ -719,7 +719,7 @@ func ReportsByLocation(c buffalo.Context) error {
 		return err
 	}
 	c.Set("results", results)
-	c.Set("groupBy", groupBy)
+	c.Set("groupMode", groupBy)
 	instances, err := listAnnualInstances(tx, scope)
 	if err != nil {
 		return err

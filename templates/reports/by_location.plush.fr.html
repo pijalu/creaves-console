@@ -1,14 +1,14 @@
 <div class="row">
     <div class="col-md-12">
         <h1><i class="fas fa-map-marker-alt"></i> Rapport par lieu de découverte</h1>
-        <p class="lead">Animaux regroupés par <%= if (groupBy == "postal_code") { %>code postal<% } else { %>ville<% } %></p>
+        <p class="lead">Animaux regroupés par <%= if (groupMode == "postal_code") { %>code postal<% } else { %>ville<% } %></p>
     </div>
 </div>
 
 <div class="row mb-3">
     <div class="col-md-12">
         <form method="GET" action="/reports/by_location" class="form-inline">
-            <input type="hidden" name="group_by" value="<%= groupBy %>">
+            <input type="hidden" name="group_by" value="<%= groupMode %>">
             <div class="form-group mr-2">
                 <label for="instance_id" class="mr-2">Centre :</label>
                 <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
@@ -32,8 +32,8 @@
 </div>
 
 <div class="row mb-3">
-    <a href="/reports/by_location?group_by=city&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupBy == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Par ville</a>
-<a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupBy == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Par code postal</a>
+    <a href="/reports/by_location?group_by=city&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupMode == "city") { %>btn-primary<% } else { %>btn-outline-primary<% } %>">Par ville</a>
+<a href="/reports/by_location?group_by=postal_code&amp;instance_id=<%= instanceID %>" class="btn <%= if (groupMode == "postal_code") { %>btn-primary<% } else { %>btn-outline-primary<% } %> ml-2">Par code postal</a>
 <a href="/reports?instance_id=<%= instanceID %>" class="btn btn-secondary ml-2"><i class="fas fa-arrow-left"></i> Retour</a>
     </div>
 </div>
@@ -44,8 +44,8 @@
             <table class="table table-striped table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th><%= if (groupBy == "postal_code") { %>Code postal<% } else { %>Ville<% } %></th>
-                        <%= if (groupBy == "postal_code") { %><th>Ville</th><% } %>
+                        <th><%= if (groupMode == "postal_code") { %>Code postal<% } else { %>Ville<% } %></th>
+                        <%= if (groupMode == "postal_code") { %><th>Ville</th><% } %>
                         <th class="text-right">Total</th>
                         <th class="text-right">En soins</th>
                         <th class="text-right">Relâchés</th>
@@ -56,7 +56,7 @@
                     <%= for (r) in results { %>
                         <tr>
                             <td><%= r.Location %></td>
-                            <%= if (groupBy == "postal_code") { %><td><%= r.City %></td><% } %>
+                            <%= if (groupMode == "postal_code") { %><td><%= r.City %></td><% } %>
                             <td class="text-right"><strong><%= r.Count %></strong></td>
                             <td class="text-right"><span class="badge badge-success"><%= r.InCare %></span></td>
                             <td class="text-right"><span class="badge badge-primary"><%= r.Released %></span></td>
