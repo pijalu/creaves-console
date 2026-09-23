@@ -14,6 +14,8 @@
                     <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>Tous les centres<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
                 <% } %>
             </select>
+            <label for="report-year" class="mr-2">Année :</label>
+            <select id="report-year" class="form-control"><option value="">Toutes</option><%= for (y) in years { %><option value="<%= y.Year %>"><%= y.Year %></option><% } %></select>
         </form>
     </div>
 </div>

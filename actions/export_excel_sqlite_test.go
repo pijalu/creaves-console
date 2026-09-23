@@ -289,11 +289,12 @@ func TestReportsCSVIndex_RendersExcelLinks(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body := rec.Body.String()
 	// Each Excel card is a GET form carrying query + instance_id as hidden
-	// fields, with a year input (bugs.md bug 4).
+	// fields, with year choices limited to years in the database.
 	for _, query := range []string{"registre_detail", "stat_communes"} {
 		assert.Contains(t, body, `<form method="get" action="/export/excel"`)
 		assert.Contains(t, body, `<input type="hidden" name="query" value="`+query+`">`)
-		assert.Contains(t, body, `<input type="number" name="year" id="year-`+query+`"`)
+		assert.Contains(t, body, `<select name="year" id="year-`+query+`"`)
+		assert.Contains(t, body, `<option value="2024">2024</option>`)
 	}
 	assert.Equal(t, 2, strings.Count(body, `<input type="hidden" name="instance_id" value="center-a">`),
 		"both Excel forms must carry the selected instance")

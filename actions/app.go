@@ -118,6 +118,7 @@ func App() *buffalo.App {
 		// Ported Creaves export reports (bugs.md item 3): online HTML view +
 		// CSV download, all instances or one instance via ?instance_id=.
 		app.GET("/export/reports", ExportReportsIndex)
+		app.GET("/report_years", ReportYears)
 		app.GET("/export/reports/view", ExportReportView)
 		app.GET("/export/reports/export.csv", ExportReportCSV)
 

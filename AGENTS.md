@@ -34,6 +34,10 @@ webhook HTTP contract documented below.
 
 ---
 
+## UI Localization Requirement
+
+Any user-facing UI change must be implemented in every supported language, including localized template variants under `templates/` and corresponding translation strings where applicable. Do not consider a UI task complete until all locales are updated and verified.
+
 ## Documentation Index
 
 | Document | Purpose |

@@ -73,6 +73,11 @@ func reportYearOptions(tx *pop.Connection, scope ReportScope, selected int) ([]y
 		Year int `db:"year"`
 	}
 	yearWhere, yearArgs := ScopedWhere(scope, "")
+	if yearWhere == "" {
+		yearWhere = "WHERE year > 0"
+	} else {
+		yearWhere += " AND year > 0"
+	}
 	if err := tx.RawQuery("SELECT DISTINCT year FROM consolidated_animals "+yearWhere+" ORDER BY year DESC", yearArgs...).All(&yearsRows); err != nil {
 		return nil, err
 	}

@@ -246,10 +246,32 @@ func ExportReportsIndex(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	years, err := reportYearOptions(tx, scope, 0)
+	if err != nil {
+		return err
+	}
+	c.Set("years", years)
 	c.Set("queries", exportQueries)
 	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(http.StatusOK, r.HTML("export/index.plush.html"))
+}
+
+// ReportYears returns years available within requested center scope.
+func ReportYears(c buffalo.Context) error {
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return fmt.Errorf("no transaction found")
+	}
+	scope, err := reportScope(c, tx)
+	if err != nil {
+		return err
+	}
+	years, err := reportYearOptions(tx, scope, 0)
+	if err != nil {
+		return err
+	}
+	return c.Render(http.StatusOK, r.JSON(years))
 }
 
 // ExportReportView renders the online (sortable/filterable) HTML view.
@@ -265,6 +287,12 @@ func ExportReportView(c buffalo.Context) error {
 	if err != nil {
 		return err
 	}
+	tx := c.Value("tx").(*pop.Connection)
+	years, err := reportYearOptions(tx, scope, year)
+	if err != nil {
+		return err
+	}
+	c.Set("years", years)
 	c.Set("query", q)
 	c.Set("year", year)
 	c.Set("cols", cols)

@@ -18,7 +18,7 @@
             </select>
             <%= if (query.YearColumn != "") { %>
             <label for="year" class="ml-3 mr-2">Jaar:</label>
-            <input type="number" name="year" id="year" class="form-control mr-2" style="width: 7rem;" min="1900" max="2100" step="1" placeholder="Alle" value="<%= if (year > 0) { %><%= year %><% } %>">
+            <select name="year" id="year" class="form-control mr-2"><option value="">Alle</option><%= for (y) in years { %><option value="<%= y.Year %>" <%= if (y.Selected) { %>selected<% } %>><%= y.Year %></option><% } %></select>
             <button type="submit" class="btn btn-outline-primary btn-sm">Toepassen</button>
             <% } %>
         </form>

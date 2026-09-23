@@ -46,6 +46,11 @@ func ReportsCSVIndex(c buffalo.Context) error {
 			Selected:   scope.InstanceID == row.InstanceID,
 		})
 	}
+	years, err := reportYearOptions(tx, scope, 0)
+	if err != nil {
+		return err
+	}
+	c.Set("years", years)
 	c.Set("instances", instances)
 	c.Set("instanceID", scope.InstanceID)
 	return c.Render(200, r.HTML("reports/csv.plush.html"))

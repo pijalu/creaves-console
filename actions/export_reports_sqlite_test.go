@@ -492,9 +492,9 @@ func TestExportReports_YearFilterAllQueries(t *testing.T) {
 	}
 }
 
-// TestExportReports_IndexYearInputs checks the reports hub renders a year
-// input per row (queries all expose a year column).
-func TestExportReports_IndexYearInputs(t *testing.T) {
+// TestExportReports_IndexYearDropdown checks the reports hub renders one
+// year dropdown alongside center, populated from stored animal years.
+func TestExportReports_IndexYearDropdown(t *testing.T) {
 	tx := setupTest(t)
 	seedExcelInstances(t, tx)
 	app := newExportReportsTestApp(tx, true)
@@ -502,7 +502,9 @@ func TestExportReports_IndexYearInputs(t *testing.T) {
 	rec := getExport(t, app, "/export/reports")
 	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
 	body := rec.Body.String()
-	assert.Contains(t, body, `class="form-control form-control-sm export-year"`)
+	assert.Contains(t, body, `<select id="report-year" class="form-control">`)
+	assert.Contains(t, body, `<option value="2024">2024</option>`)
+	assert.NotContains(t, body, `export-year`)
 	assert.Contains(t, body, `data-base="/export/reports/view?query=register`)
 }
 

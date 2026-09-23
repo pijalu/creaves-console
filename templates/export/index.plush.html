@@ -9,10 +9,15 @@
     <div class="col-md-6 mb-4">
         <form method="get" action="/export/reports" class="form-inline">
             <label for="instance_id" class="mr-2">Center:</label>
-            <select name="instance_id" id="instance_id" class="form-control" onchange="this.form.submit()">
+            <select name="instance_id" id="instance_id" class="form-control mr-3">
                 <%= for (i) in instances { %>
                     <option value="<%= i.InstanceID %>" <%= if (i.Selected) { %>selected<% } %>><%= if (i.InstanceID == "") { %>All centers<% } else { %><%= i.Name %> (<%= i.InstanceID %>)<% } %></option>
                 <% } %>
+            </select>
+            <label for="report-year" class="mr-2">Year:</label>
+            <select id="report-year" class="form-control">
+                <option value="">All</option>
+                <%= for (y) in years { %><option value="<%= y.Year %>"><%= y.Year %></option><% } %>
             </select>
         </form>
     </div>
@@ -24,7 +29,6 @@
             <thead class="thead-dark">
                 <tr>
                     <th>Report</th>
-                    <th>Year</th>
                     <th>Description</th>
                     <th class="text-right">Actions</th>
                 </tr>
@@ -33,12 +37,7 @@
                 <%= for (q) in queries { %>
                     <tr>
                         <td><code><%= q.Name %></code></td>
-                        <td style="max-width: 110px;">
-                                <%= if (q.YearColumn != "") { %>
-                                <input type="number" class="form-control form-control-sm export-year" min="1900" max="2100" step="1" placeholder="Year" aria-label="Year">
-                                <% } %>
-                            </td>
-                            <td><%= q.Description %></td>
+                        <td><%= q.Description %></td>
                         <td class="text-right">
                             <a class="btn btn-sm btn-primary export-link" data-base="/export/reports/view?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>" href="/export/reports/view?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-table"></i> Online view</a>
                             <a class="btn btn-sm btn-success export-link" data-base="/export/reports/export.csv?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>" href="/export/reports/export.csv?query=<%= q.Name %>&amp;instance_id=<%= instanceID %>"><i class="fas fa-download"></i> CSV</a>
@@ -48,20 +47,23 @@
             </tbody>
         </table>
 <script>
-document.querySelectorAll("tr").forEach(function (row) {
-    var input = row.querySelector(".export-year");
-    if (!input) { return; }
-    row.querySelectorAll("a.export-link").forEach(function (link) {
-        link.addEventListener("click", function () {
-            var year = parseInt(input.value, 10);
-            var href = link.getAttribute("data-base");
-            if (year >= 1900 && year <= 2100) {
-                href += "&year=" + year;
-            }
-            link.setAttribute("href", href);
-        });
+var centerSelector = document.getElementById("instance_id");
+var globalYear = document.getElementById("report-year");
+function applyYear() {
+    if (!globalYear) { return; }
+    document.querySelectorAll("a.export-link").forEach(function (link) {
+        var href = link.getAttribute("data-base");
+        if (globalYear.value) { href += "&year=" + encodeURIComponent(globalYear.value); }
+        link.setAttribute("href", href);
     });
-});
+}
+applyYear();
+if (centerSelector) {
+    centerSelector.addEventListener("change", function () {
+        window.location.href = "/export/reports?instance_id=" + encodeURIComponent(centerSelector.value);
+    });
+}
+if (globalYear) { globalYear.addEventListener("change", applyYear); }
 </script>
     </div>
 </div>
