@@ -15,9 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"creaves-console/locales"
 	"creaves-console/models"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/mw-i18n/v2"
 	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
@@ -298,6 +300,42 @@ func TestReportsCSVIndex_RendersExcelLinks(t *testing.T) {
 	}
 	assert.Equal(t, 2, strings.Count(body, `<input type="hidden" name="instance_id" value="center-a">`),
 		"both Excel forms must carry the selected instance")
+}
+
+// TestReportsCSVIndex_FrenchYearSelects guards the locale-parity rule
+// (AGENTS.md): every locale renders the DB-backed year selects, not just
+// the base template (regression: csv.plush.fr.html kept the old number
+// input when the others were converted).
+func TestReportsCSVIndex_FrenchYearSelects(t *testing.T) {
+	tx := setupTest(t)
+	seedExcelInstances(t, tx)
+
+	app := buffalo.New(buffalo.Options{Env: "test"})
+	tr, err := i18n.New(locales.FS(), "en-US")
+	require.NoError(t, err)
+	T = tr
+	app.Use(tr.Middleware())
+	app.Use(func(next buffalo.Handler) buffalo.Handler {
+		return func(c buffalo.Context) error {
+			c.Set("tx", tx)
+			c.Set("current_user", &models.User{ID: uuid.Must(uuid.NewV4()), Login: "reporter"})
+			return next(c)
+		}
+	})
+	app.GET("/reports/csv", ReportsCSVIndex)
+
+	req := httptest.NewRequest(http.MethodGet, "/reports/csv?instance_id=center-a", nil)
+	req.AddCookie(&http.Cookie{Name: "lang", Value: "fr"})
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, "body: %.300s", rec.Body.Bytes())
+	body := rec.Body.String()
+	for _, query := range []string{"registre_detail", "stat_communes"} {
+		assert.Contains(t, body, `<select name="year" id="year-`+query+`"`)
+		assert.NotContains(t, body, `<input type="number" name="year" id="year-`+query+`"`)
+	}
+	assert.Contains(t, body, `<option value="">Toutes</option>`)
+	assert.Contains(t, body, `<option value="2024">2024</option>`)
 }
 
 // TestExportExcel_YearFilter covers bugs.md bug 4 for the Excel exports:
