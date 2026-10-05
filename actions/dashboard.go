@@ -10,6 +10,7 @@ import (
 	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/x/responder"
+	"github.com/gofrs/uuid"
 )
 
 // DashboardIndex displays the main dashboard for the consolidation app
@@ -230,12 +231,12 @@ func ConsolidatedAnimalsIndex(c buffalo.Context) error {
 // registerFilterData bundles the register dropdown value lists and their
 // localized label maps served to consolidated_animals/index templates.
 type registerFilterData struct {
-	SpeciesList     []string
-	TypesList       []string
-	CitiesList      []string
-	YearsList       []string
-	EntryCausesList []string
-	AgesList        []string
+	SpeciesList      []string
+	TypesList        []string
+	CitiesList       []string
+	YearsList        []string
+	EntryCausesList  []string
+	AgesList         []string
 	OuttakeTypesList []string
 
 	SpeciesLabels     map[string]string
@@ -753,31 +754,60 @@ func localizedGroupLabels(tx *pop.Connection, scope ReportScope, field, lang, ba
 	// share its translation set (translations are keyed by the creaves
 	// reference record), so any one row's translations represent the group;
 	// MIN() is the portable (MySQL/MariaDB/SQLite) way to pick one.
+	//
+	// Perf (round 10, docs/performance-assessment-2026-10-04.md): even the
+	// GROUP BY form parsed the JSON column of EVERY scanned row — on the
+	// 12k-row synthetic dataset MIN(translations) alone measured ~34ms per
+	// report page. Two-step instead: aggregate MIN(id) (a cheap string
+	// min, no JSON parsing), then fetch one representative row per
+	// distinct value; and when the UI language is the canonical base (fr)
+	// the JSON is never read at all — LocalizedField falls back to the
+	// canonical value, which IS the French label.
+	labelRows := []struct {
+		Value string `db:"value"`
+		RepID string `db:"rep_id"`
+	}{}
 	if err := tx.RawQuery(
-		"SELECT "+field+", MIN(translations) AS translations FROM consolidated_animals "+where+" GROUP BY "+field,
+		"SELECT "+field+" AS value, MIN(id) AS rep_id FROM consolidated_animals "+where+" GROUP BY "+field,
 		args...,
-	).All(&animals); err != nil {
+	).All(&labelRows); err != nil {
 		return nil, err
 	}
-	labels := make(map[string]string)
-	for _, animal := range animals {
-		var canonical string
-		switch field {
-		case "animal_type":
-			canonical = animal.AnimalType.String
-		case "species":
-			canonical = animal.Species.String
-		case "animal_age":
-			canonical = animal.AnimalAge.String
-		case "entry_cause":
-			canonical = animal.EntryCause.String
-		case "outtake_type":
-			canonical = animal.OuttakeType.String
-		}
-		if canonical != "" {
-			if _, exists := labels[canonical]; !exists {
-				labels[canonical] = animal.LocalizedField(lang, field)
+
+	labels := make(map[string]string, len(labelRows))
+	if lang == "" || lang == "fr" || len(labelRows) == 0 {
+		for _, r := range labelRows {
+			if r.Value != "" {
+				labels[r.Value] = r.Value
 			}
+		}
+		return labels, nil
+	}
+
+	repIDs := make([]string, 0, len(labelRows))
+	for _, r := range labelRows {
+		if r.Value != "" {
+			repIDs = append(repIDs, r.RepID)
+		}
+	}
+	if len(repIDs) == 0 {
+		return labels, nil
+	}
+	if err := tx.Where("id in (?)", repIDs).All(&animals); err != nil {
+		return nil, err
+	}
+	byID := make(map[uuid.UUID]models.ConsolidatedAnimal, len(animals))
+	for _, a := range animals {
+		byID[a.ID] = a
+	}
+	for _, r := range labelRows {
+		if r.Value == "" {
+			continue
+		}
+		if a, ok := byID[uuid.FromStringOrNil(r.RepID)]; ok {
+			labels[r.Value] = a.LocalizedField(lang, field)
+		} else {
+			labels[r.Value] = r.Value
 		}
 	}
 	return labels, nil
