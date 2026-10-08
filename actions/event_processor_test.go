@@ -192,6 +192,19 @@ func createTables() {
 		)
 	`).Exec()
 
+	// Create consolidated_animal_tombstones table (BUG-8 deletion markers).
+	testDB.RawQuery(`
+		CREATE TABLE IF NOT EXISTS consolidated_animal_tombstones (
+			id TEXT PRIMARY KEY,
+			instance_id TEXT NOT NULL,
+			animal_id INTEGER NOT NULL,
+			event_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Exec()
+	testDB.RawQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tombstones_instance_animal ON consolidated_animal_tombstones(instance_id, animal_id)`).Exec()
+
 	// Create users table
 	testDB.RawQuery(`
 		CREATE TABLE IF NOT EXISTS users (
@@ -247,7 +260,7 @@ func createTables() {
 
 func setupTest(t *testing.T) *pop.Connection {
 	// Clean tables before each test
-	tables := []string{"event_streams", "consolidated_animals", "webhook_api_keys", "import_runs", "creaves_instances"}
+	tables := []string{"event_streams", "consolidated_animals", "consolidated_animal_tombstones", "webhook_api_keys", "import_runs", "creaves_instances"}
 	for _, table := range tables {
 		err := testDB.RawQuery("DELETE FROM " + table).Exec()
 		require.NoError(t, err)

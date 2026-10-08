@@ -19,6 +19,12 @@ func purgeInstance(tx *pop.Connection, instanceID string) error {
 		if err := t.Where("instance_id = ?", instanceID).Delete(&models.ConsolidatedAnimal{}); err != nil {
 			return err
 		}
+		// Deletion markers (BUG-8 ordering guard) are instance data like any
+		// other: a cleanup must give the following full resync a blank slate,
+		// with the markers re-recorded naturally during the redelivery.
+		if err := t.Where("instance_id = ?", instanceID).Delete(&models.ConsolidatedAnimalTombstone{}); err != nil {
+			return err
+		}
 		if err := t.Where("instance_id = ?", instanceID).Delete(&models.WebhookAPIKey{}); err != nil {
 			return err
 		}
