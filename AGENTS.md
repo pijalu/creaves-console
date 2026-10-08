@@ -274,7 +274,7 @@ stored as a **bcrypt hash** (authentication) plus the **raw value**
 | Type | When |
 |------|------|
 | `animal_discovered` | New animal intake/discovery |
-| `animal_status_changed` | Status update (e.g. in_care → under_treatment) |
+| `animal_status_changed` | Status update (produced statuses are `in_care` / `released` / `died` — see `current_status` note below) |
 | `animal_released` | Animal released back to wild |
 | `animal_died` | Animal died in care |
 | `animal_deleted` | Animal destroyed in creaves (error outtake); receiver deletes the consolidated row and the animal's event history |
@@ -506,7 +506,15 @@ Without `-tags sqlite`, tests will fail with:
 | `actions/webhook_e2e_test.go` | Full push→receive→process flow over the real handler (contract E2E) |
 | `actions/webhook_e2e_second_extract_test.go` | E2E: second full extract keeps all years incl. current year, with a poison event present |
 | `actions/export_reports_sqlite_test.go` | Ported export reports: query registry, handler scope/auth, all queries run on SQLite, CSV format (bugs.md item 3) |
+| `actions/event_processor_order_test.go` | Order-insensitive application: shuffled replay cannot clobber newer state; delete tombstones (BUG-8) |
 | `models/models_test.go` | Model validation tests |
+
+**Cross-app browser E2E record**: the full creaves ⇄ console sync feature (restore,
+link, resync, arrivals, outtakes, cleanup + force-resync recovery) is exercised
+end-to-end by the run documented in the workspace — see
+`../creaves/e2e/E2E-TEST.md` (plan + results) and `../creaves/e2e/bugs.md`
+(bugs BUG-1…BUG-9 with fix/retest status). Consult those before changing the
+webhook/recovery paths.
 
 ### Test Database
 
