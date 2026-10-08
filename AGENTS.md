@@ -184,6 +184,8 @@ CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves mi
 | POST | `/auth` | `AuthCreate` | None |
 | GET/POST/etc | `/users` | `UsersResource` | Admin |
 | GET/POST/etc | `/webhook_api_keys` | `WebhookAPIKeysResource` | Admin |
+| GET | `/webhook_api_keys/:id/created` | One-time raw-key page after creation | Admin |
+| GET/POST | `/sync_management`, `/sync_management/delete-instance-animals`, `/sync_management/delete-all-animals` | `SyncManagement*` (`actions/sync_management.go`) | Admin |
 | GET | `/consolidated_animals` | `ConsolidatedAnimalsIndex` | Session |
 | GET | `/consolidated_animals/:id` | `ConsolidatedAnimalShow` | Session |
 | GET | `/consolidated_animals/:id/drill_down` | `ConsolidatedAnimalDrillDown` | Session |
@@ -227,7 +229,10 @@ Authorization: Bearer creaves_<uuid>
 ```
 
 The key is an API key generated in the Console admin UI (`/webhook_api_keys/new`).
-Keys are stored as **bcrypt hashes** — the raw key is shown only once on creation.
+Keys are generated in the Console admin UI (`/webhook_api_keys/new`). They are
+stored as a **bcrypt hash** (authentication) plus the **raw value**
+(`key_value`, retrievable by admins on the list/detail pages). The key's
+`instance_id` must match every received event's `instance_id`.
 
 ### Request Body
 
@@ -407,7 +412,7 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `entry_cause_id` | int NULL | Source entry-cause reference id (bugs.md item 3) |
 | `discoverer_firstname`, `discoverer_lastname`, `discoverer_address`, `discoverer_city`, `discoverer_postal_code`, `discoverer_country`, `discoverer_email`, `discoverer_phone`, `discoverer_donation` | varchar NULL | Discoverer contact + donation (bugs.md item 3) |
 | `discoverer_note` | text NULL | Discoverer note (bugs.md item 3) |
-| `current_status` | varchar NOT NULL | in_care / under_treatment / released / died |
+| `current_status` | varchar NOT NULL | `in_care` / `released` / `died` (derived from the payload's status; no `under_treatment` status is produced. Display layers use the outtake dead/rating flags — `EffectiveStatus()` — for the deceased split) |
 | `intake_date`, `intake_general`, `intake_wounds`, `intake_parasites`, `intake_remarks` | | |
 | `outtake_date`, `outtake_type`, `outtake_location` | | |
 | `outtake_rating` | int NULL | From outtake type definition |
@@ -431,7 +436,8 @@ Index: `(instance_id, animal_id, created_at)`, `processed_at`
 | `name` | varchar | Human-readable label |
 | `key_hash` | varchar | bcrypt hash of the raw key |
 | `key_prefix` | varchar | First 8 chars of UUID (for identification) |
-| `instance_id` | varchar NULL | Optional: restrict key to one instance |
+| `key_value` | varchar NULL | Raw key retained for admin retrieval (migration `20260501092000`); shown on list/show pages; legacy keys may have NULL → renders `creaves_<prefix>…` |
+| `instance_id` | varchar | **Required**: the one creaves instance this key serves (auto-registers unknown IDs; mismatching events → 403) |
 | `active` | bool | |
 | `last_used_at` | datetime NULL | |
 
@@ -456,17 +462,17 @@ buffalo dev   # or buffalo build + deploy binary
 1. Login as `admin` / `admin123`
 2. Go to **Webhook API Keys** → **New**
 3. Enter a name (e.g. "Center North")
-4. Optionally restrict to a specific `instance_id`
-5. **Copy the raw key immediately** — it's only shown once (`creaves_<uuid>`)
+4. Enter the **Instance ID (required)** — the creaves instance this key serves. Unknown instance IDs are auto-registered on first receipt; events whose `instance_id` doesn't match are rejected with 403.
+5. **Generate API Key** → a confirmation page (`/webhook_api_keys/{id}/created`) shows the raw key (`creaves_<uuid>`) with a Copy button. The raw key is stored (`key_value`) and **remains retrievable** from the keys list / detail pages (legacy keys created before the `key_value` column show only `creaves_<prefix>…`).
 
 ### 3. Configure Each Creaves Instance
 
-On each Creaves instance, go to the **Configuration** page and set:
-- **Enable Webhook**: checked
-- **Webhook URL**: `https://<console-host>/webhook/events`
-- **API Key**: the raw key from step 2
-- **Batch Size**: 1 (increase for throughput)
-- **Max Events Per Minute**: 60 (adjust to your needs)
+On each Creaves instance, go to **Administration → Synchronization** (`/sync_configuration`) and set:
+- **Instance ID**: must match the API key's Instance ID
+- **Enable Event Stream**: checked
+- **Add sync target**: Enabled ✅, Webhook URL `https://<console-host>/webhook/events` (port 3001 in dev), API Key from step 2, Batch Size (default 1) and Max Events Per Minute (default 60) as needed
+
+Note: the creaves-side webhook configuration used to live in the per-config form (`Settings.WebhookEnabled/WebhookURL/...`); it was replaced by **sync targets** — the old fields are no longer rendered.
 
 ### 4. Verify
 
@@ -573,10 +579,10 @@ remote db/port by exporting `DATABASE_URL` — exactly like the creaves containe
 
 ## Current Status / Known Issues
 
-- **WIP**: The webhook system is functional but needs hardening:
-  - Pusher worker on Creaves side is not started at boot (only starts lazily when
-    first event is published — see Creaves `webhook_pusher.go`)
-  - Console tests require SQLite build tag (documented above)
+- **Webhook hardening**: done for the items formerly listed here — the Creaves
+  pusher worker now starts at boot (`InitWebhookAtBoot()`), on sync-target
+  save, and is wake-driven per publish; partial batches are retried per
+  `processed_ids`. Console tests require SQLite build tag (documented above).
 - **Deprecated fields**: `source_db` in event_streams is leftover from the old pull
   model; always empty now.
 - **Sync visibility (phase 8, done)**: `/sync_management` shows per-instance
