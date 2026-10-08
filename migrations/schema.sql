@@ -16,6 +16,25 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `consolidated_animal_tombstones`
+--
+
+DROP TABLE IF EXISTS `consolidated_animal_tombstones`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `consolidated_animal_tombstones` (
+  `id` char(36) NOT NULL,
+  `instance_id` varchar(255) NOT NULL,
+  `animal_id` int NOT NULL,
+  `event_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `consolidated_animal_tombstones_instance_id_animal_id_idx` (`instance_id`,`animal_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `consolidated_animals`
 --
 
@@ -285,4 +304,4 @@ CREATE TABLE `webhook_api_keys` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-02  8:49:40
+-- Dump completed on 2026-10-08 13:09:24

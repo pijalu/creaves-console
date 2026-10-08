@@ -1,0 +1,9 @@
+create_table("consolidated_animal_tombstones") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("instance_id", "string", {})
+	t.Column("animal_id", "integer", {})
+	t.Column("event_at", "datetime", {})
+	t.Column("created_at", "datetime", {})
+	t.Column("updated_at", "datetime", {})
+}
+add_index("consolidated_animal_tombstones", ["instance_id", "animal_id"], {unique: true})
