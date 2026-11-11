@@ -1,7 +1,7 @@
 package actions
 
 // Pure unit tests for the dependency-free helper functions in the actions
-// package (M7 of TESTING_PLAN.md).
+// package (M7 of ../creaves/docs/TESTING_PLAN.md).
 //
 // Scope note: consolidation_runner.go, dashboard.go, users.go and
 // event_processor.go are dominated by code that requires a live
