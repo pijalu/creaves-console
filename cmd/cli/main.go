@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -47,7 +48,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  serve     Start the web server")
-	fmt.Println("  import    Import events from all sources and process them")
+	fmt.Println("  import    Process received events with a recorded run")
 	fmt.Println("  process   Process unprocessed events only")
 	fmt.Println("  rebuild   Rebuild consolidated view from scratch")
 	fmt.Println("  stats     Show consolidation statistics")
@@ -55,7 +56,7 @@ func printUsage() {
 	fmt.Println("  help      Show this help message")
 	fmt.Println()
 	fmt.Println("Options for import:")
-	fmt.Println("  -dry-run          Show what would be imported without importing")
+	fmt.Println("  -dry-run          Report unprocessed events without changing data")
 	fmt.Println()
 	fmt.Println("Environment variables:")
 	fmt.Println("  DATABASE_URL      Database connection string")
@@ -71,7 +72,7 @@ func runServer() {
 
 func runImport() {
 	importFlags := flag.NewFlagSet("import", flag.ExitOnError)
-	dryRun := importFlags.Bool("dry-run", false, "Show what would be imported without importing")
+	dryRun := importFlags.Bool("dry-run", false, "Report pending events without writing")
 	importFlags.Parse(os.Args[2:])
 
 	fmt.Println("Starting import...")
@@ -81,8 +82,12 @@ func runImport() {
 	runner := actions.NewConsolidationRunner(models.DB)
 
 	if *dryRun {
+		result, err := runner.RunDryRun()
+		if err != nil {
+			log.Fatalf("Dry run failed: %v", err)
+		}
 		fmt.Println("DRY RUN - No changes were made")
-		fmt.Println("Would process all unprocessed events")
+		fmt.Printf("Unprocessed events: %d\n", result.EventsPending)
 		return
 	}
 
@@ -159,6 +164,10 @@ func runStats() {
 	}
 }
 
+func historySeparator() string {
+	return strings.Repeat("-", 100)
+}
+
 func runHistory() {
 	runner := actions.NewConsolidationRunner(models.DB)
 	runs, err := runner.GetRunHistory(10)
@@ -170,7 +179,7 @@ func runHistory() {
 	fmt.Println("==================")
 	fmt.Printf("%-36s %-20s %-10s %-10s %-10s %-10s\n",
 		"ID", "Started", "Status", "Imported", "Processed", "Duration")
-	fmt.Println(string(make([]byte, 100)))
+	fmt.Println(historySeparator())
 
 	for _, run := range runs {
 		duration := "N/A"

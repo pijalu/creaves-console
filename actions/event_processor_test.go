@@ -725,11 +725,31 @@ func TestEventProcessor_ProcessEventsBatch(t *testing.T) {
 
 func TestConsolidationRunner_RunDryRun(t *testing.T) {
 	tx := setupTest(t)
-	runner := NewConsolidationRunner(tx)
-	result, err := runner.RunDryRun()
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "not yet implemented")
+	now := time.Now().UTC()
+	for i := 0; i < 2; i++ {
+		require.NoError(t, tx.Create(&models.EventStream{
+			ID: uuid.Must(uuid.NewV4()), InstanceID: "inst-1", AnimalID: i + 1,
+			EventType: models.EventTypeAnimalDiscovered, ImportedAt: now, CreatedAt: now,
+		}))
+	}
+	require.NoError(t, tx.Create(&models.EventStream{
+		ID: uuid.Must(uuid.NewV4()), InstanceID: "inst-1", AnimalID: 3,
+		EventType: models.EventTypeAnimalDiscovered, ImportedAt: now, CreatedAt: now, ProcessedAt: &now,
+	}))
+
+	result, err := NewConsolidationRunner(tx).RunDryRun()
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, 2, result.EventsPending)
+	assert.Equal(t, uuid.Nil, result.ImportRunID, "dry-run must not create an import run")
+
+	var importRuns, pending, processed int
+	require.NoError(t, tx.RawQuery("SELECT COUNT(*) FROM import_runs").First(&importRuns))
+	require.NoError(t, tx.RawQuery("SELECT COUNT(*) FROM event_streams WHERE processed_at IS NULL").First(&pending))
+	require.NoError(t, tx.RawQuery("SELECT COUNT(*) FROM event_streams WHERE processed_at IS NOT NULL").First(&processed))
+	assert.Equal(t, 0, importRuns)
+	assert.Equal(t, 2, pending, "dry-run must leave pending events untouched")
+	assert.Equal(t, 1, processed, "dry-run must leave processed events untouched")
 }
 
 func TestConsolidationRunner_GetLastRun(t *testing.T) {

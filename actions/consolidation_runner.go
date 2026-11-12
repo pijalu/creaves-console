@@ -31,6 +31,7 @@ type RunResult struct {
 	CompletedAt     time.Time
 	Duration        time.Duration
 	EventsProcessed int
+	EventsPending   int
 	Errors          []string
 }
 
@@ -77,10 +78,24 @@ func (cr *ConsolidationRunner) Run() (*RunResult, error) {
 	return result, nil
 }
 
-// RunDryRun simulates processing without making changes
+// RunDryRun reports pending work without creating an import run or changing events.
 func (cr *ConsolidationRunner) RunDryRun() (*RunResult, error) {
-	// TODO: Implement dry-run logic
-	return nil, fmt.Errorf("dry-run not yet implemented")
+	if cr.tx == nil {
+		return nil, fmt.Errorf("dry-run requires a database connection")
+	}
+	startTime := time.Now()
+	pending, err := cr.tx.Where("processed_at IS NULL").Count(&models.EventStream{})
+	if err != nil {
+		return nil, errors.Wrap(err, "dry-run failed to count unprocessed events")
+	}
+	completedAt := time.Now()
+	return &RunResult{
+		StartedAt:     startTime,
+		CompletedAt:   completedAt,
+		Duration:      completedAt.Sub(startTime),
+		EventsPending: pending,
+		Errors:        []string{},
+	}, nil
 }
 
 // GetLastRun returns the most recent import run

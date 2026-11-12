@@ -70,18 +70,15 @@ func TestNewConsolidationRunner_DistinctConnectionsPerInstance(t *testing.T) {
 	assert.NotSame(t, cr1.processor, cr2.processor)
 }
 
-func TestConsolidationRunner_RunDryRun_NotImplemented(t *testing.T) {
-	// RunDryRun does not touch the connection, so a zero-value runner is
-	// sufficient. It must surface an explicit "not implemented" error rather
-	// than silently succeeding or panicking.
+func TestConsolidationRunner_RunDryRunRequiresConnection(t *testing.T) {
 	cr := &ConsolidationRunner{}
 
 	result, err := cr.RunDryRun()
 
 	assert.Nil(t, result, "dry-run must not fabricate a result")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not yet implemented")
 	assert.Contains(t, err.Error(), "dry-run")
+	assert.Contains(t, err.Error(), "connection")
 }
 
 func TestNormalizeUILang_BaseIsEnglish(t *testing.T) {
