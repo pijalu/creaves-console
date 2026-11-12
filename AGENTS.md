@@ -1,601 +1,99 @@
 # Creaves Console — Agent Guide
 
-## What This Is
+## Purpose and boundaries
 
-Creaves Console is a **standalone consolidation application** that provides a unified,
-separated view of animal care data across **multiple geographically-distributed Creaves
-instances**.
+Creaves Console is the central, read-only consolidation application. It receives authenticated webhook events from independent Creaves installations, maintains one consolidated row per `(instance_id, animal_id)`, and serves dashboards, reports, exports, and source-event drill-down.
 
-Each Creaves instance (the main tool at `/creaves`) runs independently with its own
-database. They cannot share a database because the centers are physically spread out.
-Creaves Console solves this by **receiving events via webhooks** from each instance and
-building a single consolidated read-only view for authority oversight and cross-center
-reporting.
+Console is the **receive side**. It has no shared code or database with Creaves and no direct source-database ingestion. Use only `POST /webhook/events`; keep the producer and receiver contract changes synchronized in both repositories.
 
-### Relationship to Creaves (main tool)
+## Read first
 
-```
- ┌──────────────┐   webhook (HTTP POST)   ┌──────────────────┐
- │  Creaves A   │ ──────────────────────► │                  │
- │  (database)  │                         │  Creaves Console │──► Dashboard
- └──────────────┘                         │  (database)      │──► Reports
- ┌──────────────┐   webhook (HTTP POST)   │                  │──► Drill-down
- │  Creaves B   │ ──────────────────────► │                  │
- │  (database)  │                         └──────────────────┘
- └──────────────┘
-```
+| Document | Use |
+| --- | --- |
+| [README.md](README.md) | Current features, setup, operations, CLI, deployment, and troubleshooting |
+| [docs/specs/SYNC_SPEC.md](docs/specs/SYNC_SPEC.md) | Canonical webhook v2 contract and compatibility rules |
+| [docs/e2e-cleanup-resync-walkthrough.md](docs/e2e-cleanup-resync-walkthrough.md) | Current cleanup/full-resync recovery procedure |
+| [../creaves/docs/SETUP_AND_TESTING.md](../creaves/docs/SETUP_AND_TESTING.md) | Combined local setup and cross-application validation |
+| [docs/README.md](docs/README.md) | Curated documentation index |
+| `docs/archive/` | Historical pull-model material, research, plans, and closed fixes; not current instructions |
 
-- **Creaves (main)**: PUSH side — produces events and sends them to the console.
-- **Creaves Console**: RECEIVE side — accepts events, processes them into a
-  consolidated view.
+Keep this guide short. Do not duplicate the complete payload schema, route inventory, database catalog, or historical bug narratives.
 
-The two apps share **no code and no database**. They communicate exclusively through the
-webhook HTTP contract documented below.
+## Stack and commands
 
----
-
-## UI Localization Requirement
-
-Any user-facing UI change must be implemented in every supported language, including localized template variants under `templates/` and corresponding translation strings where applicable. Do not consider a UI task complete until all locales are updated and verified.
-
-## Documentation Index
-
-| Document | Purpose |
-|----------|---------|
-| **AGENTS.md** (this file) | Architecture, setup, webhook contract, testing |
-| **TODO.md** | Implementation plan & status |
-| `migrations/schema.sql` | Full database schema dump |
-
----
-
-## Tech Stack
-
-| Layer | Tech |
-|-------|------|
-| Language | Go 1.21 (`go.mod`) |
-| Web framework | [Buffalo](https://gobuffalo.io) |
-| ORM / DB | [Pop v6](https://github.com/gobuffalo/pop) + MySQL/MariaDB (dev/prod), SQLite (test) |
-| Templating | Plush `.plush.html` (embedded via `go:embed`) |
-| Auth | Custom session-based, bcrypt password hashes |
-| API auth | Bearer token (bcrypt-hashed webhook API keys) |
-
----
-
-## Prerequisites
-
-- Go 1.21+
-- Buffalo CLI: `go install github.com/gobuffalo/cli/cmd/buffalo@latest`
-- MySQL/MariaDB (dev/prod); SQLite with CGO for tests
-- CGO and SQLite driver for tests (see Testing section)
-
-## Database Setup
-
-Config: `database.yml`
-
-```yaml
-development:
-  dialect: "mysql"
-  database: "consolidation"
-  host: "localhost"
-  port: "3306"
-  user: "creaves"
-  password: "creaves"
-```
-
-Production uses the `DATABASE_URL` env var (same convention as creaves): export
-`DATABASE_URL='mysql://user:pass@(host:3306)/consolidation?parseTime=true&multiStatements=true'`
-before starting the binary/container. The container listens on `PORT` (default 3001)
-and binds `ADDR` (default 127.0.0.1; the Docker image sets `ADDR=0.0.0.0`).
+- Go **1.26**, Buffalo 1.1, Pop v6, Plush, MySQL/MariaDB.
+- Development port: **3001**.
+- Tests use SQLite with CGo and the `sqlite` build tag; development and production use MySQL/MariaDB.
+- Install Buffalo with `go install github.com/gobuffalo/cli/cmd/buffalo@latest`.
 
 ```bash
-# Run migrations
+go mod download
 buffalo pop migrate up
-
-# Create admin user (login=admin, password=admin123)
 buffalo task db:seed
-```
-
----
-
-## Development Commands
-
-```bash
-# Build & run dev server (port 3001 by default)
 buffalo dev
-
-# Build production binary
-buffalo build --environment production -o bin/creaves-console
-
-# Run migrations
-buffalo pop migrate up
-
-# Seed admin user
-buffalo task db:seed
-
-# Grift tasks
-buffalo task consolidation:process   # Process unprocessed events
-buffalo task consolidation:rebuild   # Rebuild consolidated view from scratch
-buffalo task consolidation:stats     # Show statistics
-CONFIRM=cleanup buffalo task db:cleanup  # Delete application data; preserves migrations
 ```
 
----
+Development login: `admin` / `admin123`; change it outside a disposable environment. `db:seed` creates only the initial admin if absent.
 
-## Architecture
+Use `POP_PATH=/absolute/config-directory` to select an alternate `database.yml`. Production normally uses `DATABASE_URL`. Verify the selected database before migration, cleanup, rebuild, deletion, or fixture operations.
 
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `actions/app.go` | All routes + middleware |
-| `actions/webhook.go` | **Webhook receiver** — accepts events from Creaves instances |
-| `actions/instances.go` | Registered instance listing and transactional cleanup |
-| `actions/webhook_resync_handlers.go` | Resync start/status admin endpoints |
-| `actions/webhook_api_keys.go` | CRUD for webhook API keys (admin UI) |
-| `actions/event_processor.go` | Processes events into `consolidated_animals` |
-| `actions/consolidation_runner.go` | Orchestrates processing workflow |
-| `actions/sync_checksum.go` | Per-instance sync status (expected/confirmed/unconfirmed + shared state-set checksums) for the sync-management view |
-| `actions/dashboard.go` | Dashboard, consolidated animal list, drill-down, reports |
-| `actions/export_reports.go` | Ported Creaves export reports: handlers `ExportReportsIndex`/`ExportReportView`/`ExportReportCSV` + SQL placeholder/dialect translation |
-| `actions/export_queries.go` | Registry of the 22 ported export queries over `consolidated_animals` (bugs.md item 3) |
-| `actions/users.go` | Auth (session), user CRUD |
-| `actions/render.go` | Render engine, helpers |
-| `models/event_stream.go` | Event model + payload structs |
-| `actions/events.go` | Admin event stream browser (index/show) |
-| `actions/events_delete.go` | Admin deletion of received events (all / per instance) with JSONL archive |
-| `models/consolidated_animal.go` | Consolidated view model + `ApplyEvent()` logic |
-| `models/webhook_api_key.go` | API key model + `GenerateKey()` / `Authenticate()` |
-| `models/import_run.go` | Import/processing run tracking |
-| `models/user.go` | User model |
-
-### Data Flow (Webhook Event → Consolidated View)
-
-```
-1. Creaves instance creates an event (animal discovered, status changed, released, died)
-2. Creaves webhook pusher (webhook_pusher.go) POSTs event batch to Console
-3. Console WebhookEventsHandler (webhook.go):
-   a. Authenticates via Bearer token → looks up API key (bcrypt compare)
-   b. Validates instance_id against key (if key is instance-restricted)
-   c. For each event: checks idempotency (UUID), creates EventStream record
-   d. Processes event immediately (synchronous) via EventProcessor
-4. EventProcessor (event_processor.go):
-   a. Finds-or-creates ConsolidatedAnimal by (instance_id, animal_id)
-   b. Applies the event payload to update the consolidated record
-   c. Marks event as processed
-5. Dashboard/reports read from consolidated_animals
-```
-
-### Routes (app.go)
-
-| Method | Path | Handler | Auth |
-|--------|------|---------|------|
-| POST | `/webhook/events` | `WebhookEventsHandler` | **Bearer token** (API key) |
-| GET | `/instances` | `InstancesIndex` | Session |
-| POST | `/instances/:instance_id/cleanup` | `InstanceCleanup` | Admin |
-| GET | `/events` | `EventsIndex` | Admin |
-| GET | `/events/delete` | `EventsDeleteNew` | Admin |
-| POST | `/events/delete` | `EventsDeleteCreate` | Admin |
-| GET | `/events/:event_id` | `EventShow` | Admin |
-| GET/POST | `/webhook_resync`, `/webhook_resync/start` | Resync handlers | Admin |
-| GET | `/webhook_resync/status.json` | `WebhookResyncStatus` | Session |
-| GET | `/` | `DashboardIndex` | Session |
-| GET | `/dashboard` | `DashboardIndex` | Session |
-| GET | `/auth/new` | `AuthNew` | None |
-| POST | `/auth` | `AuthCreate` | None |
-| GET/POST/etc | `/users` | `UsersResource` | Admin |
-| GET/POST/etc | `/webhook_api_keys` | `WebhookAPIKeysResource` | Admin |
-| GET | `/webhook_api_keys/:id/created` | One-time raw-key page after creation | Admin |
-| GET/POST | `/sync_management`, `/sync_management/delete-instance-animals`, `/sync_management/delete-all-animals` | `SyncManagement*` (`actions/sync_management.go`) | Admin |
-| GET | `/consolidated_animals` | `ConsolidatedAnimalsIndex` | Session |
-| GET | `/consolidated_animals/:id` | `ConsolidatedAnimalShow` | Session |
-| GET | `/consolidated_animals/:id/drill_down` | `ConsolidatedAnimalDrillDown` | Session |
-| GET | `/reports` | `ReportsIndex` | Session |
-| GET | `/reports/by_location` | `ReportsByLocation` | Session |
-| GET | `/reports/by_type` | `ReportsByType` | Session |
-| GET | `/reports/by_species` | `ReportsBySpecies` | Session |
-| GET | `/reports/annual` | `ReportsAnnualIndex` | Session |
-| GET | `/reports/annual/export.csv` | `ReportsAnnualExportCSV` | Session |
-| GET | `/export/reports` | `ExportReportsIndex` | Session |
-| GET | `/export/reports/view` | `ExportReportView` | Session |
-| GET | `/export/reports/export.csv` | `ExportReportCSV` | Session |
-
-### Middleware Stack
-
-```
-paramlogger → csrf → popmw.Transaction(models.DB) → i18n
-```
-
-**Important**: The `/webhook/events` route **skips CSRF** (it's a machine-to-machine API
-call). All other routes use session auth + CSRF.
-
----
-
-## Webhook Contract
-
-This is the HTTP contract between Creaves (main) and Creaves Console.
-
-**Canonical values**: payload display values remain canonical base-locale (French) reference names. Sync v2 additionally accepts an optional `translations` map in each payload and stores it for localized display; matching/report grouping continues to use canonical values.
-
-### Endpoint
-
-```
-POST /webhook/events
-```
-
-### Authentication
-
-```
-Authorization: Bearer creaves_<uuid>
-```
-
-The key is an API key generated in the Console admin UI (`/webhook_api_keys/new`).
-Keys are generated in the Console admin UI (`/webhook_api_keys/new`). They are
-stored as a **bcrypt hash** (authentication) plus the **raw value**
-(`key_value`, retrievable by admins on the list/detail pages). The key's
-`instance_id` must match every received event's `instance_id`.
-
-### Request Body
-
-```json
-{
-  "contract_version": 2,
-  "instance": { "id": "center-north", "name": "Center North", "description": "..." },
-  "sync": {
-    "expected_total": 5327,
-    "expected_checksum": "sha256:81aedb89...",
-    "announced_at": "2026-09-05T10:30:00Z"
-  },
-  "events": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "instance_id": "center-north",
-      "animal_id": 42,
-      "event_type": "animal_discovered",
-      "resync_run_id": "550e8400-e29b-41d4-a716-446655440001",
-      "payload": { ... },
-      "created_at": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-- `resync_run_id` — **optional**, present only on events delivered as part of a resync run; live events omit the field. The console stores it on `event_streams` and shows it in the animal detail event history Source column ("Resync <short id>") vs "Live update".
-
-- `instance` — identifies the producing installation (registered on first receipt).
-- `sync` — **optional**, present only on batches belonging to a resync run:
-  the producer's announced expected sync state (total animals + `"<animal_id>|<state_hash>"`
-  set checksum, computed with the same builder as its `/webhook_resync` page).
-  The console stores it on the instance row and `/sync_management` displays
-  `stored / expected(announced)` plus a checksum comparison — the expected set
-  is NEVER derived from the events the console happens to have received.
-
-### Event Types
-
-| Type | When |
-|------|------|
-| `animal_discovered` | New animal intake/discovery |
-| `animal_status_changed` | Status update (produced statuses are `in_care` / `released` / `died` — see `current_status` note below) |
-| `animal_released` | Animal released back to wild |
-| `animal_died` | Animal died in care |
-| `animal_deleted` | Animal destroyed in creaves (error outtake); receiver deletes the consolidated row and the animal's event history |
-| `animal_state` | Full current-state resync snapshot (replace semantics) |
-
-### Payload Structure (the `payload` field)
-
-```json
-{
-  "animal": {
-    "id": 42, "year": 2024, "year_number": 17,
-    "species": "Hérisson", "gender": "M", "cage": "A12",
-    "zone": "Quarantine", "ring": "FR-2024-017",
-    "animal_type": "Mammifère", "animal_age": "Adulte",
-    "species_class": "Mammalia", "species_agw_group": "...",
-    "species_subside_group": "...", "species_native_status": "Indigène",
-    "species_family": "Erinaceidae", "species_order": "Eulipotyphla",
-    "species_game": false, "species_huntable": false
-  },
-  "discovery": {
-    "id": "uuid", "location": "...", "postal_code": "67000",
-    "city": "Strasbourg", "date": "2024/01/15 10:30",
-    "entry_cause": "...", "entry_cause_detail": "...",
-    "entry_cause_nature": "...", "reason": "...", "note": "...",
-    "return_habitat": false, "in_garden": true,
-    "locality_commune": "...", "locality_province": "...",
-    "locality_region": "...", "locality_country": "...",
-    "locality_cantonnement": "...", "locality_direction": "...",
-    "discoverer_firstname": "...", "discoverer_lastname": "...",
-    "discoverer_address": "...", "discoverer_city": "...",
-    "discoverer_postal_code": "...", "discoverer_country": "...",
-    "discoverer_email": "...", "discoverer_phone": "...",
-    "discoverer_note": "...", "discoverer_donation": "..."
-  },
-  "intake": {
-    "id": "uuid", "date": "2024/01/15 11:00",
-    "general": "...", "has_wounds": true, "wounds": "...",
-    "has_parasites": false, "parasites": "...", "remarks": "..."
-  },
-  "outtake": {
-    "id": "uuid", "date": "2024/03/01 09:00",
-    "type": "Released to Wild", "location": "...", "note": "...",
-    "rating": 1, "dead": false, "error": false,
-    "precise_location": "...", "stay_duration": 42,
-    "corpse_destination": "...", "corpse_destination_at": "2024/03/02 08:30"
-  },
-  "initial_status": "in_care",
-  "current_status": "in_care",
-  "previous_status": "",
-  "user_id": "uuid", "user_login": "admin",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### Response
-
-```json
-{
-  "processed": 5,
-  "total": 5,
-  "processed_ids": ["550e8400-...", "..."],
-  "confirmed": [{ "id": "550e8400-...", "state_hash": "<hash stored on the consolidated row>" }]
-}
-```
-
-On partial failure (some events errored):
-
-```json
-{
-  "processed": 3,
-  "total": 5,
-  "processed_ids": ["..."],
-  "confirmed": ["..."],
-  "errors": ["failed to process event ...: ..."]
-}
-```
-
-- `processed_ids` — events actually processed; absent events stay undelivered and are retried.
-- `confirmed` — **console→creaves acknowledgement** (ack path): per processed
-  `animal_state` event, the state hash the console actually stored. The Creaves
-  pusher marks those events `acknowledged_at` (only when the echoed hash matches
-  the event's `content_hash`), which feeds the "Delivered & current" count on
-  `/webhook_resync`. Bare HTTP acceptance alone is NOT treated as confirmation.
-- Redelivery of a known event ID whose payload differs from the stored one
-  (e.g. the producer's force resync backfilling `state_hash` onto legacy
-  events) replaces the stored payload and the event is re-applied —
-  processing stays idempotent for unchanged state.
-
-The Creaves pusher marks the batch as delivered when it receives HTTP 200.
-
-### Idempotency
-
-- Events are deduplicated by **UUID** (`id` field).
-- If an event with the same UUID already exists, it's counted as success (skipped).
-- Safe to replay the same batch multiple times.
-
----
-
-## Database Schema
-
-### `event_streams` (received events)
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | char(36) PK | UUID — same as source event |
-| `instance_id` | varchar(255) | Source instance identifier |
-| `animal_id` | int | Source animal ID |
-| `event_type` | varchar(255) | See event types above |
-| `payload` | json | Full structured payload |
-| `source_db` | varchar(255) | Deprecated (legacy from pull model) |
-| `resync_run_id` | char(36) NULL | Producing resync run when the event was delivered by a resync; NULL for live events (contract v2, bugs.md #9) |
-| `imported_at` | datetime | When received via webhook |
-| `processed_at` | datetime NULL | When processed into consolidated view |
-| `created_at` | datetime | Event creation time from source |
-| `updated_at` | datetime | |
-
-Index: `(instance_id, animal_id, created_at)`, `processed_at`
-
-### `consolidated_animals` (the unified view)
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | char(36) PK | Generated UUID |
-| `instance_id` + `animal_id` | UNIQUE | Composite uniqueness per source animal |
-| `year`, `year_number` | int | Animal identification |
-| `species`, `gender`, `cage`, `zone`, `ring` | varchar NULL | |
-| `species_class`, `species_agw_group`, `species_subside_group`, `species_native_status` | varchar NULL | Species taxonomy from source species table |
-| `species_family`, `species_order` | varchar NULL | Species taxonomy (bugs.md item 3) |
-| `species_game`, `species_huntable` | bool NULL | Species flags (bugs.md item 3) |
-| `animal_type`, `animal_age` | varchar NULL | |
-| `discovery_location`, `discovery_date`, `discovery_city`, `discovery_postal_code` | | |
-| `discovery_commune`, `discovery_province`, `discovery_region`, `discovery_country`, `discovery_cantonnement`, `discovery_direction` | varchar NULL | Locality hierarchy resolved by the producing instance (stat_communes export, bugs.md Bug 9) |
-| `entry_cause` | varchar NULL | |
-| `entry_cause_detail`, `entry_cause_nature` | varchar NULL | |
-| `entry_cause_id` | int NULL | Source entry-cause reference id (bugs.md item 3) |
-| `discoverer_firstname`, `discoverer_lastname`, `discoverer_address`, `discoverer_city`, `discoverer_postal_code`, `discoverer_country`, `discoverer_email`, `discoverer_phone`, `discoverer_donation` | varchar NULL | Discoverer contact + donation (bugs.md item 3) |
-| `discoverer_note` | text NULL | Discoverer note (bugs.md item 3) |
-| `current_status` | varchar NOT NULL | `in_care` / `released` / `died` (derived from the payload's status; no `under_treatment` status is produced. Display layers use the outtake dead/rating flags — `EffectiveStatus()` — for the deceased split) |
-| `intake_date`, `intake_general`, `intake_wounds`, `intake_parasites`, `intake_remarks` | | |
-| `outtake_date`, `outtake_type`, `outtake_location` | | |
-| `outtake_rating` | int NULL | From outtake type definition |
-| `outtake_dead` | bool NULL | From outtake type definition |
-| `outtake_error` | bool NULL | Outtake-type "erroneous record" flag (Annexe reports exclude error=true) |
-| `outtake_precise_location` | varchar NULL | Free-text precise release location (BUG-R3) |
-| `outtake_stay_duration` | int NULL | Days in care at outtake time (BUG-R3) |
-| `outtake_corpse_destination`, `outtake_corpse_destination_at` | varchar/datetime NULL | Corpse disposal for dead outcomes (BUG-R3) |
-| `ready_for_release` | bool NULL | Tri-state animal flag: true/false/NULL=unknown (BUG-R3) |
-| `last_event_at` | datetime | |
-| `event_count` | int | Number of events applied |
-| `created_at`, `updated_at` | datetime | |
-
-**Unique constraint**: `consolidated_animals_instance_id_animal_id_idx (instance_id, animal_id)`
-
-### `webhook_api_keys`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | char(36) PK | |
-| `name` | varchar | Human-readable label |
-| `key_hash` | varchar | bcrypt hash of the raw key |
-| `key_prefix` | varchar | First 8 chars of UUID (for identification) |
-| `key_value` | varchar NULL | Raw key retained for admin retrieval (migration `20260501092000`); shown on list/show pages; legacy keys may have NULL → renders `creaves_<prefix>…` |
-| `instance_id` | varchar | **Required**: the one creaves instance this key serves (auto-registers unknown IDs; mismatching events → 403) |
-| `active` | bool | |
-| `last_used_at` | datetime NULL | |
-
-### `import_runs`
-
-Tracks each processing run (status, events processed, errors).
-
----
-
-## Setup Guide (Console Administrator)
-
-### 1. Deploy the Console
+## Testing requirements
 
 ```bash
-buffalo pop migrate up
-buffalo task db:seed
-buffalo dev   # or buffalo build + deploy binary
+CGO_ENABLED=1 go test -tags sqlite -count=1 ./...
+CGO_ENABLED=1 go test -tags sqlite -count=1 ./actions -run TestName -v
+go vet ./...
 ```
 
-### 2. Create a Webhook API Key
+Test authentication, instance scoping, idempotency, partial responses, ordering, deletion tombstones, poison-event recovery, and export/report behavior when changing those paths. Template, action, model, route, and schema changes also require authenticated browser checks. Exercise every affected locale (`en-US`, `fr`, `de`, `nl`) and both success and error paths.
 
-1. Login as `admin` / `admin123`
-2. Go to **Webhook API Keys** → **New**
-3. Enter a name (e.g. "Center North")
-4. Enter the **Instance ID (required)** — the creaves instance this key serves. Unknown instance IDs are auto-registered on first receipt; events whose `instance_id` doesn't match are rejected with 403.
-5. **Generate API Key** → a confirmation page (`/webhook_api_keys/{id}/created`) shows the raw key (`creaves_<uuid>`) with a Copy button. The raw key is stored (`key_value`) and **remains retrievable** from the keys list / detail pages (legacy keys created before the `key_value` column show only `creaves_<prefix>…`).
+Never weaken or skip tests to obtain a green result. Historical E2E records in `docs/archive/` do not replace current validation.
 
-### 3. Configure Each Creaves Instance
+## UI and localization
 
-On each Creaves instance, go to **Administration → Synchronization** (`/sync_configuration`) and set:
-- **Instance ID**: must match the API key's Instance ID
-- **Enable Event Stream**: checked
-- **Add sync target**: Enabled ✅, Webhook URL `https://<console-host>/webhook/events` (port 3001 in dev), API Key from step 2, Batch Size (default 1) and Max Events Per Minute (default 60) as needed
+Every user-facing UI change must update all four localized template variants and translation catalogs. Canonical values stored in event payloads remain French/base-locale keys; optional `translations` maps supply display text without changing report grouping or identity.
 
-Note: the creaves-side webhook configuration used to live in the per-config form (`Settings.WebhookEnabled/WebhookURL/...`); it was replaced by **sync targets** — the old fields are no longer rendered.
+## Processing and contract invariants
 
-### 4. Verify
+- API keys are instance-scoped. A key/instance mismatch is rejected; do not derive trust from the envelope instance block.
+- Event UUIDs are unique. Duplicate processed events are successful no-ops; duplicate unprocessed events may be reprocessed.
+- Processing is synchronous. Responses identify exactly which event IDs were accepted; state events can also return stored state hashes for acknowledgement.
+- Partial failures must not acknowledge failed events. Poison records must not block newer processable events during replay.
+- Preserve event ordering protections. Older out-of-order updates must not clobber newer consolidated state.
+- `animal_deleted` removes the source animal and retained event history and leaves tombstone protection against stale older events.
+- `animal_state` replaces contract-managed fields; lifecycle events merge their respective changes. Canonical status values are `in_care`, `released`, and `died`.
+- Instance registration and reporting are global or per-instance. Never leak rows across an instance-scoped report or cleanup.
+- Expected totals/checksums come from the producer announcement, not from a count derived from the receiver's current rows.
 
-- Create/edit an animal on a Creaves instance
-- Check the Console dashboard — the event should appear within seconds
-- Use `buffalo task consolidation:stats` to verify counts
+Use the canonical specification for exact wire shapes and response examples.
 
----
+## Destructive operations
 
-## Testing
+`consolidation:rebuild`, instance cleanup, event deletion, and `db:cleanup` are maintenance operations, not normal ingestion. Require explicit scope, a backup, and a recovery plan. `db:cleanup` additionally requires `CONFIRM=cleanup` and preserves migration history.
 
-### Unit Tests
+Prefer the documented single-instance cleanup/full-resync path over ad-hoc SQL. Event deletion writes a JSONL archive before removal. Never run fixture or cleanup commands against an unreviewed production database.
 
-Tests use **SQLite** (in-memory/file-based). Requires CGO and the SQLite build tag:
+## Operational commands
 
 ```bash
-# IMPORTANT: SQLite requires CGO + the sqlite build tag
-CGO_ENABLED=1 go test -tags sqlite ./actions/... ./models/...
+buffalo task consolidation:process
+buffalo task consolidation:rebuild
+buffalo task consolidation:stats
+go build -o bin/consolidation-cli ./cmd/cli
+./bin/consolidation-cli history
 ```
 
-Without `-tags sqlite`, tests will fail with:
-`sqlite3 support was not compiled into the binary`
+The CLI `import` name is retained for a recorded processing run over received events; it does not restore the removed pull model. Its `-dry-run` option is read-only. Docker helpers in `docker-run.sh` wrap the common tasks.
 
-### Existing Tests
+## Deployment and security
 
-| File | Covers |
-|------|--------|
-| `actions/event_processor_test.go` | Event processing, idempotency, multi-instance, status transitions, stats, run history |
-| `actions/event_processor_poison_test.go` | Regression: a poison event must not block newer events during replay |
-| `actions/sync_checksum_test.go` | Shared checksum golden vectors + per-instance counts math |
-| `actions/webhook_e2e_test.go` | Full push→receive→process flow over the real handler (contract E2E) |
-| `actions/webhook_e2e_second_extract_test.go` | E2E: second full extract keeps all years incl. current year, with a poison event present |
-| `actions/export_reports_sqlite_test.go` | Ported export reports: query registry, handler scope/auth, all queries run on SQLite, CSV format (bugs.md item 3) |
-| `actions/event_processor_order_test.go` | Order-insensitive application: shuffled replay cannot clobber newer state; delete tombstones (BUG-8) |
-| `models/models_test.go` | Model validation tests |
+The production container runs migrations and `db:seed`, then starts the server. Replace compose development credentials, change the default admin password, protect raw API-key reveal pages with admin access, and keep secrets out of source control. Back up the database before upgrades and validate webhook processing before reopening delivery.
 
-**Cross-app browser E2E record**: the full creaves ⇄ console sync feature (restore,
-link, resync, arrivals, outtakes, cleanup + force-resync recovery) is exercised
-end-to-end by the run documented in the workspace — see
-`../creaves/e2e/E2E-TEST.md` (plan + results) and `../creaves/e2e/bugs.md`
-(bugs BUG-1…BUG-9 with fix/retest status). Consult those before changing the
-webhook/recovery paths.
+## Change checklist
 
-### Test Database
-
-The test setup (`TestMain` in `event_processor_test.go`) creates a SQLite database
-with all tables manually, cleans tables before each test, and tears down on exit.
-
-### What to Test When Adding Features
-
-- **New event types**: Add a test case in status transition tests
-- **Webhook receiver changes**: Test authentication, idempotency, error handling
-- **New payload fields**: Test that `UpdateFromPayload` correctly maps them
-
----
-
-## Docker
-
-```bash
-# Build and run (migrations + db:seed run automatically at container start,
-# via dockerscript/quickstart.prod.sh — same pattern as creaves)
-docker-compose up -d
-
-# Run a consolidation task inside a container
-./docker-run.sh process    # or: rebuild, stats, serve, shell
-
-# Build & push the multi-arch image (muaddib/creaves-console)
-./build.sh
-```
-
-`Dockerfile` is a multi-stage buffalo build producing a single `/bin/app` binary
-(migrations embedded via the buffalo-pop plugin, like creaves).
-`docker-compose.yml` includes MySQL + the web app. Point the container at any
-remote db/port by exporting `DATABASE_URL` — exactly like the creaves container.
-
----
-
-## Troubleshooting
-
-| Symptom | Check |
-|---------|-------|
-| Events not appearing in console | 1. Is webhook enabled on Creaves instance? 2. Is API key correct? 3. Is console reachable from Creaves network? 4. Check Creaves logs for delivery errors |
-| `sqlite3 support was not compiled` | Run tests with `CGO_ENABLED=1 -tags sqlite` |
-| 401 Unauthorized on webhook | API key mismatch — regenerate key, ensure bcrypt compare works |
-| Duplicate events | Not possible — UUID dedup. Check if same UUID is sent twice (shouldn't be) |
-| Consolidated view stale | Run `buffalo task consolidation:process` to process pending events |
-| Need full rebuild | `buffalo task consolidation:rebuild` — clears consolidated_animals and reprocesses all events |
-
----
-
-## Key Design Decisions
-
-1. **Webhook push (not pull)**: Creaves databases are geographically spread.
-   Direct DB connections from console to each instance are not feasible (firewalls,
-   NAT, network topology). Push via HTTP is the only reliable sync method.
-
-2. **Separate database**: Console has its own `consolidation` database. No shared
-   tables with any Creaves instance. This keeps the console fully independent.
-
-3. **Synchronous processing**: Events are processed immediately on receipt (in the
-   webhook handler). This keeps the architecture simple. For high volume, an
-   async queue could be added later.
-
-4. **Idempotent by design**: UUID-based dedup means retries are safe. The pusher
-   can resend the same batch without creating duplicates.
-
-5. **Legacy pull model removed**: The old `source_instances` table (pull-based import)
-   has been dropped. All sync is now push-based via webhooks. See migration
-   `20260424210001_drop_source_instances`.
-
----
-
-## Current Status / Known Issues
-
-- **Webhook hardening**: done for the items formerly listed here — the Creaves
-  pusher worker now starts at boot (`InitWebhookAtBoot()`), on sync-target
-  save, and is wake-driven per publish; partial batches are retried per
-  `processed_ids`. Console tests require SQLite build tag (documented above).
-- **Deprecated fields**: `source_db` in event_streams is leftover from the old pull
-  model; always empty now.
-- **Sync visibility (phase 8, done)**: `/sync_management` shows per-instance
-  expected/confirmed/unconfirmed counts + event-log vs consolidated checksums;
-  replay (`ProcessUnprocessedEvents`) skips-and-continues on poison events
-  (see `docs/archive/2026-09-05-phase-8-sync-visibility.md`).
-
-See `TODO.md` for the implementation plan and status.
+1. Determine whether the change is receiver-only or alters the shared contract.
+2. Add regression tests for idempotency, scoping, ordering, and error paths as applicable.
+3. Preserve all four UI locales and canonical payload values.
+4. Validate destructive maintenance on an isolated database with a rollback path.
+5. Run the SQLite suite and authenticated browser checks as applicable.
+6. Update only current guides; archive research, implementation plans, and dated results.

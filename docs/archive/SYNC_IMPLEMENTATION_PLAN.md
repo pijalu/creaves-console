@@ -3,7 +3,7 @@
 Companion to [`../specs/SYNC_SPEC.md`](../specs/SYNC_SPEC.md). This document contains:
 
 1. **Review findings** of the current creaves ↔ console sync (evidence: file:line).
-2. **Subplan index** — micro-tasks live in [`subplans/`](./subplans/), one file per phase.
+2. **Subplan index** — micro-tasks live in [`subplans/`](sync-v2-subplans/), one file per phase.
 3. **Requirement traceability** and **sequencing/risks**.
 
 Implementation detail (micro-tasks + TDD test cases) is intentionally NOT in this file —
@@ -11,13 +11,13 @@ each phase has its own subplan:
 
 | # | Subplan | Scope |
 |---|---------|-------|
-| 1 | [`subplans/phase-1-console-hardening.md`](./subplans/phase-1-console-hardening.md) | SQL injection fix (F1) |
-| 2 | [`subplans/phase-2-console-instance-registry-cleanup.md`](./subplans/phase-2-console-instance-registry-cleanup.md) | Instance registry, webhook auto-registration, `animal_state` replace semantics, instance admin UI + cleanup (R1, R2 base; F3, F6) |
-| 3 | [`subplans/phase-3-console-reporting-scope.md`](./subplans/phase-3-console-reporting-scope.md) | Global / per-instance scoping of dashboard + all reports (R2; F2) |
-| 4 | [`subplans/phase-4-console-multilingual.md`](./subplans/phase-4-console-multilingual.md) | Console French locale + localized reference-data display (R5/R6; F4, F5) |
-| 5 | [`subplans/phase-5-creaves-payload-v2.md`](./subplans/phase-5-creaves-payload-v2.md) | Translations map in payloads, instance block + contract version (R5; G2, G5) |
-| 6 | [`subplans/phase-6-creaves-full-resync.md`](./subplans/phase-6-creaves-full-resync.md) | Content-addressed state events, background resync service, progress UI (R3, R4; G1) |
-| 7 | [`subplans/phase-7-e2e-docs.md`](./subplans/phase-7-e2e-docs.md) | Cross-project e2e tests, manual checklist, docs updates |
+| 1 | [`subplans/phase-1-console-hardening.md`](sync-v2-subplans/phase-1-console-hardening.md) | SQL injection fix (F1) |
+| 2 | [`subplans/phase-2-console-instance-registry-cleanup.md`](sync-v2-subplans/phase-2-console-instance-registry-cleanup.md) | Instance registry, webhook auto-registration, `animal_state` replace semantics, instance admin UI + cleanup (R1, R2 base; F3, F6) |
+| 3 | [`subplans/phase-3-console-reporting-scope.md`](sync-v2-subplans/phase-3-console-reporting-scope.md) | Global / per-instance scoping of dashboard + all reports (R2; F2) |
+| 4 | [`subplans/phase-4-console-multilingual.md`](sync-v2-subplans/phase-4-console-multilingual.md) | Console French locale + localized reference-data display (R5/R6; F4, F5) |
+| 5 | [`subplans/phase-5-creaves-payload-v2.md`](sync-v2-subplans/phase-5-creaves-payload-v2.md) | Translations map in payloads, instance block + contract version (R5; G2, G5) |
+| 6 | [`subplans/phase-6-creaves-full-resync.md`](sync-v2-subplans/phase-6-creaves-full-resync.md) | Content-addressed state events, background resync service, progress UI (R3, R4; G1) |
+| 7 | [`subplans/phase-7-e2e-docs.md`](sync-v2-subplans/phase-7-e2e-docs.md) | Cross-project e2e tests, manual checklist, docs updates |
 
 ## Conventions (apply to every subplan)
 

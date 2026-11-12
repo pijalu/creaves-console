@@ -1,9 +1,8 @@
 # Creaves ↔ Creaves Console Sync Specification — v2
 
-Status: **DRAFT — approved for implementation planning**
-Owner project: **creaves-console** (main project for sync)
-Companion document: [`docs/plan/SYNC_IMPLEMENTATION_PLAN.md`](./docs/plan/SYNC_IMPLEMENTATION_PLAN.md) — review findings + TDD micro-tasks (per-phase subplans in [`docs/plan/subplans/`](./docs/plan/subplans/))
-Supersedes: the "Webhook Contract" sections of both `AGENTS.md` files (those remain authoritative for v1 until this spec ships).
+Status: **Implemented — current contract**; v1-shaped events remain supported.
+Owner project: **creaves-console** (main project for sync).
+Scope: normative wire behavior only. Setup and operations are in the project READMEs; implementation history is archived separately.
 
 ---
 

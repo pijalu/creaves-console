@@ -3,7 +3,7 @@
 # files are embedded via go:embed).
 FROM golang AS builder
 
-ENV GOPROXY http://proxy.golang.org
+ENV GOPROXY https://proxy.golang.org
 RUN go install github.com/gobuffalo/cli/cmd/buffalo@latest
 RUN mkdir -p /src/creaves-console
 WORKDIR /src/creaves-console
